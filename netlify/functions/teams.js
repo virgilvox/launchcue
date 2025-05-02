@@ -1,6 +1,6 @@
 const { MongoClient, ObjectId } = require('mongodb');
 const { connectToDb } = require('./utils/db');
-const { authenticateRequest } = require('./utils/auth');
+const { authenticate } = require('./utils/authHandler'); // Use new authentication handler
 const { createResponse, createErrorResponse, handleOptionsRequest } = require('./utils/response');
 
 exports.handler = async function(event, context) {
@@ -16,13 +16,22 @@ exports.handler = async function(event, context) {
     headers: Object.keys(event.headers)
   });
 
-  let authResult;
+  let authContext;
   try {
-    authResult = authenticateRequest(event);
+    // Use the new unified authentication method with scope checking
+    authContext = await authenticate(event, {
+      requiredScopes: event.httpMethod === 'GET' 
+        ? ['read:teams'] 
+        : ['write:teams']
+    });
   } catch (errorResponse) {
-    return errorResponse;
+    console.error("Authentication failed:", errorResponse.body || errorResponse);
+    if(errorResponse.statusCode) return errorResponse; 
+    return createErrorResponse(401, 'Unauthorized');
   }
-  const { userId, teamId } = authResult;
+  
+  // Use userId and teamId from the authentication context
+  const { userId, teamId } = authContext;
 
   // Check for action parameter
   const queryParams = event.queryStringParameters || {};

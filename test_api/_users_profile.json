@@ -4,9 +4,11 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Vite + Vue</title>
-    <script type="module" crossorigin src="/assets/index-tL11WlMP.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/index-YO_4ThiA.css">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta http-equiv="X-Content-Type-Options" content="nosniff" />
+    <title>LaunchCue</title>
+    <script type="module" crossorigin src="/assets/main-BA6qNLLa.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/main-CxIQwqbN.css">
   </head>
   <body>
     <div id="app"></div>

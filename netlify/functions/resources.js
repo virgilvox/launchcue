@@ -1,5 +1,7 @@
 const { MongoClient, ObjectId } = require('mongodb');
-const { getAuthUser } = require('./utils/auth');
+const { connectToDb } = require('./utils/db');
+const { authenticate } = require('./utils/authHandler');
+const { createResponse, createErrorResponse, handleOptionsRequest } = require('./utils/response');
 const { z } = require('zod');
 
 // Resource schema validation
@@ -8,74 +10,48 @@ const ResourceSchema = z.object({
   type: z.string().min(1, 'Type is required'),
   url: z.string().url('Must be a valid URL'),
   description: z.string().optional(),
-  teamId: z.string().min(1, 'Team ID is required'),
   tags: z.array(z.string()).optional().default([])
 });
 
 // Update schema - all fields optional
 const ResourceUpdateSchema = ResourceSchema.partial();
 
-// Helper function to create standardized responses
-function createResponse(statusCode, body) {
-  return {
-    statusCode,
-    headers: {
-      'Content-Type': 'application/json',
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS'
-    },
-    body: JSON.stringify(body)
-  };
-}
-
-// Helper function for error responses
-function createErrorResponse(statusCode, message, details = null) {
-  return createResponse(statusCode, { error: message, details });
-}
-
 exports.handler = async (event, context) => {
-  // Handle preflight OPTIONS request
-  if (event.httpMethod === 'OPTIONS') {
-    return createResponse(200, {});
-  }
+  const optionsResponse = handleOptionsRequest(event);
+  if (optionsResponse) return optionsResponse;
   
   console.log(`Processing ${event.httpMethod} request for resources`);
   
-  // Get authenticated user and team ID
-  const authResult = await getAuthUser(event);
-  if (authResult.error) {
-    console.error('Authentication error:', authResult.error);
-    return createErrorResponse(401, authResult.error);
+  // Authenticate with scope checking
+  let authContext;
+  try {
+    authContext = await authenticate(event, {
+      requiredScopes: event.httpMethod === 'GET' 
+        ? ['read:resources'] 
+        : ['write:resources']
+    });
+  } catch (errorResponse) {
+    console.error("Authentication failed:", errorResponse.body || errorResponse);
+    if(errorResponse.statusCode) return errorResponse; 
+    return createErrorResponse(401, 'Unauthorized');
   }
   
-  const { user, teams } = authResult;
-  if (!user) {
-    console.error('No authenticated user found');
-    return createErrorResponse(401, 'Authentication required');
-  }
-  
-  // Get team ID from query parameters or URL path
-  let teamId = event.queryStringParameters?.teamId;
+  // Use userId and teamId from the authentication context
+  const { userId, teamId } = authContext;
   
   // Extract resource ID from path if available
-  const resourceId = event.path.split('/').pop();
-  if (resourceId === 'resources') {
-    // This is the base path, not a specific resource
+  const pathParts = event.path.split('/');
+  const resourcesIndex = pathParts.indexOf('resources');
+  let specificResourceId = null;
+  if (resourcesIndex !== -1 && pathParts.length > resourcesIndex + 1) {
+    const potentialId = pathParts[resourcesIndex + 1];
+    if (ObjectId.isValid(potentialId)) {
+      specificResourceId = potentialId;
+    }
   }
   
-  // If we need to use a specific resource ID
-  let specificResourceId = resourceId !== 'resources' ? resourceId : null;
-  
-  // Connect to MongoDB
-  const uri = process.env.MONGODB_URI;
-  const client = new MongoClient(uri);
-  
   try {
-    await client.connect();
-    console.log('Connected to MongoDB');
-    
-    const db = client.db('launchcue');
+    const { db } = await connectToDb();
     const resourcesCollection = db.collection('resources');
     
     // GET: Fetch resources (either all for a team or a specific resource)
@@ -84,19 +60,14 @@ exports.handler = async (event, context) => {
       if (specificResourceId) {
         console.log(`Fetching specific resource: ${specificResourceId}`);
         try {
-          const resource = await resourcesCollection.findOne({ _id: new ObjectId(specificResourceId) });
+          const resource = await resourcesCollection.findOne({ 
+            _id: new ObjectId(specificResourceId),
+            teamId: teamId
+          });
           
           if (!resource) {
             console.error(`Resource ${specificResourceId} not found`);
             return createErrorResponse(404, 'Resource not found');
-          }
-          
-          // Check if user has access to the team this resource belongs to
-          // More permissive check to fix "Access denied" errors
-          if (teams && Array.isArray(teams) && !teams.some(team => team.id === resource.teamId)) {
-            console.error(`User ${user.sub} does not have access to team ${resource.teamId}`);
-            console.error('Available teams:', JSON.stringify(teams));
-            return createErrorResponse(403, 'Access denied to this resource');
           }
           
           // Return the resource with id instead of _id
@@ -111,34 +82,8 @@ exports.handler = async (event, context) => {
           throw error; // Let the main catch block handle it
         }
       } 
-      // Otherwise, fetch all resources for the specified team
+      // Otherwise, fetch all resources for the authenticated team
       else {
-        if (!teamId) {
-          // If no team ID, use the first team the user has access to or default teamId
-          if (teams && teams.length > 0) {
-            teamId = teams[0].id;
-            console.log(`No teamId provided, using first available team: ${teamId}`);
-          } else if (authResult.teamId) {
-            // Fallback to the teamId from auth token
-            teamId = authResult.teamId;
-            console.log(`No teams array found, using teamId from token: ${teamId}`);
-          } else {
-            console.error('No team ID available from any source');
-            return createErrorResponse(400, 'Team ID is required');
-          }
-        }
-        
-        // Verify user has access to the specified team - make more permissive
-        let hasTeamAccess = true;
-        if (teams && Array.isArray(teams)) {
-          hasTeamAccess = teams.some(team => team.id === teamId);
-          if (!hasTeamAccess) {
-            console.error(`User ${user.sub} does not have access to team ${teamId}`);
-            console.error('Available teams:', JSON.stringify(teams));
-            return createErrorResponse(403, 'Access denied to this team');
-          }
-        }
-        
         console.log(`Fetching resources for team: ${teamId}`);
         try {
           const resources = await resourcesCollection
@@ -175,22 +120,6 @@ exports.handler = async (event, context) => {
         return createErrorResponse(400, 'Invalid JSON');
       }
       
-      // Add teamId if not provided
-      if (!data.teamId) {
-        if (teams.length > 0) {
-          data.teamId = teams[0].id;
-        } else {
-          console.error('No team ID provided and user has no teams');
-          return createErrorResponse(400, 'Team ID is required');
-        }
-      }
-      
-      // Validate teamId - user must have access to the team
-      if (!teams.some(team => team.id === data.teamId)) {
-        console.error(`User ${user.sub} does not have access to team ${data.teamId}`);
-        return createErrorResponse(403, 'Access denied to this team');
-      }
-      
       // Validate data
       const validationResult = ResourceSchema.safeParse(data);
       if (!validationResult.success) {
@@ -200,10 +129,11 @@ exports.handler = async (event, context) => {
       
       const validatedData = validationResult.data;
       
-      // Add metadata
+      // Add metadata and ensure teamId
       const newResource = {
         ...validatedData,
-        createdBy: user.sub,
+        teamId: teamId,
+        createdBy: userId,
         createdAt: new Date(),
         updatedAt: new Date()
       };
@@ -241,35 +171,32 @@ exports.handler = async (event, context) => {
       
       const validatedData = validationResult.data;
       
-      // Find the resource to check if user has access
-      const resourceExists = await resourcesCollection.findOne({ _id: new ObjectId(specificResourceId) });
+      // Find the resource to check if it exists and belongs to the user's team
+      const resourceExists = await resourcesCollection.findOne({ 
+        _id: new ObjectId(specificResourceId),
+        teamId: teamId
+      });
       
       if (!resourceExists) {
         console.error(`Resource ${specificResourceId} not found`);
         return createErrorResponse(404, 'Resource not found');
       }
       
-      // Check if user has access to the team this resource belongs to
-      if (!teams.some(team => team.id === resourceExists.teamId)) {
-        console.error(`User ${user.sub} does not have access to team ${resourceExists.teamId}`);
-        return createErrorResponse(403, 'Access denied to this resource');
-      }
-      
-      // Don't allow changing teamId
-      delete validatedData.teamId;
-      delete validatedData.createdAt;
-      delete validatedData.createdBy;
-      
-      // Update the resource
+      // Prepare update data (don't allow changing teamId or createdBy)
       const updateData = {
         ...validatedData,
         updatedAt: new Date(),
-        updatedBy: user.sub
+        updatedBy: userId
       };
       
-      console.log('Update data:', updateData);
-      await resourcesCollection.updateOne(
-        { _id: new ObjectId(specificResourceId) },
+      // Remove fields that should not be updated
+      delete updateData.teamId;
+      delete updateData.createdBy;
+      delete updateData.createdAt;
+      
+      // Update the resource
+      const result = await resourcesCollection.updateOne(
+        { _id: new ObjectId(specificResourceId), teamId: teamId },
         { $set: updateData }
       );
       
@@ -281,40 +208,36 @@ exports.handler = async (event, context) => {
       return createResponse(200, updatedResource);
     }
     
-    // DELETE: Remove a resource
+    // DELETE: Delete an existing resource
     else if (event.httpMethod === 'DELETE' && specificResourceId) {
       console.log(`Deleting resource: ${specificResourceId}`);
       
-      // Find the resource to check if user has access
-      const resourceExists = await resourcesCollection.findOne({ _id: new ObjectId(specificResourceId) });
+      // Check if the resource exists and belongs to the user's team
+      const resourceExists = await resourcesCollection.findOne({ 
+        _id: new ObjectId(specificResourceId),
+        teamId: teamId
+      });
       
       if (!resourceExists) {
         console.error(`Resource ${specificResourceId} not found`);
         return createErrorResponse(404, 'Resource not found');
       }
       
-      // Check if user has access to the team this resource belongs to
-      if (!teams.some(team => team.id === resourceExists.teamId)) {
-        console.error(`User ${user.sub} does not have access to team ${resourceExists.teamId}`);
-        return createErrorResponse(403, 'Access denied to this resource');
-      }
-      
       // Delete the resource
-      await resourcesCollection.deleteOne({ _id: new ObjectId(specificResourceId) });
+      const result = await resourcesCollection.deleteOne({ 
+        _id: new ObjectId(specificResourceId),
+        teamId: teamId
+      });
       
       return createResponse(200, { message: 'Resource deleted successfully' });
     }
     
     // Unsupported method
     else {
-      console.error(`Unsupported method: ${event.httpMethod}`);
-      return createErrorResponse(405, 'Method not allowed');
+      return createErrorResponse(405, 'Method Not Allowed');
     }
   } catch (error) {
     console.error('Error processing request:', error);
-    return createErrorResponse(500, 'Internal server error', error.message);
-  } finally {
-    await client.close();
-    console.log('MongoDB connection closed');
+    return createErrorResponse(500, 'Internal Server Error', error.message);
   }
 }; 

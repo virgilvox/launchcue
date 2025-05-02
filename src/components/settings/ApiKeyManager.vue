@@ -152,7 +152,12 @@ const availableScopes = [
     'read:tasks', 'write:tasks',
     'read:clients', 'write:clients',
     'read:campaigns', 'write:campaigns',
-    'read:notes', 'write:notes'
+    'read:notes', 'write:notes',
+    'read:teams', 'write:teams',
+    'read:resources', 'write:resources',
+    'read:calendar-events', 'write:calendar-events',
+    'read:braindumps', 'write:braindumps',
+    'read:api-keys', 'write:api-keys'
 ];
 
 const selectedScopes = ref(['read:projects', 'read:tasks', 'read:clients']); // Default scopes
