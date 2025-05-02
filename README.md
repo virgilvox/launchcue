@@ -13,6 +13,97 @@ LaunchCue is a comprehensive platform for developer relations teams to manage cl
 - **Resources**: Store and categorize important resources for your team
 - **Notes**: Create, edit, and organize markdown notes
 
+## Live Demo
+
+Access the live application at [https://launchcue.netlify.app/](https://launchcue.netlify.app/)
+
+## Screenshots and Features
+
+### Dashboard
+![Dashboard](screenshots/dashboard.png)
+
+The Dashboard provides a comprehensive overview of your projects, tasks, and upcoming events. It's designed to give you a quick snapshot of your most important work items and priorities at a glance.
+
+### Brain Dump - AI-Powered Note Processing
+![Brain Dump](screenshots/braindump.png)
+
+The Brain Dump feature leverages Claude AI to help you process unstructured notes and meeting information. Simply paste your notes, and Claude will help organize them.
+
+#### Generate Actionable Items
+![Generate Actionable Items](screenshots/generate-actionable-items.png)
+
+Convert your notes into structured, actionable tasks with AI assistance. This feature extracts key action items from your notes and turns them into trackable tasks.
+
+#### Summarize Content
+![Summarize Content](screenshots/summarize.png)
+
+Get concise summaries of lengthy notes or meeting transcripts to quickly capture the essential points.
+
+#### Meeting Recap
+![Meeting Recap](screenshots/recap.png)
+
+Create structured meeting recaps from your notes, including key decisions, action items, and discussion points.
+
+### Tasks Management
+![Tasks](screenshots/tasks.png)
+
+The Tasks view gives you a comprehensive list of all tasks across projects. Filter, sort, and manage your team's workload effectively.
+
+#### Project Tasks
+![Tasks on Project](screenshots/tasks-on-project.png)
+
+View and manage tasks specifically assigned to individual projects, helping you track progress on project-specific deliverables.
+
+#### Task Checklists
+![Checklist](screenshots/checklist.png)
+
+Break down complex tasks into manageable checklist items, making it easier to track progress on multi-step tasks.
+
+### Client Management
+![Clients List](screenshots/clients.png)
+
+Manage all your clients in one place with a clean, organized interface. See key information at a glance and access client details easily.
+
+#### Client Details
+![Client Detail](screenshots/client.png)
+
+Access comprehensive client information, including contacts, projects, and communication history all in one view.
+
+### Project Resources
+![Resources](screenshots/resources.png)
+
+Store and organize important resources related to your projects, such as documents, links, and reference materials. Categorize resources for easy retrieval.
+
+### Team Management
+![Team Management](screenshots/team%20management.png)
+
+Manage team members, permissions, and roles to ensure everyone has the right level of access to relevant projects and information.
+
+### Campaign Management
+![Campaign](screenshots/campaign.png)
+
+Plan and execute marketing campaigns with structured workflows. Track campaign progress and measure results.
+
+### Calendar
+![Calendar](screenshots/calendar.png)
+
+View all your project deadlines, meetings, and important dates in a unified calendar view. Schedule new events and manage your team's time effectively.
+
+### Notes
+![Notes](screenshots/notes.png)
+
+Create, organize, and share rich markdown notes related to your projects, clients, or general information. Tag notes for easy filtering and retrieval.
+
+### User Profile
+![Profile](screenshots/profile.png)
+
+Manage your user profile, preferences, and personal settings to customize your LaunchCue experience.
+
+### API Keys and Settings
+![Settings API Keys](screenshots/settings-api-keys.png)
+
+Generate and manage API keys for external integrations. Configure system-wide settings to customize LaunchCue for your team's needs.
+
 ## Tech Stack
 
 - Vue 3 with Composition API
@@ -50,14 +141,17 @@ LaunchCue is a comprehensive platform for developer relations teams to manage cl
 
 3. Create a `.env` file in the root directory with the following variables:
    ```
-   CLAUDE_API_KEY=your_claude_api_key
-   MONGODB_URI=your_mongodb_connection_string
+   ANTHROPIC_API_KEY=your_claude_api_key
+   VITE_MONGODB_URI=your_mongodb_connection_string
    JWT_SECRET=your_jwt_secret_for_tokens
+   VITE_MONGODB_REALM_APPID=your_mongodb_realm_app_id
+   VITE_MONGODB_DATABASE=launchcue
+   VITE_APP_NAME=LaunchCue
    ```
 
 4. Run the development server with Netlify Functions:
    ```
-   npm run dev:netlify
+   npm run dev
    ```
 
 5. Build for production:
@@ -139,7 +233,7 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ## API Usage
 
-LaunchCue provides a basic API for external integrations.
+LaunchCue provides a RESTful API for external integrations.
 
 ### Authentication
 
@@ -153,78 +247,123 @@ API requests can be authenticated in two ways:
     ```
     Replace `YOUR_API_KEY_HERE` with your generated secret key (prefixed with `lc_sk_`).
 
-**Note:** API Key authentication is scoped to the Team associated with the user who generated the key at the time of generation. Ensure your key has access to the desired team data.
+**Note:** API Key authentication is scoped to the Team associated with the user who generated the key. You can also assign specific permission scopes to each API key for granular access control.
 
 ### Endpoints
 
 The API base URL depends on your deployment:
 *   **Netlify Dev:** `http://localhost:8888/.netlify/functions`
-*   **Production:** `https://your-site-name.netlify.app/.netlify/functions`
+*   **Production:** `https://launchcue.netlify.app/.netlify/functions`
 
-#### Get Projects
-*   `GET /projects`
-*   `GET /projects?clientId=<CLIENT_ID>`
-*   Returns projects for the current team, optionally filtered by client.
+#### Task Management
 
-#### Get Project
-*   `GET /projects/:projectId`
-*   Returns details for a specific project.
+*   `GET /tasks` - List all tasks for the current team
+    * **Query Parameters:** `projectId`, `status`, `type`
+*   `GET /tasks/:taskId` - Get a specific task by ID
+*   `POST /tasks` - Create a new task
+*   `PUT /tasks/:taskId` - Update an existing task
+*   `DELETE /tasks/:taskId` - Delete a task
 
-#### Get Tasks
-*   `GET /tasks`
-*   Returns tasks for the current team.
-*   **Query Parameters:** `projectId`, `status`, `clientId` (note: clientId filters tasks belonging to projects of that client).
+#### Project Management
 
-#### Get Task
-*   `GET /tasks/:taskId`
-*   Returns details for a specific task.
+*   `GET /projects` - List all projects for the current team
+    * **Query Parameters:** `clientId`
+*   `GET /projects/:projectId` - Get a specific project by ID
+*   `POST /projects` - Create a new project
+*   `PUT /projects/:projectId` - Update an existing project
+*   `DELETE /projects/:projectId` - Delete a project
+*   `GET /project-detail/:projectId` - Get detailed project information including related tasks
 
-#### Get Clients
-*   `GET /clients`
-*   Returns clients for the current team.
+#### Client Management
 
-#### Get Client
-*   `GET /clients/:clientId`
-*   Returns details for a specific client.
+*   `GET /clients` - List all clients for the current team
+*   `GET /clients/:clientId` - Get a specific client by ID
+*   `POST /clients` - Create a new client
+*   `PUT /clients/:clientId` - Update an existing client
+*   `DELETE /clients/:clientId` - Delete a client
+*   `GET /client-contacts/:clientId` - Get contacts for a specific client
+*   `POST /client-contacts/:clientId` - Add a contact to a client
+*   `PUT /client-contacts/:contactId` - Update a client contact
+*   `DELETE /client-contacts/:contactId` - Delete a client contact
 
-#### Get Client Contacts
-*   `GET /clients/:clientId/contacts`
-*   Returns contacts for a specific client.
+#### Campaign Management
 
-#### Get Campaigns
-*   `GET /campaigns`
-*   Returns campaigns for the current team.
-*   **Query Parameters:** `clientId`, `projectId`.
+*   `GET /campaigns` - List all campaigns for the current team
+    * **Query Parameters:** `clientId`, `projectId`
+*   `GET /campaigns/:campaignId` - Get a specific campaign by ID
+*   `POST /campaigns` - Create a new campaign
+*   `PUT /campaigns/:campaignId` - Update an existing campaign
+*   `DELETE /campaigns/:campaignId` - Delete a campaign
 
-#### Get Campaign
-*   `GET /campaigns/:campaignId`
-*   Returns details for a specific campaign (including steps).
+#### Notes
 
-#### Get Notes
-*   `GET /notes`
-*   Returns notes for the current team.
-*   **Query Parameters:** `clientId`, `projectId`, `tag`.
+*   `GET /notes` - List all notes for the current team
+    * **Query Parameters:** `clientId`, `projectId`, `tag`
+*   `GET /notes/:noteId` - Get a specific note by ID
+*   `POST /notes` - Create a new note
+*   `PUT /notes/:noteId` - Update an existing note
+*   `DELETE /notes/:noteId` - Delete a note
 
-#### Get Note
-*   `GET /notes/:noteId`
-*   Returns details for a specific note.
+#### Resources
 
-#### Get API Keys
-*   `GET /api-keys`
-*   Returns a list of API key names and prefixes (key hash is excluded).
+*   `GET /resources` - List all resources for the current team
+    * **Query Parameters:** `category`
+*   `GET /resources/:resourceId` - Get a specific resource by ID
+*   `POST /resources` - Create a new resource
+*   `PUT /resources/:resourceId` - Update an existing resource
+*   `DELETE /resources/:resourceId` - Delete a resource
 
-#### Generate API Key
-*   `POST /api-keys`
-*   **Body:** `{ "name": "Your Key Name" }`
-*   Returns the newly generated key details, including the *full API key* (only time it's shown).
+#### Calendar Events
 
-#### Delete API Key
-*   `DELETE /api-keys/:keyPrefix`
-*   Deletes the API key identified by its prefix.
+*   `GET /calendar-events` - List all calendar events for the current team
+    * **Query Parameters:** `startDate`, `endDate`
+*   `GET /calendar-events/:eventId` - Get a specific calendar event by ID
+*   `POST /calendar-events` - Create a new calendar event
+*   `PUT /calendar-events/:eventId` - Update an existing calendar event
+*   `DELETE /calendar-events/:eventId` - Delete a calendar event
 
-#### Get User Profile
-*   `GET /users/profile`
-*   Returns the profile information for the authenticated user.
+#### Brain Dump & AI Features
 
-### Write Operations
-*(POST, PUT, DELETE endpoints exist for most resources above but are not fully documented here yet. Refer to function code for details.)*
+*   `POST /ai-process` - Process text using Claude AI
+*   `GET /braindumps` - List all brain dumps for the current team
+*   `POST /braindumps` - Create a new brain dump
+*   `POST /brain-dump-create-items` - Generate actionable items from brain dump
+*   `POST /brain-dump-context` - Get context for a brain dump
+
+#### Team & User Management
+
+*   `GET /teams` - List all teams available to the current user
+*   `POST /teams` - Create a new team
+*   `PUT /teams/:teamId` - Update an existing team
+*   `DELETE /teams/:teamId` - Delete a team
+*   `GET /users/profile` - Get the current user's profile
+*   `POST /auth-login` - Login to the system
+*   `POST /auth-register` - Register a new user
+*   `POST /auth-logout` - Logout from the system
+*   `POST /auth-change-password` - Change the current user's password
+*   `POST /auth-switch-team` - Switch the active team
+
+#### API Key Management
+
+*   `GET /api-keys` - List all API keys for the current user
+*   `POST /api-keys` - Generate a new API key
+    * **Body:** `{ "name": "Key Name", "scopes": ["read:projects", "read:tasks"] }`
+*   `DELETE /api-keys/:keyPrefix` - Delete an API key by its prefix
+
+### Request and Response Format
+
+All endpoints accept and return JSON data. For POST and PUT requests, send a JSON object in the request body. All responses include a JSON object with the requested data or an error message.
+
+### Error Responses
+
+The API uses standard HTTP status codes to indicate success or failure:
+
+* `200 OK` - Request succeeded
+* `201 Created` - Resource created successfully
+* `400 Bad Request` - Invalid request parameters
+* `401 Unauthorized` - Authentication required or failed
+* `404 Not Found` - Resource not found
+* `405 Method Not Allowed` - HTTP method not supported
+* `500 Internal Server Error` - Server-side error
+
+Error responses include a JSON object with an `error` property containing details about what went wrong.
