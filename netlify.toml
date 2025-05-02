@@ -6,9 +6,8 @@
 [functions]
   external_node_modules = ["jsonwebtoken", "mongodb", "bcryptjs", "zod"]
 
-# Default SPA redirect is often handled automatically by Netlify Dev
-# Try removing explicit [dev] block and redirect
-# [[redirects]]
-#   from = "/*"
-#   to = "/index.html"
-#   status = 200 
+# Default SPA redirect for client-side routing
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200 
