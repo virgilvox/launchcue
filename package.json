@@ -1,0 +1,42 @@
+{
+  "name": "launchcue",
+  "private": true,
+  "version": "0.0.0",
+  "type": "commonjs",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "dev:netlify": "netlify dev"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.40.1",
+    "@heroicons/vue": "^2.2.0",
+    "@netlify/functions": "^3.1.2",
+    "@tailwindcss/forms": "^0.5.10",
+    "@tailwindcss/typography": "^0.5.16",
+    "@vueuse/core": "^13.1.0",
+    "autoprefixer": "^10.4.21",
+    "axios": "^1.9.0",
+    "bcryptjs": "^3.0.2",
+    "date-fns": "^4.1.0",
+    "dompurify": "^3.2.5",
+    "jsonwebtoken": "^9.0.2",
+    "marked": "^15.0.11",
+    "mongodb": "^6.16.0",
+    "openai": "^4.96.2",
+    "pinia": "^3.0.2",
+    "postcss": "^8.5.3",
+    "realm-web": "^2.0.1",
+    "tailwindcss": "^3.4.17",
+    "vue": "^3.5.13",
+    "vue-router": "^4.5.1",
+    "vue-toastification": "^2.0.0-rc.5",
+    "zod": "^3.24.3"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^5.2.2",
+    "netlify-cli": "^17.16.2",
+    "vite": "^6.3.1"
+  }
+}

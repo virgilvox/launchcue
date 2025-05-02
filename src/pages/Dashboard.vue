@@ -1,0 +1,260 @@
+<template>
+  <div>
+    <h2 class="text-2xl font-bold text-gray-800 dark:text-white mb-6">Dashboard</h2>
+    
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+      <!-- Projects Overview -->
+      <div class="card">
+        <h3 class="text-lg font-semibold mb-2">Projects</h3>
+        <p class="text-3xl font-bold text-purple-600 dark:text-purple-400">{{ projectStats.total }}</p>
+        <p class="text-sm text-gray-500 dark:text-gray-400">{{ projectStats.active }} active</p>
+        <router-link to="/projects" class="text-sm text-primary-600 dark:text-primary-400 hover:underline mt-3 block">View all</router-link>
+      </div>
+      
+      <!-- Tasks Overview -->
+      <div class="card">
+        <h3 class="text-lg font-semibold mb-2">Tasks</h3>
+        <p class="text-3xl font-bold text-purple-600 dark:text-purple-400">{{ taskStats.total }}</p>
+        <p class="text-sm text-gray-500 dark:text-gray-400">{{ taskStats.pending }} pending</p>
+        <router-link to="/tasks" class="text-sm text-primary-600 dark:text-primary-400 hover:underline mt-3 block">View all</router-link>
+      </div>
+      
+      <!-- Clients Overview -->
+      <div class="card">
+        <h3 class="text-lg font-semibold mb-2">Clients</h3>
+        <p class="text-3xl font-bold text-purple-600 dark:text-purple-400">{{ clientStats.total }}</p>
+        <p class="text-sm text-gray-500 dark:text-gray-400">Across all projects</p>
+        <router-link to="/clients" class="text-sm text-primary-600 dark:text-primary-400 hover:underline mt-3 block">View all</router-link>
+      </div>
+    </div>
+    
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <!-- Recent Tasks -->
+      <div class="card lg:col-span-2">
+        <div class="flex justify-between items-center mb-4">
+          <h3 class="text-lg font-semibold">Recent Tasks</h3>
+          <router-link to="/tasks" class="text-sm text-primary-600 dark:text-primary-400 hover:underline">View all</router-link>
+        </div>
+        <div v-if="tasksLoading" class="text-center py-4">
+             <LoadingSpinner size="small" text="Loading tasks..." />
+        </div>
+        <div v-else-if="recentTasks.length === 0" class="text-center py-6">
+          <p class="text-gray-500 dark:text-gray-400">No recent tasks found.</p>
+        </div>
+        <ul v-else class="space-y-3">
+          <li v-for="task in recentTasks" :key="task.id" class="flex items-center justify-between py-2 border-b border-gray-200 dark:border-gray-700 last:border-0">
+            <div>
+              <router-link :to="`/tasks/${task.id}`" class="font-medium hover:text-primary-600 dark:hover:text-primary-400">{{ task.title }}</router-link>
+              <p class="text-xs text-gray-500 dark:text-gray-400">{{ getProjectName(task.projectId) }}</p>
+            </div>
+            <span :class="`px-2 py-0.5 rounded-full text-xs ${getTaskStatusClass(task.status)}`">
+              {{ task.status }}
+            </span>
+          </li>
+        </ul>
+      </div>
+      
+      <!-- Upcoming Section -->
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+        <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Upcoming</h2>
+        
+        <div v-if="isLoadingUpcoming" class="flex justify-center py-4">
+          <LoadingSpinner size="small" text="Loading upcoming items..." />
+        </div>
+        
+        <div v-else-if="!upcomingItems.length" class="py-4 text-center">
+          <p class="text-gray-500">No upcoming items found.</p>
+        </div>
+        
+        <ul v-else class="space-y-3">
+          <li v-for="item in upcomingItems" :key="item.id" 
+              class="flex items-start justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100">
+            <div class="flex items-start space-x-3">
+              <div class="mt-1 w-3 h-3 rounded-full flex-shrink-0" :class="getColorClass(item.color || item.type)"></div>
+              <div>
+                <p class="font-medium text-gray-800">{{ item.title }}</p>
+                <p class="text-sm text-gray-600">
+                  {{ formatUpcomingDate(item.date) }}
+                  <span class="ml-2 px-2 py-0.5 rounded text-xs" 
+                        :class="getTypeClass(item.type)">
+                    {{ capitalizeFirstLetter(item.type) }}
+                  </span>
+                </p>
+              </div>
+            </div>
+            <router-link 
+              :to="getItemLink(item)"
+              class="text-blue-500 hover:text-blue-700 text-sm font-medium">
+              View
+            </router-link>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script setup>
+import { ref, computed, onMounted } from 'vue';
+import { useRouter } from 'vue-router';
+import { useProjectStore } from '../stores/project';
+import { useTaskStore } from '../stores/task';
+import { useClientStore } from '../stores/client';
+import { useCalendarStore } from '../stores/calendar';
+import { format, isToday, isTomorrow, addDays, isWithinInterval } from 'date-fns';
+import LoadingSpinner from '../components/LoadingSpinner.vue';
+import { useToast } from '../composables/useToast';
+
+const router = useRouter();
+const projectStore = useProjectStore();
+const taskStore = useTaskStore();
+const clientStore = useClientStore();
+const calendarStore = useCalendarStore();
+
+const upcomingItems = ref([]);
+const tasksLoading = ref(false);
+const isLoadingUpcoming = ref(false);
+
+// --- Stats --- 
+const projectStats = computed(() => ({
+  total: Array.isArray(projectStore.projects) ? projectStore.projects.length : 0,
+  active: Array.isArray(projectStore.projects) ? projectStore.projects.filter(p => p.status === 'In Progress').length : 0
+}));
+
+const taskStats = computed(() => ({
+  total: Array.isArray(taskStore.tasks) ? taskStore.tasks.length : 0,
+  pending: Array.isArray(taskStore.tasks) ? taskStore.tasks.filter(t => t.status !== 'Done').length : 0
+}));
+
+const clientStats = computed(() => ({
+  total: clientStore.clients.length
+}));
+
+// --- Recent Tasks --- 
+const recentTasks = computed(() => {
+  if (!Array.isArray(taskStore.tasks)) return []; // Guard
+  return [...taskStore.tasks]
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+    .slice(0, 5);
+});
+
+const getProjectName = (projectId) => {
+  const project = projectStore.projects.find(p => p.id === projectId);
+  return project ? project.title : 'No Project';
+};
+
+const getTaskStatusClass = (status) => {
+  const classes = {
+      'To Do': 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
+      'In Progress': 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
+      'Done': 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
+      'Blocked': 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
+  };
+  return classes[status] || 'bg-gray-100 text-gray-800 dark:bg-gray-600 dark:text-gray-200';
+};
+
+// Load upcoming items from calendar, projects and tasks
+async function loadUpcomingItems() {
+  isLoadingUpcoming.value = true;
+  
+  try {
+    // Use the calendar store's getUpcomingItems function that combines calendar events,
+    // projects with deadlines, and tasks with due dates
+    const result = await calendarStore.getUpcomingItems(14); // Get items for next 14 days
+    
+    if (result.success) {
+      upcomingItems.value = result.items;
+    } else {
+      console.error('Failed to load upcoming items:', result.error);
+    }
+  } catch (error) {
+    console.error('Error loading upcoming items:', error);
+  } finally {
+    isLoadingUpcoming.value = false;
+  }
+}
+
+// Helper function to format date for upcoming items
+function formatUpcomingDate(date) {
+  if (!date) return 'No date';
+  
+  const dateObj = new Date(date);
+  
+  if (isToday(dateObj)) {
+    return `Today, ${format(dateObj, 'h:mm a')}`;
+  } else if (isTomorrow(dateObj)) {
+    return `Tomorrow, ${format(dateObj, 'h:mm a')}`;
+  } else {
+    return format(dateObj, 'MMM d, h:mm a');
+  }
+}
+
+// Get CSS color class based on item type or color
+function getColorClass(typeOrColor) {
+  const colorMap = {
+    'task': 'bg-blue-500',
+    'project': 'bg-orange-500',
+    'event': 'bg-green-500',
+    'blue': 'bg-blue-500',
+    'orange': 'bg-orange-500',
+    'green': 'bg-green-500',
+    'red': 'bg-red-500',
+    'purple': 'bg-purple-500'
+  };
+  
+  return colorMap[typeOrColor] || 'bg-gray-500';
+}
+
+// Get CSS class for the type badge
+function getTypeClass(type) {
+  const typeMap = {
+    'task': 'bg-blue-100 text-blue-800',
+    'project': 'bg-orange-100 text-orange-800',
+    'event': 'bg-green-100 text-green-800'
+  };
+  
+  return typeMap[type] || 'bg-gray-100 text-gray-800';
+}
+
+// Helper to capitalize first letter
+function capitalizeFirstLetter(string) {
+  if (!string) return '';
+  return string.charAt(0).toUpperCase() + string.slice(1);
+}
+
+// Get appropriate router link based on item type
+function getItemLink(item) {
+  if (item.type === 'task' && item.taskId) {
+    return `/tasks/${item.taskId}`;
+  } else if (item.type === 'project' && item.projectId) {
+    return `/projects/${item.projectId}`;
+  } else if (item.type === 'event') {
+    return '/calendar';
+  }
+  return '#';
+}
+
+// Initial data fetch
+onMounted(async () => {
+  tasksLoading.value = true;
+  isLoadingUpcoming.value = true; // Set loading true here
+  try {
+    await Promise.all([
+        projectStore.fetchProjects(),
+        taskStore.fetchTasks(), 
+        clientStore.fetchClients(),
+        loadUpcomingItems() // Fetch upcoming based on loaded tasks
+    ]);
+  } catch (error) {
+      console.error("Error loading dashboard data:", error);
+      // Show error state or toast?
+  } finally {
+      tasksLoading.value = false;
+      // isLoadingUpcoming is set within its own function
+  }
+});
+</script>
+
+<style scoped>
+/* Add styles if needed */
+</style> 
