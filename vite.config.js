@@ -24,5 +24,14 @@ export default defineConfig({
       '@': fileURLToPath(new URL('./src', import.meta.url))
     }
   },
-  assetsInclude: ['**/*.html']
+  build: {
+    // Ensure the app builds correctly
+    outDir: 'dist',
+    emptyOutDir: true,
+    rollupOptions: {
+      input: {
+        main: fileURLToPath(new URL('./index.html', import.meta.url)),
+      }
+    }
+  }
 })
