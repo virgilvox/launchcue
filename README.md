@@ -233,7 +233,7 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ## API Usage
 
-LaunchCue provides a RESTful API for external integrations.
+LaunchCue provides a RESTful API for external integrations. For detailed documentation with all endpoints and examples, see [API-DOCS.md](API-DOCS.md).
 
 ### Authentication
 
@@ -247,138 +247,56 @@ API requests can be authenticated in two ways:
     ```
     Replace `YOUR_API_KEY_HERE` with your generated secret key (prefixed with `lc_sk_`).
 
-**Note:** API Key authentication is scoped to the Team associated with the user who generated the key. You can also assign specific permission scopes to each API key for granular access control.
+**Example Request with API Key:**
+```bash
+curl -X GET "https://launchcue.netlify.app/.netlify/functions/tasks" \
+  -H "Authorization: Bearer lc_sk_AbCdEfGhIjKlMnOpQrStUv" \
+  -H "Content-Type: application/json"
+```
+
+**Note:** API Key authentication is scoped to the Team associated with the user who generated the key. Each API key is paired with specific permission scopes that determine which endpoints can be accessed.
 
 #### API Key Scopes
 
-API keys use the following scope format:
+LaunchCue uses a granular scope-based permission system for API keys. Each endpoint requires specific scopes for access:
+
 - `read:resource` - Allows GET operations on the resource
 - `write:resource` - Allows POST, PUT, DELETE operations on the resource
-- `admin` - Grants full access to all resources
-- `*` - Also grants full access
 
-Examples:
-- `read:tasks` - Can view tasks
-- `write:projects` - Can create/edit/delete projects
-- `read:clients` - Can view clients
+Available scopes include:
+- `read:projects`, `write:projects` - Project access
+- `read:tasks`, `write:tasks` - Task access
+- `read:clients`, `write:clients` - Client access
+- `read:notes`, `write:notes` - Notes access
+- `read:teams`, `write:teams` - Team access
+- `read:resources`, `write:resources` - Resources access
+- `read:campaigns`, `write:campaigns` - Campaign access
+- `read:calendar-events`, `write:calendar-events` - Calendar events access
+- `read:braindumps`, `write:braindumps` - Brain dump access
+- `read:api-keys`, `write:api-keys` - API key management (requires JWT authentication for security)
 
-When generating an API key, you can select which scopes it has access to. For security, always follow the principle of least privilege and only grant the minimum scopes needed.
+When generating an API key in Settings, you must select which scopes the key will have. For security, always follow the principle of least privilege and only grant the minimum scopes needed.
 
-### Endpoints
+### Quick Examples
 
-The API base URL depends on your deployment:
-*   **Netlify Dev:** `http://localhost:8888/.netlify/functions`
-*   **Production:** `https://launchcue.netlify.app/.netlify/functions`
+#### Get Tasks
+```bash
+curl -X GET "https://launchcue.netlify.app/.netlify/functions/tasks" \
+  -H "Authorization: Bearer lc_sk_AbCdEfGhIjKlMnOpQrStUv"
+```
 
-#### Task Management
+#### Create a Task
+```bash
+curl -X POST "https://launchcue.netlify.app/.netlify/functions/tasks" \
+  -H "Authorization: Bearer lc_sk_AbCdEfGhIjKlMnOpQrStUv" \
+  -H "Content-Type: application/json" \
+  -d '{"title":"New Task","description":"Task description","status":"To Do","projectId":"PROJECT_ID"}'
+```
 
-*   `GET /tasks` - List all tasks for the current team
-    * **Query Parameters:** `projectId`, `status`, `type`
-*   `GET /tasks/:taskId` - Get a specific task by ID
-*   `POST /tasks` - Create a new task
-*   `PUT /tasks/:taskId` - Update an existing task
-*   `DELETE /tasks/:taskId` - Delete a task
+#### Get Projects
+```bash
+curl -X GET "https://launchcue.netlify.app/.netlify/functions/projects" \
+  -H "Authorization: Bearer lc_sk_AbCdEfGhIjKlMnOpQrStUv"
+```
 
-#### Project Management
-
-*   `GET /projects` - List all projects for the current team
-    * **Query Parameters:** `clientId`
-*   `GET /projects/:projectId` - Get a specific project by ID
-*   `POST /projects` - Create a new project
-*   `PUT /projects/:projectId` - Update an existing project
-*   `DELETE /projects/:projectId` - Delete a project
-*   `GET /project-detail/:projectId` - Get detailed project information including related tasks
-
-#### Client Management
-
-*   `GET /clients` - List all clients for the current team
-*   `GET /clients/:clientId` - Get a specific client by ID
-*   `POST /clients` - Create a new client
-*   `PUT /clients/:clientId` - Update an existing client
-*   `DELETE /clients/:clientId` - Delete a client
-*   `GET /client-contacts/:clientId` - Get contacts for a specific client
-*   `POST /client-contacts/:clientId` - Add a contact to a client
-*   `PUT /client-contacts/:contactId` - Update a client contact
-*   `DELETE /client-contacts/:contactId` - Delete a client contact
-
-#### Campaign Management
-
-*   `GET /campaigns` - List all campaigns for the current team
-    * **Query Parameters:** `clientId`, `projectId`
-*   `GET /campaigns/:campaignId` - Get a specific campaign by ID
-*   `POST /campaigns` - Create a new campaign
-*   `PUT /campaigns/:campaignId` - Update an existing campaign
-*   `DELETE /campaigns/:campaignId` - Delete a campaign
-
-#### Notes
-
-*   `GET /notes` - List all notes for the current team
-    * **Query Parameters:** `clientId`, `projectId`, `tag`
-*   `GET /notes/:noteId` - Get a specific note by ID
-*   `POST /notes` - Create a new note
-*   `PUT /notes/:noteId` - Update an existing note
-*   `DELETE /notes/:noteId` - Delete a note
-
-#### Resources
-
-*   `GET /resources` - List all resources for the current team
-    * **Query Parameters:** `category`
-*   `GET /resources/:resourceId` - Get a specific resource by ID
-*   `POST /resources` - Create a new resource
-*   `PUT /resources/:resourceId` - Update an existing resource
-*   `DELETE /resources/:resourceId` - Delete a resource
-
-#### Calendar Events
-
-*   `GET /calendar-events` - List all calendar events for the current team
-    * **Query Parameters:** `startDate`, `endDate`
-*   `GET /calendar-events/:eventId` - Get a specific calendar event by ID
-*   `POST /calendar-events` - Create a new calendar event
-*   `PUT /calendar-events/:eventId` - Update an existing calendar event
-*   `DELETE /calendar-events/:eventId` - Delete a calendar event
-
-#### Brain Dump & AI Features
-
-*   `POST /ai-process` - Process text using Claude AI
-*   `GET /braindumps` - List all brain dumps for the current team
-*   `POST /braindumps` - Create a new brain dump
-*   `POST /brain-dump-create-items` - Generate actionable items from brain dump
-*   `POST /brain-dump-context` - Get context for a brain dump
-
-#### Team & User Management
-
-*   `GET /teams` - List all teams available to the current user
-*   `POST /teams` - Create a new team
-*   `PUT /teams/:teamId` - Update an existing team
-*   `DELETE /teams/:teamId` - Delete a team
-*   `GET /users/profile` - Get the current user's profile
-*   `POST /auth-login` - Login to the system
-*   `POST /auth-register` - Register a new user
-*   `POST /auth-logout` - Logout from the system
-*   `POST /auth-change-password` - Change the current user's password
-*   `POST /auth-switch-team` - Switch the active team
-
-#### API Key Management
-
-*   `GET /api-keys` - List all API keys for the current user
-*   `POST /api-keys` - Generate a new API key
-    * **Body:** `{ "name": "Key Name", "scopes": ["read:projects", "read:tasks"] }`
-*   `DELETE /api-keys/:keyPrefix` - Delete an API key by its prefix
-
-### Request and Response Format
-
-All endpoints accept and return JSON data. For POST and PUT requests, send a JSON object in the request body. All responses include a JSON object with the requested data or an error message.
-
-### Error Responses
-
-The API uses standard HTTP status codes to indicate success or failure:
-
-* `200 OK` - Request succeeded
-* `201 Created` - Resource created successfully
-* `400 Bad Request` - Invalid request parameters
-* `401 Unauthorized` - Authentication required or failed
-* `404 Not Found` - Resource not found
-* `405 Method Not Allowed` - HTTP method not supported
-* `500 Internal Server Error` - Server-side error
-
-Error responses include a JSON object with an `error` property containing details about what went wrong.
+For the complete API reference with all endpoints, parameters, and examples, refer to [API-DOCS.md](API-DOCS.md).
