@@ -1,0 +1,149 @@
+
+Product Requirements Document (PRD)
+Product Name: LaunchCue
+Prepared For: Developer Relations (DevRel) Consultancies
+Prepared By: Moheeb Zara
+Platform: Web (Vue 3 + Netlify + MongoDB Atlas)
+
+1. Overview
+LaunchCue is an AI-powered project management and content coordination platform built for Developer Relations (DevRel) teams and consultancies. It streamlines managing clients, projects, tasks, and campaign timelines while leveraging AI to convert raw notes and brain dumps into structured workflows.
+
+2. Goals
+- Provide DevRel consultancies with a focused platform tailored to their workflows  
+- Seamlessly convert unstructured inputs (notes, tasks) into structured project data  
+- Visualize multi-phase campaigns across content, community, and advocacy tracks  
+- Empower team-based collaboration with clear task ownership and scheduling  
+- Ensure the system is modular, maintainable, and export-friendly
+
+3. Target Users
+- Developer Advocates  
+- Technical Writers  
+- Community Managers  
+- DevRel Teams and Agencies managing multiple client relationships
+
+4. Key Features
+
+4.1. User Authentication & Team Management
+- Email/password login via MongoDB Realm
+- Users can:
+  - Register/log in
+  - Create or join teams
+  - Switch between multiple teams
+- All user data and content is scoped to teamId
+
+4.2. Clients & Projects
+- Teams can manage multiple clients
+- Each client can host multiple projects
+- Project fields include:
+  - Title, description, tags, deadlines
+  - Assigned users, contacts, resources
+  - Related tasks and calendar events
+
+4.3. Tasks & Tracking
+- Task features:
+  - Custom types (e.g. “Blog Post”, “Audit”, “Content Sprint”)
+  - Checklists and subtasks
+  - Status indicators (To-do, In Progress, Blocked, Done)
+  - Due dates and ownership
+- Tasks may be:
+  - Created from scratch
+  - AI-suggested from notes
+  - Linked to projects, campaigns, or calendar events
+
+4.4. Calendar View
+- Displays project and task deadlines
+- Clickable events open relevant items
+- Month/week views
+- Calendar is populated both manually and from AI-parsed content
+- Color-coded by project or client
+
+4.5. Brain Dump (AI-Powered Note Assistant)
+- Markdown or plaintext input area for stream-of-consciousness writing
+- AI parses:
+  - Tasks, action items
+  - Deadlines or events
+  - Content suggestions
+- Parsed suggestions appear for user approval before adding
+
+4.6. Campaign Builder
+- Visual timeline/planner for content & community campaigns
+- Campaign steps include:
+  - Docs, Blog Posts, Discord Events, Video Releases, etc.
+- Assign roles, attach content, schedule rollout
+- Export/share campaign summaries in markdown, PDF, or HTML
+
+4.7. Contacts & Resources
+- Add and tag internal/external contacts per client/project
+- Contact attributes:
+  - Name, role, email, relationship history
+  - Notes (with optional AI summarization)
+- Attach links, docs, dashboards, shared folders
+- All content scoped to relevant client/project/team
+
+4.8. Team Assignment & Roles
+- Role types: Admin, Developer Advocate, Writer, Designer, etc.
+- Assign team members to tasks, projects, and campaigns
+- View user workload distribution
+- Track ownership and accountability per deliverable
+
+5. Development Guidelines
+- Each single file must not exceed 1000 lines of code
+- Split logic across:
+  - Components (/components)
+  - Pages (/pages)
+  - Composables (/composables)
+  - Stores (/stores)
+- Follow clean, readable coding practices using Vue 3's Composition API and <script setup>
+- Write modular, testable code with robust loading/error states
+- Maintain environment variables (e.g. API keys, App IDs) in a .env file
+- All logic and styling should support easy maintainability, collaboration, and auditing
+
+6. Tech Stack
+Frontend     | Vue 3 + Vite
+Styling      | TailwindCSS or SCSS
+Backend      | Netlify Functions
+Database     | MongoDB Atlas
+Auth         | MongoDB Realm
+AI Services  | Claude or OpenAI (via API)
+Deployment   | Netlify
+Secrets      | .env file
+
+7. Data Architecture Guidelines
+- All data must be scoped by teamId
+- Use normalized, modular collections in MongoDB:
+  - users, teams, clients, projects, tasks, notes, calendarEvents, campaigns, contacts, resources
+- Ensure schemas are:
+  - Migration/export friendly
+  - Minimally nested, using references over embedding where practical
+  - JSON/CSV export-compatible for offboarding and interoperability
+
+8. UI/UX Guidelines
+- Professional dark theme with dev-focused styling
+- Sidebar navigation includes:
+  - Dashboard  
+  - Brain Dump  
+  - Campaigns  
+  - Calendar  
+  - Clients  
+  - Projects  
+  - Tasks  
+  - Team  
+  - Notes  
+  - Resources  
+- Responsive layout (mobile/tablet-friendly)
+- Visual hierarchy using spacing, contrast, and color-coded indicators
+- Consistent icons, spacing, and layout for productivity
+
+9. Milestone Phases
+Phase | Features
+MVP   | Auth, Team Creation, Clients, Projects, Tasks, Calendar
+v1.1  | Brain Dump + AI suggestions, Campaign Builder
+v1.2  | Contacts, Resources, Role Management
+v1.3  | Export features, Campaign Export, Team Load Insights
+v2.0  | Real-time Collab, DX Audit Module, Slack/Discord Integrations
+
+10. Out of Scope for MVP
+- OAuth or 3rd-party SSO login  
+- Payment or billing systems  
+- Native mobile apps  
+- Full analytics dashboard or KPI tools (future)
