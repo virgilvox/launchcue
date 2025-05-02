@@ -1,14 +1,15 @@
 <template>
-  <div class="flex h-screen bg-gray-100 dark:bg-gray-900">
-    <Sidebar />
+  <div class="flex h-screen bg-gray-100 dark:bg-gray-900 overflow-hidden">
+    <!-- Sidebar will be rendered by the Sidebar component -->
+    <Sidebar ref="sidebar" @collapsed-changed="updateSidebarState" />
     
-    <div class="flex-1 flex flex-col overflow-hidden">
+    <div class="flex-1 flex flex-col overflow-hidden transition-all duration-300">
       <header class="bg-white dark:bg-gray-800 shadow-sm">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div class="relative flex justify-between items-center h-16">
-            <!-- Left side placeholder (e.g., Breadcrumbs, Search) -->
+            <!-- Left side - placeholder for future use -->
             <div>
-              <!-- Add Search or Breadcrumbs here later -->
+              <!-- Removed redundant hamburger menu button -->
             </div>
             
             <!-- Right side: Team Switcher & User Menu -->
@@ -59,7 +60,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, onMounted, watch } from 'vue';
 import Sidebar from '../components/Sidebar.vue'
 import { useAuthStore } from '../stores/auth'
 import { useToast } from 'vue-toastification';
@@ -67,6 +68,26 @@ import { useToast } from 'vue-toastification';
 const authStore = useAuthStore()
 const toast = useToast();
 const isSwitchingTeam = ref(false);
+const sidebar = ref(null);
+const isSidebarCollapsed = ref(false);
+const isMobile = ref(false);
+
+// Update sidebar state when the Sidebar component emits changes
+const updateSidebarState = (isCollapsed, isMobileView) => {
+  isSidebarCollapsed.value = isCollapsed;
+  isMobile.value = isMobileView;
+}
+
+// On mount, check if sidebar is collapsed initially
+onMounted(() => {
+  // Small delay to ensure the sidebar component is mounted
+  setTimeout(() => {
+    if (sidebar.value) {
+      isSidebarCollapsed.value = sidebar.value.isCollapsed;
+      isMobile.value = sidebar.value.isMobile;
+    }
+  }, 0);
+});
 
 const handleTeamSwitch = async (teamId) => {
     if (!teamId || teamId === authStore.currentTeam?.id) {
