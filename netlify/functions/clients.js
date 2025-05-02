@@ -1,6 +1,6 @@
 const { MongoClient, ObjectId } = require('mongodb');
 const { connectToDb } = require('./utils/db');
-const { authenticateRequest, authenticateApiKeyRequest } = require('./utils/auth'); 
+const { authenticate } = require('./utils/authHandler'); // New unified authentication
 const { createResponse, createErrorResponse, handleOptionsRequest } = require('./utils/response');
 const { z } = require('zod');
 
@@ -45,21 +45,12 @@ exports.handler = async function(event, context) {
 
   let authContext;
   try {
-    const authHeader = event.headers.authorization || event.headers.Authorization;
-    if (authHeader && authHeader.startsWith('Bearer ') && !authHeader.includes('lc_sk_')) { 
-        authContext = await authenticateRequest(event); 
-    } else if (authHeader && authHeader.includes('lc_sk_')) {
-        authContext = await authenticateApiKeyRequest(event);
-        // Scope Check: Ensure key has 'read:clients' for GET or 'write:clients' for POST
-        if (event.httpMethod === 'GET' && !authContext.scopes?.includes('read:clients')) {
-            return createErrorResponse(403, 'Forbidden', 'API key does not have permission to read clients');
-        }
-        if (['POST', 'PUT', 'DELETE'].includes(event.httpMethod) && !authContext.scopes?.includes('write:clients')) {
-            return createErrorResponse(403, 'Forbidden', 'API key does not have permission to write clients');
-        }
-    } else {
-        return createErrorResponse(401, 'Unauthorized', 'Authorization header missing or invalid.');
-    }
+    // Use the new unified authentication method (works for both JWT and API key)
+    authContext = await authenticate(event, {
+      requiredScopes: event.httpMethod === 'GET' 
+        ? ['read:clients'] 
+        : ['write:clients']
+    });
   } catch (errorResponse) {
     console.error("Authentication failed:", errorResponse.body || errorResponse);
     if(errorResponse.statusCode) return errorResponse; 

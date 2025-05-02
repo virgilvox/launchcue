@@ -7,18 +7,20 @@ export const useTaskStore = defineStore('task', () => {
   // State
   const tasks = ref([])
   const isLoading = ref(false)
+  const error = ref(null)
   
   // Actions
-  const fetchTasks = async () => {
+  const fetchTasks = async (filter = {}) => {
     isLoading.value = true
+    error.value = null
     try {
-      const response = await apiService.get(TASK_ENDPOINT) // Use the constant from api.service.js
+      const response = await apiService.get(TASK_ENDPOINT, filter)
       tasks.value = response || [] // Assuming API returns array directly
       return tasks.value
-    } catch (error) {
-      console.error('Error fetching tasks:', error)
-      // Throw the error so the component can catch it
-      throw error; 
+    } catch (err) {
+      error.value = err.message || 'Failed to fetch tasks'
+      console.error('Error fetching tasks:', err)
+      throw err
     } finally {
       isLoading.value = false
     }
@@ -29,7 +31,7 @@ export const useTaskStore = defineStore('task', () => {
   const fetchProjectTasks = async (projectId) => {
     if (!projectId) {
         // Return empty or throw? Throwing might be better for consistency
-        throw new Error('Project ID is required to fetch project tasks.');
+        throw new Error('Project ID is required to fetch project tasks.')
     }
     isLoading.value = true
     try {
@@ -47,7 +49,7 @@ export const useTaskStore = defineStore('task', () => {
   }
   
   const getTask = async (id) => {
-    if (!id) throw new Error('Task ID is required');
+    if (!id) throw new Error('Task ID is required')
     // isLoading not typically set for single item fetch unless slow
     try {
       const response = await apiService.get(`${TASK_ENDPOINT}/${id}`)
@@ -62,67 +64,67 @@ export const useTaskStore = defineStore('task', () => {
     // isLoading handled by component via isSavingTask prop usually
     try {
       // Format dueDate correctly for the backend validation
-      let formattedData = { ...taskData };
+      let formattedData = { ...taskData }
       
       // Convert dueDate to ISO format if it exists and is not already in ISO format
       if (formattedData.dueDate && !formattedData.dueDate.includes('T')) {
-        formattedData.dueDate = new Date(formattedData.dueDate).toISOString();
+        formattedData.dueDate = new Date(formattedData.dueDate).toISOString()
       }
       
       // Initialize checklist if it doesn't exist
       if (!formattedData.checklist) {
-        formattedData.checklist = [];
+        formattedData.checklist = []
       }
       
       // Server should return the created task with its new ID
-      const createdTask = await apiService.post(TASK_ENDPOINT, formattedData);
+      const createdTask = await apiService.post(TASK_ENDPOINT, formattedData)
       
       if (createdTask && createdTask.id) {
-        tasks.value.push(createdTask); // Add to local state
+        tasks.value.push(createdTask) // Add to local state
       }
-      return createdTask; // Return for component use
+      return createdTask // Return for component use
     } catch (error) {
-      console.error('Error creating task:', error);
-      throw error; // Re-throw for component handling
+      console.error('Error creating task:', error)
+      throw error // Re-throw for component handling
     }
   }
   
   const updateTask = async (taskData) => {
     if (!taskData.id) {
-      throw new Error('Task ID is required for updates');
+      throw new Error('Task ID is required for updates')
     }
     // isLoading handled by component
     try {
       // Format data for backend validation
-      let formattedData = { ...taskData };
+      let formattedData = { ...taskData }
       
       // Convert dueDate to ISO format if it exists and is not already in ISO format
       if (formattedData.dueDate && !formattedData.dueDate.includes('T')) {
-        formattedData.dueDate = new Date(formattedData.dueDate).toISOString();
+        formattedData.dueDate = new Date(formattedData.dueDate).toISOString()
       }
       
       // Initialize checklist if undefined
       if (!formattedData.checklist) {
-        formattedData.checklist = [];
+        formattedData.checklist = []
       }
       
-      const updatedTask = await apiService.put(`${TASK_ENDPOINT}/${taskData.id}`, formattedData);
+      const updatedTask = await apiService.put(`${TASK_ENDPOINT}/${taskData.id}`, formattedData)
       
       // Update local task list
-      const index = tasks.value.findIndex(t => t.id === taskData.id);
+      const index = tasks.value.findIndex(t => t.id === taskData.id)
       if (index !== -1) {
-        tasks.value[index] = updatedTask; // Replace with updated task from server
+        tasks.value[index] = updatedTask // Replace with updated task from server
       }
-      return updatedTask;
+      return updatedTask
     } catch (error) {
-      console.error('Error updating task:', error);
-      throw error; // Re-throw
+      console.error('Error updating task:', error)
+      throw error // Re-throw
     }
   }
   
   const deleteTask = async (id) => {
     if (!id) {
-      throw new Error('Task ID is required for deletion');
+      throw new Error('Task ID is required for deletion')
     }
     // isLoading handled by component
     try {
@@ -137,15 +139,47 @@ export const useTaskStore = defineStore('task', () => {
     }
   }
   
+  // *** ADDED: Get a single task by ID ***
+  const getTaskById = async (taskId) => {
+    // 1. Check if task is already in the store
+    const existingTask = tasks.value.find(t => t.id === taskId)
+    if (existingTask) {
+      return existingTask
+    }
+
+    // 2. If not found, fetch from API
+    isLoading.value = true // Optionally set loading specific to this fetch
+    error.value = null
+    try {
+      const task = await apiService.get(`${TASK_ENDPOINT}/${taskId}`)
+      // Optional: Add/update task in the local store if fetched
+      const index = tasks.value.findIndex(t => t.id === taskId)
+      if (index !== -1) {
+        tasks.value[index] = task
+      } else {
+        tasks.value.push(task) // Or just return without adding
+      }
+      return task
+    } catch (err) {
+      error.value = err.message || `Failed to fetch task ${taskId}`
+      console.error(`Error fetching task ${taskId}:`, err)
+      return null // Return null or throw error on failure
+    } finally {
+       isLoading.value = false // Reset loading state
+    }
+  }
+  
   // Return state and actions
   return {
     tasks,
     isLoading,
+    error,
     fetchTasks,
     fetchProjectTasks, // Keep or remove based on actual usage
     getTask,
     createTask,
     updateTask,
-    deleteTask
+    deleteTask,
+    getTaskById // Expose the new function
   }
 }) 

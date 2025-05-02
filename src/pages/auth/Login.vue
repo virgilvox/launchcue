@@ -121,7 +121,7 @@ const handleLogin = async () => {
     }
     
     toast.success('Welcome back!');
-    router.push('/');
+    router.push('/dashboard');
   } catch (err) {
     error.value = err.message || 'Invalid credentials. Please try again.';
     toast.error(error.value);

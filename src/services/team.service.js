@@ -79,19 +79,55 @@ const teamService = {
    * @returns {Promise<Object>} Promise that resolves to an object with success status or error
    */
   async inviteUser(teamId, email) {
+    if (!teamId) {
+      console.error('Team ID is required for invitation');
+      return { 
+        success: false, 
+        error: 'Team ID is required' 
+      };
+    }
+    
+    if (!email) {
+      console.error('Email is required for invitation');
+      return { 
+        success: false, 
+        error: 'Email is required' 
+      };
+    }
+    
+    console.log(`Inviting user ${email} to team ${teamId}`);
+    
     try {
       const response = await api.post(`${TEAM_ENDPOINT}?id=${teamId}&action=invite`, { email });
+      console.log('Invitation response:', response);
       return { 
         success: true,
         invite: response
       };
     } catch (error) {
       console.error('Error inviting user:', error);
+      
+      // Detailed error logging
+      if (error.response) {
+        console.error('Response error data:', error.response.data);
+        console.error('Response status:', error.response.status);
+      }
+      
       return { 
         success: false, 
         error: error.response?.data?.error || error.message || 'Failed to invite user' 
       };
     }
+  },
+
+  /**
+   * Invite a team member (alias for inviteUser for backward compatibility)
+   * @param {string} teamId - The ID of the team
+   * @param {string} email - The email of the user to invite
+   * @returns {Promise<Object>} Promise that resolves to an object with success status or error
+   */
+  async inviteTeamMember(teamId, email) {
+    return this.inviteUser(teamId, email);
   },
 
   /**

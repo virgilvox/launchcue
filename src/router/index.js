@@ -10,6 +10,7 @@ const Login = () => import('../pages/auth/Login.vue');
 const Register = () => import('../pages/auth/Register.vue');
 
 // App Pages
+const Home = () => import('../pages/Home.vue');
 const Dashboard = () => import('../pages/Dashboard.vue');
 const BrainDump = () => import('../pages/BrainDump.vue');
 const Calendar = () => import('../pages/Calendar.vue');
@@ -25,9 +26,16 @@ const Team = () => import('../pages/Team.vue');
 const Notes = () => import('../pages/Notes.vue');
 const Resources = () => import('../pages/Resources.vue');
 const Settings = () => import('../pages/Settings.vue');
+const TaskDetail = () => import('../pages/TaskDetail.vue');
 
 const routes = [
   // Auth routes (no layout)
+  {
+    path: '/',
+    name: 'home',
+    component: Home,
+    meta: { requiresAuth: false }
+  },
   {
     path: '/login',
     name: 'login',
@@ -45,7 +53,7 @@ const routes = [
     component: DefaultLayout,
     children: [
       {
-        path: '',
+        path: 'dashboard',
         name: 'dashboard',
         component: Dashboard,
         meta: { requiresAuth: true }
@@ -146,6 +154,13 @@ const routes = [
         name: 'tasks',
         component: Tasks,
         meta: { requiresAuth: true }
+      },
+      {
+        path: 'tasks/:id',
+        name: 'task-detail',
+        component: TaskDetail,
+        meta: { requiresAuth: true },
+        props: true
       },
       {
         path: 'settings',

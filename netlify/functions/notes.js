@@ -1,6 +1,6 @@
 const { MongoClient, ObjectId } = require('mongodb');
 const { connectToDb } = require('./utils/db');
-const { authenticateRequest } = require('./utils/auth');
+const { authenticate } = require('./utils/authHandler'); // New unified authentication
 const { createResponse, createErrorResponse, handleOptionsRequest } = require('./utils/response');
 const { z } = require('zod');
 
@@ -20,13 +20,20 @@ exports.handler = async function(event, context) {
     const optionsResponse = handleOptionsRequest(event);
     if (optionsResponse) return optionsResponse;
 
-    let authResult;
+    let authContext;
     try {
-        authResult = authenticateRequest(event);
+        // Use the new unified authentication method (works for both JWT and API key)
+        authContext = await authenticate(event, {
+          requiredScopes: event.httpMethod === 'GET' 
+            ? ['read:notes'] 
+            : ['write:notes']
+        });
     } catch (errorResponse) {
-        return errorResponse;
+        console.error("Authentication failed:", errorResponse.body || errorResponse);
+        if(errorResponse.statusCode) return errorResponse; 
+        return createErrorResponse(401, 'Unauthorized');
     }
-    const { userId, teamId } = authResult;
+    const { userId, teamId } = authContext;
 
     let noteId = null;
     const pathParts = event.path.split('/');

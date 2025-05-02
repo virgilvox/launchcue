@@ -68,7 +68,7 @@
               </div>
             </div>
             <div>
-              <span v-if="isCurrentUserCreator && member.id !== userId" class="inline-flex items-center mr-2">
+              <span v-if="isCurrentUserOwner && member.id !== authStore.user?.id" class="inline-flex items-center mr-2">
                 <button
                   @click="openRemoveMemberModal(member)"
                   class="text-red-500 hover:text-red-700 focus:outline-none"
@@ -76,11 +76,11 @@
                   Remove
                 </button>
               </span>
-              <span v-if="member.id === userId" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+              <span v-if="member.id === authStore.user?.id" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                 You
               </span>
-              <span v-if="member.isCreator" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                Creator
+              <span v-if="member.id === authStore.currentTeam?.owner" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                Owner
               </span>
             </div>
           </div>
@@ -389,20 +389,35 @@ async function loadTeamMembers() {
 }
 
 async function sendInvite() {
-  if (!inviteEmail.value || !authStore.currentTeam?.id) return;
+  if (!inviteEmail.value || !authStore.currentTeam?.id) {
+    inviteError.value = "Email and team ID are required";
+    return;
+  }
   
   sendingInvite.value = true;
   error.value = null;
   inviteError.value = null;
   
+  console.log(`Attempting to invite ${inviteEmail.value} to team ${authStore.currentTeam.id}`);
+  
   try {
-    await teamService.inviteTeamMember(authStore.currentTeam.id, inviteEmail.value);
-    showInviteModal.value = false;
-    inviteEmail.value = '';
+    const result = await teamService.inviteUser(authStore.currentTeam.id, inviteEmail.value);
+    
+    if (result.success) {
+      console.log('Invitation successful:', result);
+      showInviteModal.value = false;
+      inviteEmail.value = '';
+      toast.success('Invitation sent successfully');
+    } else {
+      console.error('Invitation failed with error:', result.error);
+      inviteError.value = result.error || 'Failed to send invite. Please try again.';
+      toast.error(inviteError.value);
+    }
   } catch (err) {
     console.error('Error sending invite:', err);
     error.value = 'Failed to send invite. Please try again.';
     inviteError.value = err.message || 'Failed to send invite. Please try again.';
+    toast.error(inviteError.value);
   } finally {
     sendingInvite.value = false;
   }
@@ -473,6 +488,11 @@ function getUserInitials(user) {
   
   return '?';
 }
+
+// FIX: Define isCurrentUserOwner computed property
+const isCurrentUserOwner = computed(() => {
+  return authStore.currentTeam?.owner === authStore.user?.id;
+});
 
 onMounted(async () => {
   loading.value = true;

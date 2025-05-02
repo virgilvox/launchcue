@@ -44,6 +44,8 @@ exports.handler = async function(event, context) {
     let clientQuery = { ...queryBase };
     let projectQuery = { ...queryBase };
 
+    let clientId = event.queryStringParameters?.clientId || null;
+
     if (clientId && ObjectId.isValid(clientId)) {
       clientQuery._id = new ObjectId(clientId);
       projectQuery.clientId = clientId; // Filter projects by client

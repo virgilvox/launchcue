@@ -4,10 +4,25 @@ import { fileURLToPath, URL } from 'node:url'
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [vue()],
+  plugins: [
+    vue(),
+    {
+      name: 'fix-js-mime-type',
+      configureServer(server) {
+        server.middlewares.use((req, res, next) => {
+          // Fix MIME type for JavaScript modules
+          if (req.url && (req.url.endsWith('.js') || req.url.endsWith('.mjs'))) {
+            res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
+          }
+          next();
+        });
+      }
+    }
+  ],
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url))
     }
-  }
+  },
+  assetsInclude: ['**/*.html']
 })

@@ -3,16 +3,12 @@
   publish = "dist"
   functions = "netlify/functions"
 
-[dev]
-  command = "npm run dev"
-  port = 8888
-  targetPort = 5173
-  autoLaunch = true
-
 [functions]
   external_node_modules = ["jsonwebtoken", "mongodb", "bcryptjs", "zod"]
 
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200 
+# Default SPA redirect is often handled automatically by Netlify Dev
+# Try removing explicit [dev] block and redirect
+# [[redirects]]
+#   from = "/*"
+#   to = "/index.html"
+#   status = 200 

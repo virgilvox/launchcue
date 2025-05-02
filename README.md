@@ -249,6 +249,21 @@ API requests can be authenticated in two ways:
 
 **Note:** API Key authentication is scoped to the Team associated with the user who generated the key. You can also assign specific permission scopes to each API key for granular access control.
 
+#### API Key Scopes
+
+API keys use the following scope format:
+- `read:resource` - Allows GET operations on the resource
+- `write:resource` - Allows POST, PUT, DELETE operations on the resource
+- `admin` - Grants full access to all resources
+- `*` - Also grants full access
+
+Examples:
+- `read:tasks` - Can view tasks
+- `write:projects` - Can create/edit/delete projects
+- `read:clients` - Can view clients
+
+When generating an API key, you can select which scopes it has access to. For security, always follow the principle of least privilege and only grant the minimum scopes needed.
+
 ### Endpoints
 
 The API base URL depends on your deployment:

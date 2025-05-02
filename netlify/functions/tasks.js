@@ -1,8 +1,7 @@
 const { MongoClient, ObjectId } = require('mongodb');
 const { z } = require('zod'); // Import Zod
 const { connectToDb, closeDbConnection } = require('./utils/db');
-const { authenticateRequest } = require('./utils/auth'); // JWT Auth
-const { authenticateApiKeyRequest } = require('./utils/apiKeyAuth'); // API Key Auth
+const { authenticate } = require('./utils/authHandler'); // New centralized auth
 const { createResponse, createErrorResponse, handleOptionsRequest } = require('./utils/response');
 
 // Zod schema for validating new task data (POST)
@@ -81,24 +80,15 @@ exports.handler = async function(event, context) {
 
   let authContext;
   try {
-    // Try JWT auth first
-    const authHeader = event.headers.authorization || event.headers.Authorization;
-    if (authHeader && authHeader.startsWith('Bearer ') && !authHeader.includes('lc_sk_')) { 
-        console.log("Attempting JWT Authentication for /tasks...");
-        authContext = await authenticateRequest(event); 
-    } else if (authHeader && authHeader.includes('lc_sk_')) {
-        // If it looks like an API key, try API key auth
-        console.log("Attempting API Key Authentication for /tasks...");
-        authContext = await authenticateApiKeyRequest(event);
-    } else {
-        // No valid auth header found
-        return createErrorResponse(401, 'Unauthorized', 'Authorization header missing or invalid.');
-    }
+    // Use the new unified authentication method (works for both JWT and API key)
+    authContext = await authenticate(event, {
+      requiredScopes: event.httpMethod === 'GET' 
+        ? ['read:tasks'] 
+        : ['write:tasks']
+    });
   } catch (errorResponse) {
     console.error("Authentication failed:", errorResponse.body || errorResponse);
-    // If authenticateRequest/authenticateApiKeyRequest threw a response object, return it
     if(errorResponse.statusCode) return errorResponse; 
-    // Otherwise return a generic 401
     return createErrorResponse(401, 'Unauthorized');
   }
   

@@ -1,24 +1,30 @@
 const { MongoClient, ObjectId } = require('mongodb');
 const { connectToDb } = require('./utils/db');
-const { authenticateRequest } = require('./utils/auth');
-const { authenticateApiKeyRequest } = require('./utils/apiKeyAuth');
+const { authenticate } = require('./utils/authHandler'); // New unified authentication
 const { createResponse, createErrorResponse, handleOptionsRequest } = require('./utils/response');
 
 exports.handler = async function(event, context) {
   const optionsResponse = handleOptionsRequest(event);
   if (optionsResponse) return optionsResponse;
 
-  let authResult;
+  let authContext;
   try {
-    authResult = authenticateRequest(event);
+    // Use the new unified authentication method (works for both JWT and API key)
+    authContext = await authenticate(event, {
+      requiredScopes: event.httpMethod === 'GET' 
+        ? ['read:projects'] 
+        : ['write:projects']
+    });
   } catch (errorResponse) {
-    return errorResponse;
+    console.error("Authentication failed:", errorResponse.body || errorResponse);
+    if(errorResponse.statusCode) return errorResponse; 
+    return createErrorResponse(401, 'Unauthorized');
   }
-  const { userId, teamId } = authResult;
+  const { userId, teamId } = authContext;
 
   // Extract project ID from path
   const pathParts = event.path.split('/');
-  const projectId = pathParts[pathParts.indexOf('projects') + 1];
+  const projectId = pathParts[pathParts.length - 1]; // Get the last path segment
 
   if (!projectId || !ObjectId.isValid(projectId)) {
     return createErrorResponse(400, 'Invalid or missing Project ID');

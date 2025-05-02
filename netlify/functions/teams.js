@@ -7,6 +7,15 @@ exports.handler = async function(event, context) {
   const optionsResponse = handleOptionsRequest(event);
   if (optionsResponse) return optionsResponse;
 
+  // Add debug logging
+  console.log("Teams handler received request:", {
+    method: event.httpMethod,
+    path: event.path,
+    queryParams: event.queryStringParameters,
+    bodySize: event.body ? event.body.length : 0,
+    headers: Object.keys(event.headers)
+  });
+
   let authResult;
   try {
     authResult = authenticateRequest(event);
@@ -15,24 +24,86 @@ exports.handler = async function(event, context) {
   }
   const { userId, teamId } = authResult;
 
+  // Check for action parameter
+  const queryParams = event.queryStringParameters || {};
+  const action = queryParams.action;
+  const targetTeamId = queryParams.id || null;
+
   // Extract target team ID from path if provided (e.g., /teams/{teamId})
-  let targetTeamId = null;
+  let pathTeamId = null;
   const pathParts = event.path.split('/');
   if (pathParts.length > 2 && ObjectId.isValid(pathParts[pathParts.length - 1])) {
-      targetTeamId = pathParts[pathParts.length - 1];
+      pathTeamId = pathParts[pathParts.length - 1];
   }
+
+  // Use targetTeamId from query param if provided, otherwise try path
+  const effectiveTeamId = targetTeamId || pathTeamId;
 
   try {
     const { db } = await connectToDb();
     const teamsCollection = db.collection('teams');
     const usersCollection = db.collection('users');
 
+    // Handle action=invite - Invite a user to the team
+    if (event.httpMethod === 'POST' && action === 'invite' && effectiveTeamId) {
+        const data = JSON.parse(event.body);
+        if (!data.email) {
+            return createErrorResponse(400, 'Email is required for team invitation');
+        }
+        
+        // Check if user has permission to send invites (must be a team member)
+        const team = await teamsCollection.findOne({
+            _id: new ObjectId(effectiveTeamId),
+            'members.userId': userId
+        });
+        
+        if (!team) {
+            return createErrorResponse(404, 'Team not found or user is not a member');
+        }
+        
+        // Check if email is already a member
+        const isMember = team.members.some(m => m.email && m.email.toLowerCase() === data.email.toLowerCase());
+        if (isMember) {
+            return createErrorResponse(400, 'This user is already a member of the team');
+        }
+        
+        // Find user by email
+        const userToAdd = await usersCollection.findOne({ email: data.email.toLowerCase() });
+        
+        if (!userToAdd) {
+            return createErrorResponse(404, 'User with this email not found. Please ensure they have an account first.');
+        }
+        
+        // Directly add user to team (instead of creating an invite)
+        const now = new Date();
+        const newMember = {
+            userId: userToAdd._id.toString(),
+            email: userToAdd.email,
+            name: userToAdd.name || userToAdd.email.split('@')[0],
+            role: 'member',
+            joinedAt: now
+        };
+        
+        // Add member to team
+        await teamsCollection.updateOne(
+            { _id: new ObjectId(effectiveTeamId) },
+            { $push: { members: newMember } }
+        );
+        
+        // TODO: Send notification email to the user (optional)
+        
+        return createResponse(200, { 
+            message: 'User added to team successfully',
+            member: newMember
+        });
+    }
+
     // GET: List teams the user is a member of OR Get specific team details
-    if (event.httpMethod === 'GET') {
-        if (targetTeamId) {
+    else if (event.httpMethod === 'GET') {
+        if (effectiveTeamId) {
             // Get specific team details if user is a member
             const team = await teamsCollection.findOne({
-                _id: new ObjectId(targetTeamId),
+                _id: new ObjectId(effectiveTeamId),
                 'members.userId': userId // Ensure the requesting user is a member
             });
 
@@ -49,10 +120,16 @@ exports.handler = async function(event, context) {
             }, {});
 
             team.members = team.members.map(m => ({ ...m, ...memberMap[m.userId] }));
-            team.id = team._id.toString();
-            delete team._id;
 
-            return createResponse(200, team);
+            // *** FIX: Check if the action is specifically to get members ***
+            if (action === 'members') {
+              return createResponse(200, team.members || []); // Return ONLY the members array
+            } else {
+              // Otherwise, return the full team object
+              team.id = team._id.toString();
+              delete team._id;
+              return createResponse(200, team);
+            }
         } else {
             // List all teams the user is a member of
             const teams = await teamsCollection.find({ 'members.userId': userId }).toArray();
@@ -98,7 +175,7 @@ exports.handler = async function(event, context) {
     }
     
     // PUT: Update team details (e.g., name) - Requires team ID in path
-    else if (event.httpMethod === 'PUT' && targetTeamId) {
+    else if (event.httpMethod === 'PUT' && effectiveTeamId) {
         const data = JSON.parse(event.body);
         if (!data.name) {
             return createErrorResponse(400, 'Team name is required for update');
@@ -106,7 +183,7 @@ exports.handler = async function(event, context) {
         
         // Ensure user is owner to update team name
         const updateResult = await teamsCollection.updateOne(
-            { _id: new ObjectId(targetTeamId), owner: userId }, // Only owner can update name
+            { _id: new ObjectId(effectiveTeamId), owner: userId }, // Only owner can update name
             { $set: { name: data.name, updatedAt: new Date() } }
         );
         
@@ -114,7 +191,7 @@ exports.handler = async function(event, context) {
             return createErrorResponse(404, 'Team not found or user is not the owner');
         }
         
-        const updatedTeam = await teamsCollection.findOne({ _id: new ObjectId(targetTeamId) });
+        const updatedTeam = await teamsCollection.findOne({ _id: new ObjectId(effectiveTeamId) });
         updatedTeam.id = updatedTeam._id.toString();
         delete updatedTeam._id;
         
@@ -122,10 +199,10 @@ exports.handler = async function(event, context) {
     }
     
     // DELETE: Delete a team - Requires team ID in path
-    else if (event.httpMethod === 'DELETE' && targetTeamId) {
+    else if (event.httpMethod === 'DELETE' && effectiveTeamId) {
         // Ensure user is owner to delete team
         const deleteResult = await teamsCollection.deleteOne(
-            { _id: new ObjectId(targetTeamId), owner: userId } // Only owner can delete
+            { _id: new ObjectId(effectiveTeamId), owner: userId } // Only owner can delete
         );
         
         if (deleteResult.deletedCount === 0) {
@@ -133,72 +210,18 @@ exports.handler = async function(event, context) {
         }
         
         // Optional: Consider deleting associated data (projects, tasks, clients) or marking them as orphaned.
-        // await db.collection('projects').deleteMany({ teamId: targetTeamId });
-        // await db.collection('tasks').deleteMany({ teamId: targetTeamId });
+        // await db.collection('projects').deleteMany({ teamId: effectiveTeamId });
+        // await db.collection('tasks').deleteMany({ teamId: effectiveTeamId });
         // ... etc.
         
         return createResponse(200, { message: 'Team deleted successfully' });
     }
 
-    // POST /teams/{teamId}/invites - Invite a user to the team
-    else if (event.httpMethod === 'POST' && targetTeamId && event.path.includes('/invites')) {
-        const data = JSON.parse(event.body);
-        if (!data.email) {
-            return createErrorResponse(400, 'Email is required for team invitation');
-        }
-        
-        // Check if user has permission to send invites (must be a team member)
-        const team = await teamsCollection.findOne({
-            _id: new ObjectId(targetTeamId),
-            'members.userId': userId
-        });
-        
-        if (!team) {
-            return createErrorResponse(404, 'Team not found or user is not a member');
-        }
-        
-        // Check if email is already a member
-        const isMember = team.members.some(m => m.email.toLowerCase() === data.email.toLowerCase());
-        if (isMember) {
-            return createErrorResponse(400, 'This user is already a member of the team');
-        }
-        
-        // Find user by email
-        const userToAdd = await usersCollection.findOne({ email: data.email.toLowerCase() });
-        
-        if (!userToAdd) {
-            return createErrorResponse(404, 'User with this email not found. Please ensure they have an account first.');
-        }
-        
-        // Directly add user to team (instead of creating an invite)
-        const now = new Date();
-        const newMember = {
-            userId: userToAdd._id.toString(),
-            email: userToAdd.email,
-            name: userToAdd.name || userToAdd.email.split('@')[0],
-            role: 'member',
-            joinedAt: now
-        };
-        
-        // Add member to team
-        await teamsCollection.updateOne(
-            { _id: new ObjectId(targetTeamId) },
-            { $push: { members: newMember } }
-        );
-        
-        // TODO: Send notification email to the user (optional)
-        
-        return createResponse(200, { 
-            message: 'User added to team successfully',
-            member: newMember
-        });
-    }
-
     // GET /teams/{teamId}/invites - List pending invites for a team
-    else if (event.httpMethod === 'GET' && targetTeamId && event.path.includes('/invites')) {
+    else if (event.httpMethod === 'GET' && effectiveTeamId && event.path.includes('/invites')) {
         // Check if user has permission to view invites (must be a team member)
         const hasAccess = await teamsCollection.countDocuments({
-            _id: new ObjectId(targetTeamId),
+            _id: new ObjectId(effectiveTeamId),
             'members.userId': userId
         });
         
@@ -208,7 +231,7 @@ exports.handler = async function(event, context) {
         
         const invitesCollection = db.collection('teamInvites');
         const invites = await invitesCollection.find({
-            teamId: targetTeamId,
+            teamId: effectiveTeamId,
             status: 'pending'
         }).toArray();
         
@@ -222,10 +245,10 @@ exports.handler = async function(event, context) {
     }
 
     // POST /teams/{teamId}/leave - Leave a team
-    else if (event.httpMethod === 'POST' && targetTeamId && event.path.includes('/leave')) {
+    else if (event.httpMethod === 'POST' && effectiveTeamId && event.path.includes('/leave')) {
         // First make sure the team exists
         const team = await teamsCollection.findOne({
-            _id: new ObjectId(targetTeamId)
+            _id: new ObjectId(effectiveTeamId)
         });
         
         if (!team) {
@@ -245,7 +268,7 @@ exports.handler = async function(event, context) {
         
         // Remove user from team
         await teamsCollection.updateOne(
-            { _id: new ObjectId(targetTeamId) },
+            { _id: new ObjectId(effectiveTeamId) },
             { $pull: { members: { userId: userId } } }
         );
         
@@ -256,7 +279,7 @@ exports.handler = async function(event, context) {
 
     // --- Team Member Operations (Example: POST /teams/{teamId}/members) --- 
     // Requires more complex path parsing or separate functions
-    // else if (event.httpMethod === 'POST' && targetTeamId && event.path.endsWith('/members')) { ... }
+    // else if (event.httpMethod === 'POST' && effectiveTeamId && event.path.endsWith('/members')) { ... }
     
     // Method Not Allowed
     else {

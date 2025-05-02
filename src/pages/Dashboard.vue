@@ -44,8 +44,8 @@
         <ul v-else class="space-y-3">
           <li v-for="task in recentTasks" :key="task.id" class="flex items-center justify-between py-2 border-b border-gray-200 dark:border-gray-700 last:border-0">
             <div>
-              <router-link :to="`/tasks/${task.id}`" class="font-medium hover:text-primary-600 dark:hover:text-primary-400">{{ task.title }}</router-link>
-              <p class="text-xs text-gray-500 dark:text-gray-400">{{ getProjectName(task.projectId) }}</p>
+              <router-link :to="`/tasks/${task.id}`" class="font-medium text-gray-900 dark:text-white hover:text-primary-600 dark:hover:text-primary-400">{{ task.title }}</router-link>
+              <p class="text-xs text-gray-600 dark:text-gray-400">{{ getProjectName(task.projectId) }}</p>
             </div>
             <span :class="`px-2 py-0.5 rounded-full text-xs ${getTaskStatusClass(task.status)}`">
               {{ task.status }}
@@ -68,12 +68,12 @@
         
         <ul v-else class="space-y-3">
           <li v-for="item in upcomingItems" :key="item.id" 
-              class="flex items-start justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100">
+              class="flex items-start justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600">
             <div class="flex items-start space-x-3">
               <div class="mt-1 w-3 h-3 rounded-full flex-shrink-0" :class="getColorClass(item.color || item.type)"></div>
               <div>
-                <p class="font-medium text-gray-800">{{ item.title }}</p>
-                <p class="text-sm text-gray-600">
+                <p class="font-medium text-gray-900 dark:text-white">{{ item.title }}</p>
+                <p class="text-sm text-gray-600 dark:text-gray-400">
                   {{ formatUpcomingDate(item.date) }}
                   <span class="ml-2 px-2 py-0.5 rounded text-xs" 
                         :class="getTypeClass(item.type)">
@@ -150,7 +150,7 @@ const getTaskStatusClass = (status) => {
       'Done': 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
       'Blocked': 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
   };
-  return classes[status] || 'bg-gray-100 text-gray-800 dark:bg-gray-600 dark:text-gray-200';
+  return classes[status] || 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
 };
 
 // Load upcoming items from calendar, projects and tasks
@@ -208,12 +208,12 @@ function getColorClass(typeOrColor) {
 // Get CSS class for the type badge
 function getTypeClass(type) {
   const typeMap = {
-    'task': 'bg-blue-100 text-blue-800',
-    'project': 'bg-orange-100 text-orange-800',
-    'event': 'bg-green-100 text-green-800'
+    'task': 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
+    'project': 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200',
+    'event': 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
   };
   
-  return typeMap[type] || 'bg-gray-100 text-gray-800';
+  return typeMap[type] || 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
 }
 
 // Helper to capitalize first letter

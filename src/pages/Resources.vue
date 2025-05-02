@@ -52,7 +52,7 @@
             class="p-4 bg-white border rounded-md shadow-sm hover:shadow-md transition-shadow"
           >
             <div class="flex items-start justify-between">
-              <h3 class="text-lg font-medium">{{ resource.name }}</h3>
+              <h3 class="text-lg font-medium text-black dark:text-white">{{ resource.name }}</h3>
               
               <div class="flex space-x-2">
                 <button 
@@ -76,7 +76,7 @@
               </div>
             </div>
             
-            <p v-if="resource.description" class="mt-2 text-sm text-black">
+            <p v-if="resource.description" class="mt-2 text-sm text-black dark:text-gray-300">
               {{ resource.description }}
             </p>
             
