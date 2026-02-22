@@ -94,7 +94,7 @@
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '../../stores/auth';
-import { useToast } from '../../composables/useToast';
+import { useToast } from 'vue-toastification';
 
 const appName = import.meta.env.VITE_APP_NAME || 'LaunchCue';
 const router = useRouter();

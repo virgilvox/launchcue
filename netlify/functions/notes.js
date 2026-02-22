@@ -3,6 +3,9 @@ const { connectToDb } = require('./utils/db');
 const { authenticate } = require('./utils/authHandler'); // New unified authentication
 const { createResponse, createErrorResponse, handleOptionsRequest } = require('./utils/response');
 const { z } = require('zod');
+const logger = require('./utils/logger');
+const { getPaginationParams, createPaginatedResponse } = require('./utils/pagination');
+const { notDeleted, softDelete } = require('./utils/softDelete');
 
 // Zod Schema for Note
 const NoteSchema = z.object({
@@ -29,7 +32,7 @@ exports.handler = async function(event, context) {
             : ['write:notes']
         });
     } catch (errorResponse) {
-        console.error("Authentication failed:", errorResponse.body || errorResponse);
+        logger.error("Authentication failed:", errorResponse.body || errorResponse);
         if(errorResponse.statusCode) return errorResponse; 
         return createErrorResponse(401, 'Unauthorized');
     }
@@ -60,16 +63,25 @@ exports.handler = async function(event, context) {
                 delete note._id;
                 return createResponse(200, note);
             } else {
-                // Allow filtering by tags, client, project if needed via query params
-                const { tag, clientId, projectId } = event.queryStringParameters || {};
-                const query = { teamId };
-                if (tag) query.tags = tag; // Simple tag filter
-                if (clientId && ObjectId.isValid(clientId)) query.clientId = clientId;
-                if (projectId && ObjectId.isValid(projectId)) query.projectId = projectId;
+                const qp = event.queryStringParameters || {};
+                const query = { teamId, ...notDeleted };
+                if (qp.tag) query.tags = qp.tag;
+                if (qp.clientId && ObjectId.isValid(qp.clientId)) query.clientId = qp.clientId;
+                if (qp.projectId && ObjectId.isValid(qp.projectId)) query.projectId = qp.projectId;
+
+                const formatNote = n => ({ ...n, id: n._id.toString(), _id: undefined });
+
+                if (qp.page) {
+                  const { page, limit, skip } = getPaginationParams(qp);
+                  const [notes, total] = await Promise.all([
+                    collection.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit).toArray(),
+                    collection.countDocuments(query),
+                  ]);
+                  return createResponse(200, createPaginatedResponse(notes.map(formatNote), total, page, limit));
+                }
 
                 const notes = await collection.find(query).sort({ createdAt: -1 }).toArray();
-                const formattedNotes = notes.map(n => ({ ...n, id: n._id.toString(), _id: undefined }));
-                return createResponse(200, formattedNotes);
+                return createResponse(200, notes.map(formatNote));
             }
         }
 
@@ -159,8 +171,8 @@ exports.handler = async function(event, context) {
 
         // DELETE: Delete item
         else if (event.httpMethod === 'DELETE' && noteId) {
-            const result = await collection.deleteOne({ _id: new ObjectId(noteId), teamId });
-            if (result.deletedCount === 0) {
+            const result = await softDelete(collection, { _id: new ObjectId(noteId), teamId, ...notDeleted }, userId);
+            if (result.matchedCount === 0) {
                  return createErrorResponse(404, 'Note not found or user unauthorized');
             }
             return createResponse(200, { message: 'Note deleted successfully' });
@@ -172,7 +184,7 @@ exports.handler = async function(event, context) {
         }
 
     } catch (error) {
-        console.error('Error handling notes request:', error);
+        logger.error('Error handling notes request:', error);
         return createErrorResponse(500, 'Internal Server Error', error.message);
     }
 }; 

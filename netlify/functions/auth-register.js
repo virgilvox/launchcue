@@ -1,9 +1,21 @@
-// Proxy file for the auth/register.js function
-const { MongoClient } = require('mongodb');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const { z } = require('zod');
 const { connectToDb } = require('./utils/db');
 const { createResponse, createErrorResponse, handleOptionsRequest } = require('./utils/response');
+const logger = require('./utils/logger');
+const { rateLimitCheck } = require('./utils/rateLimit');
+const { generateJti, TOKEN_EXPIRY } = require('./utils/authHandler');
+
+const RegistrationSchema = z.object({
+  name: z.string().min(1, 'Name is required').max(100),
+  email: z.string().email('Invalid email format'),
+  password: z.string()
+    .min(10, 'Password must be at least 10 characters long')
+    .regex(/[a-z]/, 'Password must contain at least one lowercase letter')
+    .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
+    .regex(/[0-9]/, 'Password must contain at least one number'),
+});
 
 exports.handler = async function(event, context) {
   const optionsResponse = handleOptionsRequest(event);
@@ -13,40 +25,38 @@ exports.handler = async function(event, context) {
     return createErrorResponse(405, 'Method Not Allowed');
   }
 
+  const rateLimited = await rateLimitCheck(event, 'auth');
+  if (rateLimited) return rateLimited;
+
   const jwtSecret = process.env.JWT_SECRET;
   if (!jwtSecret) {
-    console.error('Missing JWT_SECRET environment variable.');
+    logger.error('Missing JWT_SECRET environment variable');
     return createErrorResponse(500, 'Internal Server Error', 'JWT secret configuration missing.');
   }
 
   try {
-    const { name, email, password } = JSON.parse(event.body);
-
-    if (!name || !email || !password) {
-      return createErrorResponse(400, 'Name, email, and password are required');
+    let data;
+    try {
+      data = JSON.parse(event.body);
+    } catch (e) {
+      return createErrorResponse(400, 'Invalid JSON');
     }
 
-    // Basic email validation
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      return createErrorResponse(400, 'Invalid email format');
+    const validationResult = RegistrationSchema.safeParse(data);
+    if (!validationResult.success) {
+      return createErrorResponse(400, 'Validation failed', validationResult.error.format());
     }
-
-    // Basic password validation (e.g., minimum length)
-    if (password.length < 6) {
-      return createErrorResponse(400, 'Password must be at least 6 characters long');
-    }
+    const { name, email, password } = validationResult.data;
 
     const { db } = await connectToDb();
     const usersCollection = db.collection('users');
     const teamsCollection = db.collection('teams');
 
-    // Check if user already exists
     const existingUser = await usersCollection.findOne({ email: email.toLowerCase() });
     if (existingUser) {
       return createErrorResponse(400, 'User already exists with this email');
     }
 
-    // Hash password
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
@@ -59,13 +69,11 @@ exports.handler = async function(event, context) {
       updatedAt: now,
     };
 
-    // Insert new user
     const userResult = await usersCollection.insertOne(newUser);
     const userId = userResult.insertedId.toString();
 
-    // Create a default personal team for the new user
     const newTeam = {
-      name: `${name}'s Team`, // Or just "Personal Team"
+      name: `${name}'s Team`,
       createdAt: now,
       owner: userId,
       members: [
@@ -81,16 +89,15 @@ exports.handler = async function(event, context) {
     const teamResult = await teamsCollection.insertOne(newTeam);
     const teamId = teamResult.insertedId.toString();
 
-    // Create JWT Payload
     const payload = {
       userId: userId,
-      teamId: teamId, // Use the newly created team ID
+      teamId: teamId,
       email: newUser.email,
-      name: newUser.name
+      name: newUser.name,
+      jti: generateJti(),
     };
 
-    // Sign token
-    const token = jwt.sign(payload, jwtSecret, { expiresIn: '7d' });
+    const token = jwt.sign(payload, jwtSecret, { expiresIn: TOKEN_EXPIRY });
 
     return createResponse(201, {
       token,
@@ -99,15 +106,14 @@ exports.handler = async function(event, context) {
         email: newUser.email,
         name: newUser.name
       },
-      currentTeamId: teamId // Send back the ID of the created team
+      currentTeamId: teamId
     });
 
   } catch (error) {
-    console.error('Registration error:', error);
-    // Handle potential duplicate key errors during user insert more gracefully
+    logger.error('Registration error:', error.message);
     if (error.code === 11000) {
       return createErrorResponse(400, 'User already exists with this email');
     }
     return createErrorResponse(500, 'Internal Server Error', error.message);
   }
-}; 
+};

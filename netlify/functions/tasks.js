@@ -3,6 +3,9 @@ const { z } = require('zod'); // Import Zod
 const { connectToDb, closeDbConnection } = require('./utils/db');
 const { authenticate } = require('./utils/authHandler'); // New centralized auth
 const { createResponse, createErrorResponse, handleOptionsRequest } = require('./utils/response');
+const logger = require('./utils/logger');
+const { getPaginationParams, createPaginatedResponse } = require('./utils/pagination');
+const { notDeleted, softDelete } = require('./utils/softDelete');
 
 // Zod schema for validating new task data (POST)
 const TaskCreateSchema = z.object({
@@ -69,7 +72,7 @@ async function syncTaskWithCalendar(db, task, operation) {
       await calendarCollection.deleteOne({ taskId: task.id });
     }
   } catch (error) {
-    console.error('Error syncing task with calendar:', error);
+    logger.error('Error syncing task with calendar:', error);
     // Don't throw error - this is a background operation that shouldn't affect the main task action
   }
 }
@@ -87,7 +90,7 @@ exports.handler = async function(event, context) {
         : ['write:tasks']
     });
   } catch (errorResponse) {
-    console.error("Authentication failed:", errorResponse.body || errorResponse);
+    logger.error("Authentication failed:", errorResponse.body || errorResponse);
     if(errorResponse.statusCode) return errorResponse; 
     return createErrorResponse(401, 'Unauthorized');
   }
@@ -123,15 +126,25 @@ exports.handler = async function(event, context) {
         delete task._id;
         return createResponse(200, task);
       } else {
-        const query = { teamId };
-        const { projectId, status, type } = event.queryStringParameters || {};
-        if (projectId && ObjectId.isValid(projectId)) query.projectId = projectId;
-        if (status) query.status = status;
-        if (type) query.type = type;
-        
-        const tasks = await collection.find(query).toArray(); // Safe on empty/missing collection
-        const formattedTasks = tasks.map(task => ({ ...task, id: task._id.toString(), _id: undefined }));
-        return createResponse(200, formattedTasks);
+        const query = { teamId, ...notDeleted };
+        const qp = event.queryStringParameters || {};
+        if (qp.projectId && ObjectId.isValid(qp.projectId)) query.projectId = qp.projectId;
+        if (qp.status) query.status = qp.status;
+        if (qp.type) query.type = qp.type;
+
+        const formatTask = t => ({ ...t, id: t._id.toString(), _id: undefined });
+
+        if (qp.page) {
+          const { page, limit, skip } = getPaginationParams(qp);
+          const [tasks, total] = await Promise.all([
+            collection.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit).toArray(),
+            collection.countDocuments(query),
+          ]);
+          return createResponse(200, createPaginatedResponse(tasks.map(formatTask), total, page, limit));
+        }
+
+        const tasks = await collection.find(query).toArray();
+        return createResponse(200, tasks.map(formatTask));
       }
     } 
     
@@ -140,15 +153,15 @@ exports.handler = async function(event, context) {
         let data;
         try {
             data = JSON.parse(event.body);
-            console.log('Task creation request:', data);
+            logger.debug('Task creation request:', data);
         } catch (e) { 
-            console.error('Invalid JSON in task creation:', e);
+            logger.error('Invalid JSON in task creation:', e);
             return createErrorResponse(400, 'Invalid JSON'); 
         }
 
         const validationResult = TaskCreateSchema.safeParse(data);
         if (!validationResult.success) {
-            console.error('Task validation failed:', validationResult.error.format());
+            logger.error('Task validation failed:', validationResult.error.format());
             return createErrorResponse(400, 'Validation failed', validationResult.error.format());
         }
         
@@ -168,7 +181,7 @@ exports.handler = async function(event, context) {
             createdBy: userId
         };
         
-        console.log('Processed task data:', newTask);
+        logger.debug('Processed task data:', newTask);
         
         // Optional: Verify projectId exists if provided
         if (newTask.projectId) {
@@ -179,20 +192,20 @@ exports.handler = async function(event, context) {
                 });
                 
                 if (projectExists === 0) {
-                    console.error(`Project not found: ${newTask.projectId} for team ${teamId}`);
+                    logger.error(`Project not found: ${newTask.projectId} for team ${teamId}`);
                     return createErrorResponse(400, `Project with ID ${newTask.projectId} not found or not associated with this team`);
                 }
                 
-                console.log(`Project verification successful for ID: ${newTask.projectId}`);
+                logger.debug(`Project verification successful for ID: ${newTask.projectId}`);
             } catch (err) {
-                console.error(`Error verifying project existence: ${err.message}`);
+                logger.error(`Error verifying project existence: ${err.message}`);
                 return createErrorResponse(500, 'Error verifying project existence', err.message);
             }
         }
 
         try {
             const result = await collection.insertOne(newTask);
-            console.log(`Task created with ID: ${result.insertedId}`);
+            logger.debug(`Task created with ID: ${result.insertedId}`);
             
             const createdTask = { ...newTask, id: result.insertedId.toString() };
             delete createdTask._id;
@@ -202,7 +215,7 @@ exports.handler = async function(event, context) {
             
             return createResponse(201, createdTask);
         } catch (err) {
-            console.error(`Error inserting task: ${err.message}`);
+            logger.error(`Error inserting task: ${err.message}`);
             return createErrorResponse(500, 'Error creating task', err.message);
         }
     } 
@@ -276,8 +289,8 @@ exports.handler = async function(event, context) {
         return createErrorResponse(404, 'Task not found or not authorized to delete');
       }
       
-      // Delete the task
-      const result = await collection.deleteOne({ _id: new ObjectId(taskId), teamId: teamId });
+      // Soft delete the task
+      await softDelete(collection, { _id: new ObjectId(taskId), teamId: teamId, ...notDeleted }, userId);
       
       // Format task for calendar sync
       const formattedTask = {
@@ -295,7 +308,7 @@ exports.handler = async function(event, context) {
       return createErrorResponse(405, 'Method Not Allowed');
     }
   } catch (error) {
-    console.error('Error in tasks handler AFTER auth/db connect:', error);
+    logger.error('Error in tasks handler AFTER auth/db connect:', error);
     if (error.statusCode) {
         return error;
     }

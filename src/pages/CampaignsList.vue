@@ -76,7 +76,7 @@ import { ref, computed, onMounted, watch } from 'vue';
 import campaignService from '../services/campaign.service';
 import { useClientStore } from '../stores/client';
 import { useProjectStore } from '../stores/project';
-import { useToast } from '../composables/useToast';
+import { useToast } from 'vue-toastification';
 import LoadingSpinner from '../components/LoadingSpinner.vue';
 
 const clientStore = useClientStore();

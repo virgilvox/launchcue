@@ -1,23 +1,22 @@
-const { MongoClient, ObjectId } = require('mongodb');
+const { ObjectId } = require('mongodb');
 const { connectToDb } = require('./utils/db');
-const { authenticateRequest } = require('./utils/auth');
+const { authenticate } = require('./utils/authHandler');
 const { createResponse, createErrorResponse, handleOptionsRequest } = require('./utils/response');
+const logger = require('./utils/logger');
 
-// Mapping AI item types to database collections and potential default values
 const itemTypeMapping = {
   task: {
     collection: 'tasks',
     defaults: { status: 'To Do', priority: 'Medium' }
   },
   event: {
-    collection: 'calendarEvents', // Assuming a collection name for calendar events
+    collection: 'calendarEvents',
     defaults: { duration: '1 hour' }
   },
   project: {
     collection: 'projects',
     defaults: { status: 'Planning' }
   }
-  // Add more mappings as needed (e.g., 'note', 'resource')
 };
 
 exports.handler = async function(event, context) {
@@ -26,9 +25,12 @@ exports.handler = async function(event, context) {
 
   let authResult;
   try {
-    authResult = authenticateRequest(event);
+    authResult = await authenticate(event, {
+      requiredScopes: ['write:braindumps']
+    });
   } catch (errorResponse) {
-    return errorResponse;
+    if (errorResponse.statusCode) return errorResponse;
+    return createErrorResponse(401, 'Unauthorized');
   }
   const { userId, teamId } = authResult;
 
@@ -37,17 +39,15 @@ exports.handler = async function(event, context) {
   }
 
   try {
-    console.log('Received request body:', event.body);
     const requestBody = JSON.parse(event.body);
-    
-    // Extract items - handle both array format and category object format
-    const tasks = Array.isArray(requestBody) ? requestBody.filter(item => item.type === 'task') 
-                                            : requestBody.tasks || [];
-    const events = Array.isArray(requestBody) ? requestBody.filter(item => item.type === 'event') 
-                                             : requestBody.events || [];
-    const projects = Array.isArray(requestBody) ? requestBody.filter(item => item.type === 'project') 
-                                               : requestBody.projects || [];
-    
+
+    const tasks = Array.isArray(requestBody) ? requestBody.filter(item => item.type === 'task')
+                                              : requestBody.tasks || [];
+    const events = Array.isArray(requestBody) ? requestBody.filter(item => item.type === 'event')
+                                               : requestBody.events || [];
+    const projects = Array.isArray(requestBody) ? requestBody.filter(item => item.type === 'project')
+                                                 : requestBody.projects || [];
+
     const itemsToCreate = [...tasks, ...events, ...projects];
 
     if (itemsToCreate.length === 0) {
@@ -61,7 +61,7 @@ exports.handler = async function(event, context) {
     for (const item of itemsToCreate) {
       const itemType = item.type?.toLowerCase();
       const mapping = itemTypeMapping[itemType];
-      
+
       if (!mapping) {
         results.errors.push({ itemTitle: item.title, error: `Unsupported item type: ${itemType}` });
         continue;
@@ -74,56 +74,51 @@ exports.handler = async function(event, context) {
 
       const collection = db.collection(mapping.collection);
       const newItem = {
-        ...mapping.defaults, // Apply default values
-        ...item, // Apply values from AI
-        teamId: teamId, // Ensure correct team assignment
+        ...mapping.defaults,
+        ...item,
+        teamId: teamId,
         createdAt: now,
         updatedAt: now,
         createdBy: userId,
-        source: 'braindump-ai' // Add source tracking
+        source: 'braindump-ai'
       };
 
-      // Remove fields not belonging to the schema
       delete newItem.type;
-      
-      // Handle special field mappings
+
       if (newItem.eventDateTime && mapping.collection === 'calendarEvents') {
-        newItem.start = new Date(newItem.eventDateTime); // Map to correct field
-        newItem.end = new Date(new Date(newItem.eventDateTime).getTime() + 60 * 60 * 1000); // Default 1 hour
+        newItem.start = new Date(newItem.eventDateTime);
+        newItem.end = new Date(new Date(newItem.eventDateTime).getTime() + 60 * 60 * 1000);
         delete newItem.eventDateTime;
       }
-      
-      // Format dates properly
+
       if (newItem.dueDate && typeof newItem.dueDate === 'string') {
         try {
           newItem.dueDate = new Date(newItem.dueDate);
         } catch (err) {
-          console.warn(`Invalid dueDate format: ${newItem.dueDate}`, err);
+          logger.warn(`Invalid dueDate format: ${newItem.dueDate}`);
         }
       }
-      
-      console.log(`Creating ${itemType}: ${newItem.title}`);
-      
+
       try {
         const insertResult = await collection.insertOne(newItem);
-        results.created.push({ 
-            id: insertResult.insertedId.toString(), 
-            type: itemType, // Return the original type for frontend tracking
-            title: newItem.title 
+        results.created.push({
+          id: insertResult.insertedId.toString(),
+          type: itemType,
+          title: newItem.title
         });
       } catch (dbError) {
-        console.error(`Error creating ${itemType} "${item.title}":`, dbError);
+        logger.error(`Error creating ${itemType} "${item.title}":`, dbError.message);
         results.errors.push({ itemTitle: item.title, type: itemType, error: dbError.message });
       }
     }
 
-    return createResponse(200, { 
-        message: `Processed ${itemsToCreate.length} items. Created: ${results.created.length}, Errors: ${results.errors.length}`, 
-        results 
+    return createResponse(200, {
+      message: `Processed ${itemsToCreate.length} items. Created: ${results.created.length}, Errors: ${results.errors.length}`,
+      results
     });
 
   } catch (error) {
-    console.error('Error creating items from AI data:', error);
+    logger.error('Error creating items from AI data:', error.message);
     return createErrorResponse(500, 'Internal Server Error', error.message);
   }
-}; 
+};

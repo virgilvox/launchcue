@@ -54,7 +54,7 @@ import { computed, toRefs } from 'vue';
 import { useRouter } from 'vue-router';
 import { marked } from 'marked';
 import DOMPurify from 'dompurify';
-import { useToast } from '../../composables/useToast';
+import { useToast } from 'vue-toastification';
 import SaveNoteModal from './SaveNoteModal.vue';
 
 const props = defineProps({

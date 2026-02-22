@@ -2,13 +2,14 @@ const { MongoClient, ObjectId } = require('mongodb');
 const { connectToDb } = require('./utils/db');
 const { authenticate } = require('./utils/authHandler'); // Use new authentication handler
 const { createResponse, createErrorResponse, handleOptionsRequest } = require('./utils/response');
+const logger = require('./utils/logger');
 
 exports.handler = async function(event, context) {
   const optionsResponse = handleOptionsRequest(event);
   if (optionsResponse) return optionsResponse;
 
   // Add debug logging
-  console.log("Teams handler received request:", {
+  logger.debug("Teams handler received request:", {
     method: event.httpMethod,
     path: event.path,
     queryParams: event.queryStringParameters,
@@ -25,7 +26,7 @@ exports.handler = async function(event, context) {
         : ['write:teams']
     });
   } catch (errorResponse) {
-    console.error("Authentication failed:", errorResponse.body || errorResponse);
+    logger.error("Authentication failed:", errorResponse.body || errorResponse);
     if(errorResponse.statusCode) return errorResponse; 
     return createErrorResponse(401, 'Unauthorized');
   }
@@ -295,7 +296,7 @@ exports.handler = async function(event, context) {
       return createErrorResponse(405, 'Method Not Allowed for the requested path or operation');
     }
   } catch (error) {
-    console.error('Error handling teams request:', error);
+    logger.error('Error handling teams request:', error);
     return createErrorResponse(500, 'Internal Server Error', error.message);
   }
 }; 

@@ -335,7 +335,7 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { useToast } from '../composables/useToast';
+import { useToast } from 'vue-toastification';
 import campaignService from '@/services/campaign.service';
 
 const route = useRoute();

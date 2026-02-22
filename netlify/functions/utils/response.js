@@ -1,13 +1,31 @@
-const defaultHeaders = {
-  'Access-Control-Allow-Origin': '*', // Adjust in production for security
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS'
-};
+const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS
+  ? process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim())
+  : ['http://localhost:5173', 'http://localhost:8888'];
 
-function createResponse(statusCode, body, headers = {}) {
+// Module-level event ref; safe because Lambda processes one request at a time per instance.
+let _requestEvent = null;
+
+function setRequestEvent(event) {
+  _requestEvent = event;
+}
+
+function getCorsHeaders(event) {
+  const e = event || _requestEvent;
+  const origin = e?.headers?.origin || e?.headers?.Origin || '';
+  const allowedOrigin = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+  return {
+    'Access-Control-Allow-Origin': allowedOrigin,
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+    'Access-Control-Allow-Credentials': 'true',
+    'Vary': 'Origin'
+  };
+}
+
+function createResponse(statusCode, body) {
   return {
     statusCode,
-    headers: { ...defaultHeaders, ...headers },
+    headers: getCorsHeaders(),
     body: JSON.stringify(body)
   };
 }
@@ -21,19 +39,21 @@ function createErrorResponse(statusCode, message, details = null) {
 }
 
 function handleOptionsRequest(event) {
+  setRequestEvent(event);
   if (event.httpMethod === 'OPTIONS') {
     return {
-      statusCode: 204, // Use 204 No Content for OPTIONS
-      headers: defaultHeaders,
+      statusCode: 204,
+      headers: getCorsHeaders(event),
       body: ''
     };
   }
-  return null; // Not an OPTIONS request
+  return null;
 }
 
-module.exports = { 
-  createResponse, 
-  createErrorResponse, 
-  handleOptionsRequest, 
-  defaultHeaders 
-}; 
+module.exports = {
+  createResponse,
+  createErrorResponse,
+  handleOptionsRequest,
+  setRequestEvent,
+  getCorsHeaders
+};

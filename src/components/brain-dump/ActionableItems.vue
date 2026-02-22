@@ -73,7 +73,7 @@
 
 <script setup>
 import { computed, ref, toRefs } from 'vue';
-import { useToast } from '../../composables/useToast';
+import { useToast } from 'vue-toastification';
 
 const props = defineProps({
   items: {

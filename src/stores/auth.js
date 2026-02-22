@@ -20,15 +20,19 @@ export const useAuthStore = defineStore('auth', () => {
   const isAuthenticated = computed(() => !!user.value && !!token.value)
   
   // Initialize auth state from local storage (checks if user/token exist)
-  // No API call needed here, relies on login/register setting these
   const initAuth = () => {
     user.value = JSON.parse(localStorage.getItem('user')) || null;
     token.value = localStorage.getItem('token') || null;
     userTeams.value = JSON.parse(localStorage.getItem('teams')) || [];
     currentTeam.value = JSON.parse(localStorage.getItem('currentTeam')) || null;
-    
-    // Update axios headers if token exists
+
+    // Sync token to apiService (memory + localStorage)
     apiService.setAuthToken(token.value);
+
+    // Register 401 handler so apiService can trigger logout without circular imports
+    apiService.onUnauthorized(() => {
+      logout();
+    });
 
     return isAuthenticated.value;
   }
@@ -55,8 +59,6 @@ export const useAuthStore = defineStore('auth', () => {
         throw new Error(response.message || 'Registration failed');
       }
     } catch (error) {
-      console.error('Registration error:', error)
-      // Re-throw the error for the component to handle
       throw error;
     } finally {
       isLoading.value = false
@@ -92,8 +94,6 @@ export const useAuthStore = defineStore('auth', () => {
         throw new Error(response.message || 'Login failed');
       }
     } catch (error) {
-      console.error('Login error:', error)
-      // Re-throw the error for the component to handle
       throw error;
     } finally {
       isLoading.value = false
@@ -121,8 +121,7 @@ export const useAuthStore = defineStore('auth', () => {
       // Redirect to login
       router.push('/login')
     } catch (error) {
-      console.error('Logout error:', error)
-      // Optionally inform user about logout error
+      // Logout errors are non-critical; state is already cleared
     }
   }
   
@@ -182,8 +181,7 @@ export const useAuthStore = defineStore('auth', () => {
         localStorage.removeItem('currentTeam');
       }
     } catch (error) {
-      console.error('Error loading teams:', error)
-      userTeams.value = []; // Clear teams on error
+      userTeams.value = [];
       currentTeam.value = null;
       localStorage.removeItem('teams');
       localStorage.removeItem('currentTeam');
@@ -214,8 +212,7 @@ export const useAuthStore = defineStore('auth', () => {
         throw new Error(createdTeam.message || 'Failed to create team');
       }
     } catch (error) {
-      console.error('Error creating team:', error)
-      throw error // Re-throw
+      throw error;
     }
   }
   
@@ -237,18 +234,16 @@ export const useAuthStore = defineStore('auth', () => {
 
     try {
       // Call the backend endpoint using the apiService.switchTeam method
-      console.log(`Attempting to switch to team: ${targetTeamId}`);
       const response = await apiService.switchTeam(targetTeamId);
-      
+
       if (response && response.token && response.currentTeam) {
-        console.log(`Successfully switched to team: ${response.currentTeam.name}`);
         // Update token and current team info from the response
         // setUserData handles setting token ref, localStorage, and apiService headers
         setUserData(user.value, response.token); // Update token (user info remains same)
         setCurrentTeam(response.currentTeam);    // Update team info from response
         
         // --- Trigger data reload --- 
-        await triggerDataReloadForNewTeam(targetTeamId);
+        await triggerDataReloadForNewTeam();
         // ---------------------------
         
         return response.currentTeam;
@@ -256,7 +251,6 @@ export const useAuthStore = defineStore('auth', () => {
         throw new Error(response?.message || 'Failed to switch team context on backend');
       }
     } catch (error) {
-      console.error('Error switching team:', error);
       // Rollback optimistic update on failure
       setCurrentTeam(previousTeam); // Restore previous team state
       setUserData(user.value, previousToken); // Restore previous token
@@ -265,9 +259,7 @@ export const useAuthStore = defineStore('auth', () => {
   }
   
   // Function to trigger data reloads across stores
-  const triggerDataReloadForNewTeam = async (newTeamId) => {
-      console.log(`Reloading data for new team context: ${newTeamId}`);
-      // Get instances of other stores
+  const triggerDataReloadForNewTeam = async () => {
       const taskStore = useTaskStore();
       const projectStore = useProjectStore();
       const clientStore = useClientStore();
@@ -282,11 +274,8 @@ export const useAuthStore = defineStore('auth', () => {
               clientStore.fetchClients(), // Assumes fetchClients uses current auth context
               // Add fetches for other relevant stores (campaigns, notes, etc.)
           ]);
-          console.log("Data reloaded successfully after team switch.")
       } catch (error) {
-          console.error("Error reloading data after team switch:", error);
-          // Optionally notify the user about data reload failure
-          // Use toast notification? 
+          // Data reload failure is non-fatal; user can manually refresh
       }
   }
 

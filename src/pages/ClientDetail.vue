@@ -372,7 +372,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { useToast } from '../composables/useToast';
+import { useToast } from 'vue-toastification';
 import { useAuthStore } from '../stores/auth';
 import clientService from '@/services/client.service';
 import projectService from '@/services/project.service';

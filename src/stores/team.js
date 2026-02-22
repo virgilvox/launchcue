@@ -2,7 +2,7 @@ import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import teamService from '../services/team.service';
 import { useAuthStore } from './auth';
-import { useToast } from '../composables/useToast';
+import { useToast } from 'vue-toastification';
 
 export const useTeamStore = defineStore('team', () => {
   const authStore = useAuthStore();

@@ -227,7 +227,7 @@ import { useAuthStore } from '../stores/auth';
 import { useClientStore } from '../stores/client';
 import clientService from '@/services/client.service';
 import projectService from '@/services/project.service';
-import { useToast } from '../composables/useToast';
+import { useToast } from 'vue-toastification';
 
 const router = useRouter();
 const toast = useToast();

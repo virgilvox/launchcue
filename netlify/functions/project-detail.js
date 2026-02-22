@@ -2,6 +2,7 @@ const { MongoClient, ObjectId } = require('mongodb');
 const { connectToDb } = require('./utils/db');
 const { authenticate } = require('./utils/authHandler'); // New unified authentication
 const { createResponse, createErrorResponse, handleOptionsRequest } = require('./utils/response');
+const logger = require('./utils/logger');
 
 exports.handler = async function(event, context) {
   const optionsResponse = handleOptionsRequest(event);
@@ -16,7 +17,7 @@ exports.handler = async function(event, context) {
         : ['write:projects']
     });
   } catch (errorResponse) {
-    console.error("Authentication failed:", errorResponse.body || errorResponse);
+    logger.error("Authentication failed:", errorResponse.body || errorResponse);
     if(errorResponse.statusCode) return errorResponse; 
     return createErrorResponse(401, 'Unauthorized');
   }
@@ -122,7 +123,7 @@ exports.handler = async function(event, context) {
 
       // Optional: Delete associated tasks (consider cascading implications)
       const deleteTaskResult = await tasksCollection.deleteMany({ projectId: projectId, teamId: teamId });
-      console.log(`Deleted ${deleteTaskResult.deletedCount} tasks associated with project ${projectId}`);
+      logger.debug(`Deleted ${deleteTaskResult.deletedCount} tasks associated with project ${projectId}`);
 
       return createResponse(200, { message: 'Project and associated tasks deleted successfully' });
     }
@@ -132,7 +133,7 @@ exports.handler = async function(event, context) {
       return createErrorResponse(405, 'Method Not Allowed');
     }
   } catch (error) {
-    console.error(`Error handling project/${projectId} request:`, error);
+    logger.error(`Error handling project/${projectId} request:`, error);
     return createErrorResponse(500, 'Internal Server Error', error.message);
   }
 }; 

@@ -181,7 +181,7 @@
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { useToast } from '../composables/useToast';
+import { useToast } from 'vue-toastification';
 import projectService from '@/services/project.service';
 import clientService from '@/services/client.service';
 import { useClientStore } from '@/stores/client';

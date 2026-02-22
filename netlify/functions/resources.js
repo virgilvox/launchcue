@@ -3,6 +3,8 @@ const { connectToDb } = require('./utils/db');
 const { authenticate } = require('./utils/authHandler');
 const { createResponse, createErrorResponse, handleOptionsRequest } = require('./utils/response');
 const { z } = require('zod');
+const logger = require('./utils/logger');
+const { getPaginationParams, createPaginatedResponse } = require('./utils/pagination');
 
 // Resource schema validation
 const ResourceSchema = z.object({
@@ -20,7 +22,7 @@ exports.handler = async (event, context) => {
   const optionsResponse = handleOptionsRequest(event);
   if (optionsResponse) return optionsResponse;
   
-  console.log(`Processing ${event.httpMethod} request for resources`);
+  logger.debug(`Processing ${event.httpMethod} request for resources`);
   
   // Authenticate with scope checking
   let authContext;
@@ -31,7 +33,7 @@ exports.handler = async (event, context) => {
         : ['write:resources']
     });
   } catch (errorResponse) {
-    console.error("Authentication failed:", errorResponse.body || errorResponse);
+    logger.error("Authentication failed:", errorResponse.body || errorResponse);
     if(errorResponse.statusCode) return errorResponse; 
     return createErrorResponse(401, 'Unauthorized');
   }
@@ -58,7 +60,7 @@ exports.handler = async (event, context) => {
     if (event.httpMethod === 'GET') {
       // If requesting a specific resource
       if (specificResourceId) {
-        console.log(`Fetching specific resource: ${specificResourceId}`);
+        logger.debug(`Fetching specific resource: ${specificResourceId}`);
         try {
           const resource = await resourcesCollection.findOne({ 
             _id: new ObjectId(specificResourceId),
@@ -66,7 +68,7 @@ exports.handler = async (event, context) => {
           });
           
           if (!resource) {
-            console.error(`Resource ${specificResourceId} not found`);
+            logger.error(`Resource ${specificResourceId} not found`);
             return createErrorResponse(404, 'Resource not found');
           }
           
@@ -84,46 +86,41 @@ exports.handler = async (event, context) => {
       } 
       // Otherwise, fetch all resources for the authenticated team
       else {
-        console.log(`Fetching resources for team: ${teamId}`);
-        try {
-          const resources = await resourcesCollection
-            .find({ teamId: teamId })
-            .sort({ createdAt: -1 })
-            .toArray();
-          
-          // Transform _id to id for each resource
-          const formattedResources = resources.map(resource => {
-            resource.id = resource._id.toString();
-            delete resource._id;
-            return resource;
-          });
-          
-          console.log(`Found ${formattedResources.length} resources`);
-          return createResponse(200, formattedResources);
-        } catch (mongoError) {
-          console.error('MongoDB error fetching resources:', mongoError);
-          return createErrorResponse(500, 'Error fetching resources', mongoError.message);
+        const qp = event.queryStringParameters || {};
+        const query = { teamId };
+        const formatResource = r => { r.id = r._id.toString(); delete r._id; return r; };
+
+        if (qp.page) {
+          const { page, limit, skip } = getPaginationParams(qp);
+          const [resources, total] = await Promise.all([
+            resourcesCollection.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit).toArray(),
+            resourcesCollection.countDocuments(query),
+          ]);
+          return createResponse(200, createPaginatedResponse(resources.map(formatResource), total, page, limit));
         }
+
+        const resources = await resourcesCollection.find(query).sort({ createdAt: -1 }).toArray();
+        return createResponse(200, resources.map(formatResource));
       }
     }
     
     // POST: Create a new resource
     else if (event.httpMethod === 'POST') {
-      console.log('Creating a new resource');
+      logger.debug('Creating a new resource');
       
       let data;
       try {
         data = JSON.parse(event.body);
-        console.log('Request body:', data);
+        logger.debug('Request body:', data);
       } catch (e) {
-        console.error('Invalid JSON:', e);
+        logger.error('Invalid JSON:', e);
         return createErrorResponse(400, 'Invalid JSON');
       }
       
       // Validate data
       const validationResult = ResourceSchema.safeParse(data);
       if (!validationResult.success) {
-        console.error('Validation failed:', validationResult.error.format());
+        logger.error('Validation failed:', validationResult.error.format());
         return createErrorResponse(400, 'Validation failed', validationResult.error.format());
       }
       
@@ -138,7 +135,7 @@ exports.handler = async (event, context) => {
         updatedAt: new Date()
       };
       
-      console.log('Creating resource:', newResource);
+      logger.debug('Creating resource:', newResource);
       const result = await resourcesCollection.insertOne(newResource);
       
       // Get the newly created resource
@@ -151,21 +148,21 @@ exports.handler = async (event, context) => {
     
     // PUT: Update an existing resource
     else if (event.httpMethod === 'PUT' && specificResourceId) {
-      console.log(`Updating resource: ${specificResourceId}`);
+      logger.debug(`Updating resource: ${specificResourceId}`);
       
       let data;
       try {
         data = JSON.parse(event.body);
-        console.log('Request body:', data);
+        logger.debug('Request body:', data);
       } catch (e) {
-        console.error('Invalid JSON:', e);
+        logger.error('Invalid JSON:', e);
         return createErrorResponse(400, 'Invalid JSON');
       }
       
       // Validate data
       const validationResult = ResourceUpdateSchema.safeParse(data);
       if (!validationResult.success) {
-        console.error('Validation failed:', validationResult.error.format());
+        logger.error('Validation failed:', validationResult.error.format());
         return createErrorResponse(400, 'Validation failed', validationResult.error.format());
       }
       
@@ -178,7 +175,7 @@ exports.handler = async (event, context) => {
       });
       
       if (!resourceExists) {
-        console.error(`Resource ${specificResourceId} not found`);
+        logger.error(`Resource ${specificResourceId} not found`);
         return createErrorResponse(404, 'Resource not found');
       }
       
@@ -210,7 +207,7 @@ exports.handler = async (event, context) => {
     
     // DELETE: Delete an existing resource
     else if (event.httpMethod === 'DELETE' && specificResourceId) {
-      console.log(`Deleting resource: ${specificResourceId}`);
+      logger.debug(`Deleting resource: ${specificResourceId}`);
       
       // Check if the resource exists and belongs to the user's team
       const resourceExists = await resourcesCollection.findOne({ 
@@ -219,7 +216,7 @@ exports.handler = async (event, context) => {
       });
       
       if (!resourceExists) {
-        console.error(`Resource ${specificResourceId} not found`);
+        logger.error(`Resource ${specificResourceId} not found`);
         return createErrorResponse(404, 'Resource not found');
       }
       
@@ -237,7 +234,7 @@ exports.handler = async (event, context) => {
       return createErrorResponse(405, 'Method Not Allowed');
     }
   } catch (error) {
-    console.error('Error processing request:', error);
+    logger.error('Error processing request:', error);
     return createErrorResponse(500, 'Internal Server Error', error.message);
   }
 }; 

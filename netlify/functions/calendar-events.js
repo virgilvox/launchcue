@@ -3,6 +3,7 @@ const { connectToDb } = require('./utils/db');
 const { authenticate } = require('./utils/authHandler');
 const { createResponse, createErrorResponse, handleOptionsRequest } = require('./utils/response');
 const { z } = require('zod');
+const logger = require('./utils/logger');
 
 // Zod Schema for Calendar Event
 const EventSchema = z.object({
@@ -31,7 +32,7 @@ exports.handler = async function(event, context) {
                 : ['write:calendar-events']
         });
     } catch (errorResponse) {
-        console.error("Authentication failed:", errorResponse.body || errorResponse);
+        logger.error("Authentication failed:", errorResponse.body || errorResponse);
         if(errorResponse.statusCode) return errorResponse; 
         return createErrorResponse(401, 'Unauthorized');
     }
@@ -186,7 +187,7 @@ exports.handler = async function(event, context) {
         }
 
     } catch (error) {
-        console.error('Error handling calendar events request:', error);
+        logger.error('Error handling calendar events request:', error);
         return createErrorResponse(500, 'Internal Server Error', error.message);
     }
 }; 

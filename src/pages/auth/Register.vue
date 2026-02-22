@@ -65,7 +65,7 @@
               />
             </div>
             <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-              Password must be at least 8 characters long
+              Password must be at least 10 characters with uppercase, lowercase, and a number
             </p>
           </div>
 
@@ -124,7 +124,7 @@
 import { ref, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '../../stores/auth';
-import { useToast } from '../../composables/useToast';
+import { useToast } from 'vue-toastification';
 
 const appName = import.meta.env.VITE_APP_NAME || 'LaunchCue';
 const router = useRouter();
@@ -139,11 +139,23 @@ const acceptTerms = ref(false);
 const error = ref('');
 const isLoading = ref(false);
 
+const passwordRequirements = computed(() => ({
+  length: password.value.length >= 10,
+  lowercase: /[a-z]/.test(password.value),
+  uppercase: /[A-Z]/.test(password.value),
+  number: /[0-9]/.test(password.value),
+}));
+
+const isPasswordValid = computed(() => {
+  const req = passwordRequirements.value;
+  return req.length && req.lowercase && req.uppercase && req.number;
+});
+
 const isFormValid = computed(() => {
   return (
     name.value.trim() !== '' &&
     email.value.trim() !== '' &&
-    password.value.length >= 8 &&
+    isPasswordValid.value &&
     password.value === confirmPassword.value &&
     acceptTerms.value
   );
@@ -153,8 +165,8 @@ const handleRegister = async () => {
   error.value = '';
   
   if (!isFormValid.value) {
-    if (password.value.length < 8) {
-      error.value = 'Password must be at least 8 characters long';
+    if (!isPasswordValid.value) {
+      error.value = 'Password must be at least 10 characters with uppercase, lowercase, and a number';
     } else if (password.value !== confirmPassword.value) {
       error.value = 'Passwords do not match';
     } else {

@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
 import { useAuthStore } from './auth';
-import { useToast } from '../composables/useToast';
+import { useToast } from 'vue-toastification';
 import clientService from '../services/client.service';
 
 export const useClientStore = defineStore('client', () => {

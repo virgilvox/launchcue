@@ -4,7 +4,7 @@ import calendarService from '../services/calendar.service';
 import { useAuthStore } from './auth';
 import { useProjectStore } from './project';
 import { useTaskStore } from './task';
-import { useToast } from '../composables/useToast';
+import { useToast } from 'vue-toastification';
 
 export const useCalendarStore = defineStore('calendar', () => {
   const authStore = useAuthStore();

@@ -103,7 +103,7 @@ import { useClientStore } from '../stores/client';
 import { useCalendarStore } from '../stores/calendar';
 import { format, isToday, isTomorrow, addDays, isWithinInterval } from 'date-fns';
 import LoadingSpinner from '../components/LoadingSpinner.vue';
-import { useToast } from '../composables/useToast';
+import { useToast } from 'vue-toastification';
 
 const router = useRouter();
 const projectStore = useProjectStore();

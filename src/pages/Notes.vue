@@ -161,7 +161,7 @@ import { useAuthStore } from '../stores/auth';
 import noteService from '../services/note.service'; // Corrected path
 import { useClientStore } from '../stores/client';
 import { useProjectStore } from '../stores/project';
-import { useToast } from '../composables/useToast';
+import { useToast } from 'vue-toastification';
 import Modal from '../components/Modal.vue';
 import LoadingSpinner from '../components/LoadingSpinner.vue';
 

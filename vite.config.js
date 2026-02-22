@@ -25,7 +25,6 @@ export default defineConfig({
     }
   },
   build: {
-    // Ensure the app builds correctly
     outDir: 'dist',
     emptyOutDir: true,
     rollupOptions: {
@@ -33,5 +32,10 @@ export default defineConfig({
         main: fileURLToPath(new URL('./index.html', import.meta.url)),
       }
     }
+  },
+  test: {
+    environment: 'happy-dom',
+    globals: true,
+    include: ['tests/**/*.test.{js,ts}'],
   }
 })

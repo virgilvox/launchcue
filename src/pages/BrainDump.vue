@@ -116,7 +116,7 @@
 
 <script setup>
 import { ref, reactive, onMounted, computed, watch } from 'vue';
-import { useToast } from '../composables/useToast';
+import { useToast } from 'vue-toastification';
 import brainDumpService from '../services/brain-dump.service';
 import { useClientStore } from '../stores/client';
 import { useProjectStore } from '../stores/project';

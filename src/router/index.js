@@ -186,10 +186,10 @@ const router = createRouter({
 
 // Navigation guards
 router.beforeEach((to, from, next) => {
-  const token = localStorage.getItem('token');
+  const authStore = useAuthStore();
   const requiresAuth = to.matched.some(record => record.meta.requiresAuth);
-  
-  if (requiresAuth && !token) {
+
+  if (requiresAuth && !authStore.isAuthenticated) {
     next('/login');
   } else {
     next();

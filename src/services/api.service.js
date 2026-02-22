@@ -5,7 +5,7 @@ const API_BASE = '/.netlify/functions';
 
 // Define endpoints using the base path and FLATTENED names
 const CLIENT_ENDPOINT = `${API_BASE}/clients`;
-const CLIENT_CONTACTS_ENDPOINT = `${API_BASE}/client-contacts`; // Separate endpoint for contacts
+// CLIENT_CONTACTS_ENDPOINT removed - contacts are embedded in clients
 const PROJECT_ENDPOINT = `${API_BASE}/projects`;
 const PROJECT_DETAIL_ENDPOINT = `${API_BASE}/project-detail`; // Use renamed detail endpoint
 const TASK_ENDPOINT = `${API_BASE}/tasks`;
@@ -32,41 +32,33 @@ const RESOURCE_ENDPOINT = `${API_BASE}/resources`;
  */
 class ApiService {
   constructor() {
+    this._token = localStorage.getItem('token') || null;
+    this._onUnauthorized = null;
+
     this.axiosInstance = axios.create({
-      // NO baseURL - use full paths constructed above
       timeout: 30000,
       headers: { 'Content-Type': 'application/json' }
     });
 
-    // Add auth interceptor to inject token for authenticated requests
+    // Auth interceptor reads token from memory (set by auth store)
     this.axiosInstance.interceptors.request.use(config => {
-      const token = localStorage.getItem('token');
-      if (token) {
-        config.headers['Authorization'] = `Bearer ${token}`;
+      if (this._token) {
+        config.headers['Authorization'] = `Bearer ${this._token}`;
       }
       return config;
     });
 
-    // Add response interceptor for error handling
+    // Response interceptor for error handling
     this.axiosInstance.interceptors.response.use(
       response => response.data,
       error => {
         if (error.response && error.response.status === 401) {
-          // Check if the 401 is from an authentication endpoint or something else
-          // Don't log out for AI processing failures or similar API errors
           const isAuthEndpoint = error.config?.url?.includes('/auth-') ||
                                 error.config?.url?.includes('/user-profile');
-          
-          if (isAuthEndpoint) {
-            // Only for actual auth-related 401s, clear token and redirect
-            localStorage.removeItem('token');
-            localStorage.removeItem('user');
-            // Redirect only if not already on login page
-            if (window.location.pathname !== '/login') {
-                window.location.href = '/login';
-            }
-          } else {
-            // For non-auth endpoints returning 401, just log it
+
+          if (isAuthEndpoint && this._onUnauthorized) {
+            this._onUnauthorized();
+          } else if (!isAuthEndpoint) {
             console.warn('Non-auth endpoint returned 401:', error.config?.url);
           }
         }
@@ -75,8 +67,14 @@ class ApiService {
     );
   }
 
-  // Set auth token for future requests
+  // Register callback for 401 handling (called by auth store to avoid circular imports)
+  onUnauthorized(callback) {
+    this._onUnauthorized = callback;
+  }
+
+  // Set auth token in memory and localStorage (for persistence across page loads)
   setAuthToken(token) {
+    this._token = token || null;
     if (token) {
       localStorage.setItem('token', token);
     } else {
@@ -172,22 +170,6 @@ class ApiService {
 
   // Error handling
   _handleError(error) {
-    // Determine if this is a client request with contacts
-    const isClientContactOperation = error.config?.url?.includes('/clients/') && 
-      (error.config?.method === 'put' || error.config?.method === 'delete');
-    
-    // Check if this is a not found but it might be related to client/contacts
-    if (isClientContactOperation && error.response?.status === 404) {
-      console.warn('Client operation returned 404 but may have succeeded:', error.config?.url);
-      
-      // For client updates with contacts, this is often a false error
-      return {
-        status: error.response.status,
-        message: 'Client update may have succeeded, refresh to confirm',
-        silentError: true
-      };
-    }
-
     if (error.response) {
       // Server responded with a status outside 2xx range
       console.error('API error response:', {
@@ -231,7 +213,7 @@ export default apiService;
 // Export constants with correct full paths - ENSURE ALL ARE INCLUDED
 export { 
     API_BASE, // Export base too if needed elsewhere
-    CLIENT_ENDPOINT, CLIENT_CONTACTS_ENDPOINT,
+    CLIENT_ENDPOINT,
     PROJECT_ENDPOINT, PROJECT_DETAIL_ENDPOINT,
     TASK_ENDPOINT, 
     AUTH_LOGIN_ENDPOINT, AUTH_REGISTER_ENDPOINT, AUTH_LOGOUT_ENDPOINT, 

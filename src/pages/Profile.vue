@@ -150,7 +150,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue';
-import { useToast } from '../composables/useToast';
+import { useToast } from 'vue-toastification';
 import { useAuthStore } from '../stores/auth';
 import userService from '../services/user.service';
 

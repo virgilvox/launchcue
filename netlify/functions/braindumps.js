@@ -3,6 +3,8 @@ const { connectToDb } = require('./utils/db');
 const { authenticate } = require('./utils/authHandler');
 const { createResponse, createErrorResponse, handleOptionsRequest } = require('./utils/response');
 const { z } = require('zod');
+const logger = require('./utils/logger');
+const { getPaginationParams, createPaginatedResponse } = require('./utils/pagination');
 
 // Zod Schema for BrainDump
 const BrainDumpSchema = z.object({
@@ -29,7 +31,7 @@ exports.handler = async function(event, context) {
                 : ['write:braindumps']
         });
     } catch (errorResponse) {
-        console.error("Authentication failed:", errorResponse.body || errorResponse);
+        logger.error("Authentication failed:", errorResponse.body || errorResponse);
         if(errorResponse.statusCode) return errorResponse; 
         return createErrorResponse(401, 'Unauthorized');
     }
@@ -62,9 +64,21 @@ exports.handler = async function(event, context) {
                 delete dump._id;
                 return createResponse(200, dump);
             } else {
-                const dumps = await collection.find({ teamId }).sort({ createdAt: -1 }).toArray();
-                const formattedDumps = dumps.map(d => ({ ...d, id: d._id.toString(), _id: undefined }));
-                return createResponse(200, formattedDumps);
+                const qp = event.queryStringParameters || {};
+                const query = { teamId };
+                const formatDump = d => ({ ...d, id: d._id.toString(), _id: undefined });
+
+                if (qp.page) {
+                  const { page, limit, skip } = getPaginationParams(qp);
+                  const [dumps, total] = await Promise.all([
+                    collection.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit).toArray(),
+                    collection.countDocuments(query),
+                  ]);
+                  return createResponse(200, createPaginatedResponse(dumps.map(formatDump), total, page, limit));
+                }
+
+                const dumps = await collection.find(query).sort({ createdAt: -1 }).toArray();
+                return createResponse(200, dumps.map(formatDump));
             }
         }
 
@@ -150,7 +164,7 @@ exports.handler = async function(event, context) {
         }
 
     } catch (error) {
-        console.error('Error handling braindumps request:', error);
+        logger.error('Error handling braindumps request:', error);
         return createErrorResponse(500, 'Internal Server Error', error.message);
     }
 }; 

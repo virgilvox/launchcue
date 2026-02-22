@@ -41,7 +41,7 @@
 import { ref, onMounted } from 'vue';
 import Modal from '../Modal.vue';
 import noteService from '@/services/note.service'; // Corrected path
-import { useToast } from '../../composables/useToast';
+import { useToast } from 'vue-toastification';
 
 const props = defineProps({
   show: Boolean,

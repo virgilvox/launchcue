@@ -3,6 +3,9 @@ const { connectToDb } = require('./utils/db');
 const { authenticate } = require('./utils/authHandler'); // Use new authentication handler
 const { createResponse, createErrorResponse, handleOptionsRequest } = require('./utils/response');
 const { z } = require('zod');
+const logger = require('./utils/logger');
+const { getPaginationParams, createPaginatedResponse } = require('./utils/pagination');
+const { notDeleted, softDelete } = require('./utils/softDelete');
 
 // Zod Schema for Campaign Step
 const CampaignStepSchema = z.object({
@@ -42,7 +45,7 @@ exports.handler = async function(event, context) {
                 : ['write:campaigns']
         });
     } catch (errorResponse) {
-        console.error("Authentication failed:", errorResponse.body || errorResponse);
+        logger.error("Authentication failed:", errorResponse.body || errorResponse);
         if(errorResponse.statusCode) return errorResponse; 
         return createErrorResponse(401, 'Unauthorized');
     }
@@ -76,15 +79,24 @@ exports.handler = async function(event, context) {
                 delete campaign._id;
                 return createResponse(200, campaign);
             } else {
-                // Add filtering by clientId if needed
-                const { clientId, projectId } = event.queryStringParameters || {};
-                const query = { teamId };
-                if (clientId && ObjectId.isValid(clientId)) query.clientId = clientId;
-                if (projectId && ObjectId.isValid(projectId)) query.projectId = projectId;
-                
+                const qp = event.queryStringParameters || {};
+                const query = { teamId, ...notDeleted };
+                if (qp.clientId && ObjectId.isValid(qp.clientId)) query.clientId = qp.clientId;
+                if (qp.projectId && ObjectId.isValid(qp.projectId)) query.projectId = qp.projectId;
+
+                const formatCampaign = c => ({ ...c, id: c._id.toString(), _id: undefined });
+
+                if (qp.page) {
+                  const { page, limit, skip } = getPaginationParams(qp);
+                  const [campaigns, total] = await Promise.all([
+                    collection.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit).toArray(),
+                    collection.countDocuments(query),
+                  ]);
+                  return createResponse(200, createPaginatedResponse(campaigns.map(formatCampaign), total, page, limit));
+                }
+
                 const campaigns = await collection.find(query).sort({ createdAt: -1 }).toArray();
-                const formattedCampaigns = campaigns.map(c => ({ ...c, id: c._id.toString(), _id: undefined }));
-                return createResponse(200, formattedCampaigns);
+                return createResponse(200, campaigns.map(formatCampaign));
             }
         }
 
@@ -199,8 +211,8 @@ exports.handler = async function(event, context) {
             // Optional: Delete associated steps/events first
             // await db.collection('campaignSteps').deleteMany({ campaignId: campaignId, teamId: teamId });
             
-            const result = await collection.deleteOne({ _id: new ObjectId(campaignId), teamId });
-            if (result.deletedCount === 0) {
+            const result = await softDelete(collection, { _id: new ObjectId(campaignId), teamId, ...notDeleted }, userId);
+            if (result.matchedCount === 0) {
                  return createErrorResponse(404, 'Campaign not found or user unauthorized');
             }
             return createResponse(200, { message: 'Campaign deleted successfully' });
@@ -212,7 +224,7 @@ exports.handler = async function(event, context) {
         }
 
     } catch (error) {
-        console.error('Error handling campaigns request:', error);
+        logger.error('Error handling campaigns request:', error);
         return createErrorResponse(500, 'Internal Server Error', error.message);
     }
 }; 
