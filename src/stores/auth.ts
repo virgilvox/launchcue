@@ -353,6 +353,11 @@ export const useAuthStore = defineStore('auth', () => {
     // No longer need token update here, handled by switchTeam response
   }
 
+  // Set session from external auth flow (e.g., client invitation acceptance)
+  const setSession = (userData: AuthUser, accessToken: string): void => {
+    setUserData(userData, accessToken)
+  }
+
   // Return store methods and state
   return {
     user,
@@ -374,7 +379,7 @@ export const useAuthStore = defineStore('auth', () => {
     updateUserState,
     loadUserTeams,
     createTeam,
-    switchTeam
-    // Avoid exposing setCurrentTeam directly now
+    switchTeam,
+    setSession
   }
 })

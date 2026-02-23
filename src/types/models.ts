@@ -8,6 +8,11 @@ import type {
   NotificationType,
   ApiScope,
   InviteStatus,
+  ScopeStatus,
+  DeliverableStatus,
+  OnboardingStepType,
+  OnboardingStatus,
+  InvoiceStatus,
 } from './enums'
 
 // ─── Common ───
@@ -238,6 +243,52 @@ export interface Resource extends Timestamped {
   updatedBy?: string
 }
 
+// ─── Scope Template ───
+export interface ScopeTemplate extends Timestamped {
+  id: string
+  title: string
+  description?: string
+  deliverables: ScopeDeliverable[]
+  terms?: string
+  tags: string[]
+  teamId: string
+  createdBy: string
+}
+
+// ─── Scope (project-bound instance) ───
+export interface Scope extends Timestamped {
+  id: string
+  title: string
+  description?: string
+  projectId?: string | null
+  clientId?: string | null
+  templateId?: string | null
+  deliverables: ScopeDeliverableInstance[]
+  terms?: string
+  totalAmount: number
+  status: ScopeStatus
+  sentAt?: string | null
+  approvedAt?: string | null
+  teamId: string
+  createdBy: string
+}
+
+export interface ScopeDeliverable {
+  id: string
+  title: string
+  description?: string
+  quantity: number
+  unit: string
+  rate: number
+  estimatedHours: number
+}
+
+export interface ScopeDeliverableInstance extends ScopeDeliverable {
+  status: DeliverableStatus
+  completedAt?: string | null
+  approvedBy?: string | null
+}
+
 // ─── API Key ───
 export interface ApiKey {
   id: string
@@ -272,6 +323,85 @@ export interface Notification {
   resourceType?: string
   resourceId?: string
   createdAt: string
+}
+
+// ─── Invoice ───
+export interface Invoice extends Timestamped {
+  id: string
+  teamId: string
+  clientId: string
+  projectId?: string | null
+  scopeId?: string | null
+  invoiceNumber: string
+  lineItems: InvoiceLineItem[]
+  subtotal: number
+  tax?: number | null
+  taxRate?: number | null
+  total: number
+  currency: string
+  status: InvoiceStatus
+  notes?: string
+  dueDate?: string | null
+  sentAt?: string | null
+  paidAt?: string | null
+  paidAmount?: number | null
+  createdBy: string
+}
+
+export interface InvoiceLineItem {
+  id: string
+  description: string
+  quantity: number
+  unit: string
+  rate: number
+  amount: number
+}
+
+// ─── Client Invitation ───
+export interface ClientInvitation extends Timestamped {
+  id: string
+  teamId: string
+  clientId: string
+  projectIds: string[]
+  email: string
+  name: string
+  role: 'client'
+  invitedBy: string
+  token?: string
+  status: 'pending' | 'accepted' | 'expired'
+  expiresAt: string
+}
+
+// ─── Onboarding Checklist ───
+export interface OnboardingChecklist extends Timestamped {
+  id: string
+  teamId: string
+  clientId: string
+  projectId?: string | null
+  title: string
+  steps: OnboardingStep[]
+  status: OnboardingStatus
+}
+
+export interface OnboardingStep {
+  id: string
+  title: string
+  description?: string
+  type: OnboardingStepType
+  required: boolean
+  formFields?: OnboardingFormField[]
+  completedAt?: string | null
+  completedBy?: string | null
+  response?: Record<string, unknown>
+}
+
+export interface OnboardingFormField {
+  id: string
+  label: string
+  type: 'text' | 'textarea' | 'select' | 'checkbox' | 'file'
+  required: boolean
+  options?: string[]
+  value?: unknown
 }
 
 // ─── Audit Log ───

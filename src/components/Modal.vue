@@ -74,10 +74,10 @@ const previousActiveElement = ref(null)
 const titleId = computed(() => `modal-title-${Math.random().toString(36).slice(2, 9)}`)
 
 const sizeClass = computed(() => ({
-  'max-w-sm': props.size === 'sm',
-  'max-w-lg': props.size === 'md',
-  'max-w-2xl': props.size === 'lg',
-  'max-w-4xl': props.size === 'xl',
+  'sm:max-w-sm': props.size === 'sm',
+  'sm:max-w-lg': props.size === 'md',
+  'sm:max-w-2xl': props.size === 'lg',
+  'sm:max-w-4xl': props.size === 'xl',
 }))
 
 const close = () => {
@@ -143,15 +143,30 @@ const onKeydown = (e) => {
   align-items: center;
   justify-content: center;
   z-index: 50;
-  padding: 1rem;
+  padding: 0;
+}
+
+@media (min-width: 640px) {
+  .modal-overlay {
+    padding: 1rem;
+  }
 }
 
 .modal-container {
-  border-radius: 0.5rem;
   box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
   width: 100%;
-  max-height: 85vh;
+  height: 100%;
+  max-height: 100%;
   overflow-y: auto;
+  border-radius: 0;
+}
+
+@media (min-width: 640px) {
+  .modal-container {
+    height: auto;
+    max-height: 85vh;
+    border-radius: 0.5rem;
+  }
 }
 
 .modal-header {

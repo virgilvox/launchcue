@@ -1,39 +1,19 @@
 <template>
-  <div class="flex flex-col h-full">
-    <header class="mb-6">
-      <h2 class="text-2xl font-bold text-gray-800 dark:text-white">Project Calendar View</h2>
+  <PageContainer>
+    <PageHeader title="Project Calendar View" />
 
-      <!-- Filter controls -->
-      <div class="flex flex-wrap gap-4 mt-4">
-        <div class="w-64">
-          <label class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 block">Client</label>
-          <select v-model="filterClientId" class="input select-bordered w-full">
-            <option :value="null">All Clients</option>
-            <option v-for="client in clients" :key="client.id" :value="client.id" class="text-gray-800 dark:text-white">
-              {{ client.name }}
-            </option>
-          </select>
-        </div>
+    <!-- Filter controls -->
+    <CalendarFilters
+      :clients="clients"
+      :projects="filteredProjects"
+      :client-id="filterClientId"
+      :project-id="filterProjectId"
+      @update:client-id="filterClientId = $event"
+      @update:project-id="filterProjectId = $event"
+      @clear="clearFilters"
+    />
 
-        <div class="w-64">
-          <label class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 block">Project</label>
-          <select v-model="filterProjectId" class="input select-bordered w-full">
-            <option :value="null">All Projects</option>
-            <option v-for="project in filteredProjects" :key="project.id" :value="project.id" class="text-gray-800 dark:text-white">
-              {{ project.name }}
-            </option>
-          </select>
-        </div>
-
-        <div class="flex items-end">
-          <button @click="clearFilters" class="btn btn-outline btn-sm">
-            Clear Filters
-          </button>
-        </div>
-      </div>
-    </header>
-
-    <div class="flex flex-1 space-x-6">
+    <div class="flex flex-1 space-x-6 mt-6">
       <!-- Calendar and Task List -->
       <div class="flex-1 flex flex-col">
         <!-- Navigation and View Toggle -->
@@ -106,189 +86,45 @@
         </div>
 
         <!-- ==================== MONTH VIEW ==================== -->
-        <div v-if="calendarView === 'month'" class="bg-white dark:bg-gray-800 rounded-lg shadow-sm mb-6 overflow-hidden">
-          <!-- Days of Week Header -->
-          <div class="grid grid-cols-7 border-b dark:border-gray-700">
-            <div v-for="day in daysOfWeek" :key="day" class="py-2 text-center text-sm font-medium text-gray-700 dark:text-gray-300">
-              {{ day }}
-            </div>
-          </div>
-
-          <!-- Calendar Days -->
-          <div class="grid grid-cols-7 h-[30rem]">
-            <div
-              v-for="(day, index) in calendarDays"
-              :key="index"
-              :class="[
-                'border-b border-r dark:border-gray-700 p-1 relative',
-                day.isCurrentMonth ? 'bg-white dark:bg-gray-800' : 'bg-gray-50 dark:bg-gray-900',
-                day.isToday ? 'font-bold' : ''
-              ]"
-            >
-              <div class="flex justify-between p-1">
-                <span
-                  :class="[
-                    'text-sm inline-block w-6 h-6 leading-6 text-center rounded-full',
-                    day.isToday ? 'bg-primary-500 text-white' : 'text-gray-700 dark:text-gray-300'
-                  ]"
-                >
-                  {{ day.date.getDate() }}
-                </span>
-                <span class="text-xs text-gray-700 dark:text-gray-300">{{ getDateInfo(day.date) }}</span>
-              </div>
-
-              <!-- Events for this day -->
-              <div class="mt-1 space-y-1 max-h-[80%] overflow-y-auto">
-                <div
-                  v-for="event in getEventsForDay(day.date)"
-                  :key="event.id"
-                  :class="`bg-${event.color}-500 text-white text-xs py-1 px-2 rounded truncate cursor-pointer hover:opacity-80`"
-                  @click="navigateToEvent(event)"
-                >
-                  {{ getEventTitle(event) }}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+        <CalendarMonthView
+          v-if="calendarView === 'month'"
+          :calendar-days="calendarDays"
+          :days-of-week="daysOfWeek"
+          :get-events-for-day="getEventsForDay"
+          :get-event-title="getEventTitle"
+          :get-date-info="getDateInfo"
+          @select-event="navigateToEvent"
+        />
 
         <!-- ==================== WEEK VIEW ==================== -->
-        <div v-if="calendarView === 'week'" class="bg-white dark:bg-gray-800 rounded-lg shadow-sm mb-6 overflow-hidden">
-          <!-- Week Day Headers -->
-          <div class="grid grid-cols-[4rem_repeat(7,1fr)] border-b dark:border-gray-700">
-            <!-- Empty corner for time gutter -->
-            <div class="py-2 border-r dark:border-gray-700"></div>
-            <div
-              v-for="day in weekDays"
-              :key="day.dateStr"
-              :class="[
-                'py-2 text-center border-r dark:border-gray-700 last:border-r-0',
-                day.isToday ? 'bg-purple-50 dark:bg-purple-900/20' : ''
-              ]"
-            >
-              <div class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">{{ day.dayName }}</div>
-              <div
-                :class="[
-                  'text-lg font-semibold mt-0.5',
-                  day.isToday ? 'text-purple-600 dark:text-purple-400' : 'text-gray-800 dark:text-white'
-                ]"
-              >
-                {{ day.dayNum }}
-              </div>
-            </div>
-          </div>
-
-          <!-- All-Day Events Row -->
-          <div v-if="hasAllDayEventsInWeek" class="grid grid-cols-[4rem_repeat(7,1fr)] border-b dark:border-gray-700">
-            <div class="px-1 py-1 text-xs text-gray-500 dark:text-gray-400 border-r dark:border-gray-700 flex items-center justify-center">
-              All Day
-            </div>
-            <div
-              v-for="day in weekDays"
-              :key="'allday-' + day.dateStr"
-              class="px-1 py-1 border-r dark:border-gray-700 last:border-r-0 min-h-[2rem]"
-            >
-              <div
-                v-for="event in getAllDayEventsForDay(day.date)"
-                :key="event.id"
-                :class="`bg-${event.color}-500 text-white text-xs py-0.5 px-1.5 rounded truncate cursor-pointer hover:opacity-80 mb-0.5`"
-                @click="navigateToEvent(event)"
-              >
-                {{ getEventTitle(event) }}
-              </div>
-            </div>
-          </div>
-
-          <!-- Time Grid -->
-          <div class="overflow-y-auto max-h-[32rem]">
-            <div class="grid grid-cols-[4rem_repeat(7,1fr)]">
-              <template v-for="hour in weekHours" :key="hour">
-                <!-- Hour Row -->
-                <div class="h-14 border-b border-r dark:border-gray-700 px-1 text-xs text-gray-500 dark:text-gray-400 text-right pr-2 pt-0.5">
-                  {{ formatHour(hour) }}
-                </div>
-                <div
-                  v-for="day in weekDays"
-                  :key="day.dateStr + '-' + hour"
-                  :class="[
-                    'h-14 border-b border-r dark:border-gray-700 last:border-r-0 relative',
-                    day.isToday ? 'bg-purple-50/30 dark:bg-purple-900/10' : ''
-                  ]"
-                >
-                  <!-- Events positioned by time -->
-                  <div
-                    v-for="event in getTimedEventsForDayHour(day.date, hour)"
-                    :key="event.id"
-                    :class="`absolute inset-x-0.5 bg-${event.color}-500 text-white text-xs py-0.5 px-1 rounded cursor-pointer hover:opacity-80 z-10 overflow-hidden`"
-                    :style="getWeekEventStyle(event, hour)"
-                    @click="navigateToEvent(event)"
-                  >
-                    <div class="font-medium truncate">{{ getEventTitle(event) }}</div>
-                    <div v-if="event.start" class="truncate opacity-80">{{ formatEventTime(event.start) }}</div>
-                  </div>
-                </div>
-              </template>
-            </div>
-          </div>
-        </div>
+        <CalendarWeekView
+          v-if="calendarView === 'week'"
+          :week-days="weekDays"
+          :week-hours="weekHours"
+          :has-all-day-events-in-week="hasAllDayEventsInWeek"
+          :get-all-day-events-for-day="getAllDayEventsForDay"
+          :get-timed-events-for-day-hour="getTimedEventsForDayHour"
+          :get-week-event-style="getWeekEventStyle"
+          :get-event-title="getEventTitle"
+          :format-hour="formatHour"
+          :format-event-time="formatEventTime"
+          @select-event="navigateToEvent"
+        />
 
         <!-- ==================== DAY VIEW ==================== -->
-        <div v-if="calendarView === 'day'" class="bg-white dark:bg-gray-800 rounded-lg shadow-sm mb-6 overflow-hidden">
-          <!-- Day Header -->
-          <div class="py-3 px-4 border-b dark:border-gray-700 text-center">
-            <div class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">{{ dayViewHeader.dayName }}</div>
-            <div
-              :class="[
-                'text-2xl font-bold mt-0.5',
-                dayViewHeader.isToday ? 'text-purple-600 dark:text-purple-400' : 'text-gray-800 dark:text-white'
-              ]"
-            >
-              {{ dayViewHeader.dayNum }}
-            </div>
-          </div>
-
-          <!-- All-Day Events -->
-          <div v-if="dayAllDayEvents.length > 0" class="px-4 py-2 border-b dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
-            <div class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1 uppercase">All Day</div>
-            <div class="flex flex-wrap gap-1">
-              <div
-                v-for="event in dayAllDayEvents"
-                :key="event.id"
-                :class="`bg-${event.color}-500 text-white text-xs py-1 px-2 rounded cursor-pointer hover:opacity-80`"
-                @click="navigateToEvent(event)"
-              >
-                {{ getEventTitle(event) }}
-              </div>
-            </div>
-          </div>
-
-          <!-- Time Slots -->
-          <div class="overflow-y-auto max-h-[36rem]">
-            <div class="grid grid-cols-[5rem_1fr]">
-              <template v-for="hour in dayHours" :key="hour">
-                <div class="h-16 border-b border-r dark:border-gray-700 px-2 text-xs text-gray-500 dark:text-gray-400 text-right pr-3 pt-1">
-                  {{ formatHour(hour) }}
-                </div>
-                <div class="h-16 border-b dark:border-gray-700 relative">
-                  <!-- Timed events -->
-                  <div
-                    v-for="event in getTimedEventsForDayViewHour(currentDate, hour)"
-                    :key="event.id"
-                    :class="`absolute left-1 right-1 bg-${event.color}-500 text-white text-xs rounded cursor-pointer hover:opacity-80 z-10 overflow-hidden px-2 py-1`"
-                    :style="getDayEventStyle(event, hour)"
-                    @click="navigateToEvent(event)"
-                  >
-                    <div class="font-medium truncate">{{ getEventTitle(event) }}</div>
-                    <div class="truncate opacity-80">
-                      {{ formatEventTime(event.start) }}
-                      <span v-if="event.end"> - {{ formatEventTime(event.end) }}</span>
-                    </div>
-                  </div>
-                </div>
-              </template>
-            </div>
-          </div>
-        </div>
+        <CalendarDayView
+          v-if="calendarView === 'day'"
+          :day-view-header="dayViewHeader"
+          :day-all-day-events="dayAllDayEvents"
+          :day-hours="dayHours"
+          :current-date="currentDate"
+          :get-timed-events-for-day-view-hour="getTimedEventsForDayViewHour"
+          :get-day-event-style="getDayEventStyle"
+          :get-event-title="getEventTitle"
+          :format-hour="formatHour"
+          :format-event-time="formatEventTime"
+          @select-event="navigateToEvent"
+        />
 
         <!-- Task List -->
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4">
@@ -316,7 +152,7 @@
               </div>
               <div class="flex items-center text-sm text-gray-700 dark:text-gray-300">
                 <span>{{ task.status }}</span>
-                <span class="mx-2">•</span>
+                <span class="mx-2">&bull;</span>
                 <span>{{ formatDate(task.dueDate) }}</span>
                 <svg class="h-5 w-5 ml-2 text-gray-700 dark:text-gray-300" viewBox="0 0 20 20" fill="currentColor">
                   <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
@@ -327,89 +163,18 @@
         </div>
       </div>
 
-      <!-- Project Details Sidebar -->
-      <div class="w-80 bg-white dark:bg-gray-800 rounded-lg shadow-sm p-5">
-        <h3 class="text-xl font-bold text-gray-800 dark:text-white mb-6">Event Details</h3>
-
-        <div v-if="!selectedEvent" class="text-center text-gray-700 dark:text-gray-300 py-8">
-          Select an event to view details
-        </div>
-
-        <div v-else class="space-y-6">
-          <!-- Event Type and Title -->
-          <div>
-            <h4 class="uppercase text-xs font-semibold text-gray-700 dark:text-gray-300 tracking-wider mb-3">
-              {{ selectedEvent.type === 'task' ? 'Task' : selectedEvent.type === 'project' ? 'Project' : 'Event' }}
-            </h4>
-            <p class="text-lg font-medium text-gray-900 dark:text-white">
-              {{ selectedEvent.title || getEventTitle(selectedEvent) }}
-            </p>
-            <p v-if="selectedEvent.description" class="text-sm text-gray-700 dark:text-gray-300 mt-2">
-              {{ selectedEvent.description }}
-            </p>
-          </div>
-
-          <!-- Date Information -->
-          <div v-if="selectedEvent.start">
-            <h4 class="uppercase text-xs font-semibold text-gray-700 dark:text-gray-300 tracking-wider mb-3">Date</h4>
-            <p class="text-sm text-gray-900 dark:text-white">
-              {{ formatDate(selectedEvent.start) }}
-              <span v-if="selectedEvent.end && selectedEvent.end !== selectedEvent.start">
-                - {{ formatDate(selectedEvent.end) }}
-              </span>
-            </p>
-          </div>
-
-          <!-- Project Information (if available) -->
-          <div v-if="selectedEvent.projectId">
-            <h4 class="uppercase text-xs font-semibold text-gray-700 dark:text-gray-300 tracking-wider mb-3">Related Project</h4>
-            <p class="text-sm text-gray-900 dark:text-white">
-              {{ getProjectName(selectedEvent.projectId) }}
-            </p>
-          </div>
-
-          <!-- Associated Links -->
-          <div v-if="projectLinks.length > 0">
-            <h4 class="uppercase text-xs font-semibold text-gray-700 dark:text-gray-300 tracking-wider mb-3">Associated Links</h4>
-            <div class="space-y-2">
-              <div v-for="(link, index) in projectLinks" :key="index" class="flex items-center">
-                <svg class="h-4 w-4 text-gray-700 dark:text-gray-300 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                </svg>
-                <a href="#" class="text-sm text-primary-600 dark:text-primary-400 hover:underline">{{ link }}</a>
-              </div>
-            </div>
-          </div>
-
-          <!-- Contacts -->
-          <div v-if="projectContacts.length > 0">
-            <h4 class="uppercase text-xs font-semibold text-gray-700 dark:text-gray-300 tracking-wider mb-3">Contacts</h4>
-            <div class="space-y-3">
-              <div v-for="contact in projectContacts" :key="contact.id" class="flex items-center">
-                <div class="w-8 h-8 rounded-full overflow-hidden mr-3">
-                  <img :src="contact.avatar" :alt="contact.name" class="w-full h-full object-cover" />
-                </div>
-                <div>
-                  <div class="text-sm font-medium text-gray-900 dark:text-white">{{ contact.name }}</div>
-                  <div class="text-xs text-gray-700 dark:text-gray-300">{{ contact.role }}</div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Actions -->
-          <div class="pt-4">
-            <button
-              @click="navigateToEventPage(selectedEvent)"
-              class="btn btn-primary btn-sm w-full"
-            >
-              View {{ selectedEvent.type === 'task' ? 'Task' : selectedEvent.type === 'project' ? 'Project' : 'Event' }} Details
-            </button>
-          </div>
-        </div>
-      </div>
+      <!-- Event Details Sidebar -->
+      <CalendarEventSidebar
+        :selected-event="selectedEvent"
+        :project-name="selectedEventProjectName"
+        :project-links="projectLinks"
+        :project-contacts="projectContacts"
+        :get-event-title="getEventTitle"
+        :format-date="formatDate"
+        @navigate-to-event="navigateToEventPage"
+      />
     </div>
-  </div>
+  </PageContainer>
 </template>
 
 <script setup>
@@ -420,6 +185,13 @@ import { useProjectStore } from '../stores/project';
 import { useTaskStore } from '../stores/task';
 import { useClientStore } from '../stores/client';
 import apiService from '../services/api.service';
+import PageContainer from '@/components/ui/PageContainer.vue';
+import PageHeader from '@/components/ui/PageHeader.vue';
+import CalendarFilters from '@/components/calendar/CalendarFilters.vue';
+import CalendarMonthView from '@/components/calendar/CalendarMonthView.vue';
+import CalendarWeekView from '@/components/calendar/CalendarWeekView.vue';
+import CalendarDayView from '@/components/calendar/CalendarDayView.vue';
+import CalendarEventSidebar from '@/components/calendar/CalendarEventSidebar.vue';
 
 const router = useRouter();
 const calendarStore = useCalendarStore();
@@ -544,6 +316,12 @@ const headerTitle = computed(() => {
 // Keep backward compatibility
 const formattedCurrentMonth = computed(() => {
   return currentDate.value.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+});
+
+// Computed project name for selected event (used by sidebar)
+const selectedEventProjectName = computed(() => {
+  if (!selectedEvent.value || !selectedEvent.value.projectId) return 'Project';
+  return getProjectName(selectedEvent.value.projectId);
 });
 
 // ============================================================

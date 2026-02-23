@@ -33,6 +33,11 @@ const CALENDAR_EVENT_ENDPOINT = `${API_BASE}/calendar-events` as const;
 const AI_PROCESS_ENDPOINT = `${API_BASE}/ai-process` as const;
 const RESOURCE_ENDPOINT = `${API_BASE}/resources` as const;
 const SEARCH_ENDPOINT = `${API_BASE}/search` as const;
+const SCOPE_TEMPLATE_ENDPOINT = `${API_BASE}/scope-templates` as const;
+const SCOPE_ENDPOINT = `${API_BASE}/scopes` as const;
+const CLIENT_INVITATION_ENDPOINT = `${API_BASE}/client-invitations` as const;
+const ONBOARDING_ENDPOINT = `${API_BASE}/onboarding` as const;
+const INVOICE_ENDPOINT = `${API_BASE}/invoices` as const;
 
 interface ApiErrorResponse {
   status: number;
@@ -297,5 +302,10 @@ export {
     CALENDAR_EVENT_ENDPOINT,
     AI_PROCESS_ENDPOINT,
     RESOURCE_ENDPOINT,
-    SEARCH_ENDPOINT
+    SEARCH_ENDPOINT,
+    SCOPE_TEMPLATE_ENDPOINT,
+    SCOPE_ENDPOINT,
+    CLIENT_INVITATION_ENDPOINT,
+    ONBOARDING_ENDPOINT,
+    INVOICE_ENDPOINT
 };

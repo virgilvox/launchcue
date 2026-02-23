@@ -88,7 +88,12 @@ launchcue/
 │       ├── auth-reset-password.js
 │       ├── auth-verify-email.js
 │       ├── api-keys.js
-│       └── teams.js
+│       ├── teams.js
+│       ├── scope-templates.js   # Scope template CRUD
+│       ├── scopes.js            # Project scope CRUD (soft delete)
+│       ├── invoices.js          # Invoice CRUD (soft delete, auto-numbering)
+│       ├── client-invitations.js # Client invite + accept flow
+│       └── onboarding.js        # Onboarding checklist CRUD
 ├── src/
 │   ├── assets/              # CSS (main.css with Tailwind)
 │   ├── components/
@@ -98,14 +103,23 @@ launchcue/
 │   │   ├── brain-dump/      # BrainDumpForm
 │   │   ├── settings/        # ApiKeyManager, AuditLogViewer, WebhookManager
 │   │   ├── resource/        # ResourceDialog
+│   │   ├── calendar/        # CalendarMonthView, WeekView, DayView, EventSidebar, Filters
+│   │   ├── project/         # ProjectDetailsCard, TasksSection, TeamSection, StatsCard
+│   │   ├── client/          # ClientInfoSection, ContactsSection, ProjectsTable
+│   │   ├── campaign/        # CampaignForm, CampaignCard
+│   │   ├── scope/           # ScopeDeliverableRow, TermsEditor, SummaryCard, Preview
+│   │   ├── invoice/         # InvoiceLineItemRow, Summary, Preview, StatusBadge
+│   │   ├── onboarding/      # OnboardingStepForm, StepUpload, Progress
 │   │   ├── GlobalSearch.vue
 │   │   └── Modal.vue
-│   ├── layouts/             # DefaultLayout.vue
+│   ├── composables/         # Reusable composables (useModalState, useListFilters, etc.)
+│   ├── layouts/             # DefaultLayout.vue, ClientLayout.vue
 │   ├── pages/               # Route-level page components
-│   │   └── auth/            # Login, ForgotPassword, ResetPassword, VerifyEmail
+│   │   ├── auth/            # Login, ForgotPassword, ResetPassword, VerifyEmail, AcceptInvite
+│   │   └── client-portal/   # PortalDashboard, PortalProject, PortalOnboarding
 │   ├── router/index.ts      # Vue Router config
-│   ├── services/*.ts        # API service layer (13 TS + 4 JS)
-│   ├── stores/*.ts          # Pinia stores (7 TS + 1 JS)
+│   ├── services/*.ts        # API service layer (16 TS + 4 JS)
+│   ├── stores/*.ts          # Pinia stores (10 TS + 1 JS)
 │   ├── types/               # TypeScript types (models, api, enums, index)
 │   ├── utils/               # Utility functions
 │   ├── App.vue
@@ -254,87 +268,92 @@ The codebase is in an incremental TypeScript migration:
 
 ---
 
-## 7. Adding a New Page/Component -- Checklist
+## 7. Adding a New Feature -- Checklist
 
-1. **Create the page component** in `src/pages/YourPage.vue`:
+Follow this convention when adding a new feature (e.g., "invoices"):
+
+1. **Components** → `src/components/{feature}/` — feature-specific UI components (e.g., `src/components/invoice/InvoiceLineItemRow.vue`). Reusable UI primitives stay in `src/components/ui/`.
+
+2. **Page** → `src/pages/{Feature}.vue` — the route-level page that orchestrates data loading and passes props to child components. Use `PageContainer` for vertical spacing and `PageHeader` for the title/breadcrumbs/actions bar.
 
    ```vue
-   <script setup>
-   import { ref, onMounted } from 'vue'
-   // imports...
-   </script>
-
    <template>
-     <div>
+     <PageContainer>
+       <PageHeader title="Invoices" :breadcrumbs="breadcrumbs">
+         <template #actions>
+           <button class="btn btn-primary">Create Invoice</button>
+         </template>
+       </PageHeader>
        <!-- page content -->
-     </div>
+     </PageContainer>
    </template>
    ```
 
-2. **Add the route** in `src/router/index.ts`:
+3. **Route** → `src/router/index.ts` — add the route inside the DefaultLayout children array. Include `meta.breadcrumbs` for automatic breadcrumb rendering.
 
    ```typescript
    {
-     path: '/your-page',
-     name: 'YourPage',
-     component: () => import('@/pages/YourPage.vue'),
-     meta: { requiresAuth: true }
+     path: 'invoices',
+     name: 'invoices',
+     component: () => import('../pages/Invoices.vue'),
+     meta: { requiresAuth: true, breadcrumbs: [{ label: 'Dashboard', to: '/dashboard' }, { label: 'Invoices' }] }
    }
    ```
 
-3. **Create a service file** in `src/services/` if the page needs a new API endpoint:
+4. **Nav** → `src/components/Sidebar.vue` — add an entry to the `navigation` computed array.
+
+5. **Service** → `src/services/{feature}.service.ts` — if the feature needs API calls. Exports plain functions wrapping `apiService`:
 
    ```typescript
    import apiService from './api.service'
 
-   export function getItems() {
-     return apiService.get('/your-endpoint')
+   export function getInvoices() {
+     return apiService.get('/invoices')
    }
 
-   export function createItem(data: Record<string, unknown>) {
-     return apiService.post('/your-endpoint', data)
-   }
-   ```
-
-4. **Create a Pinia store** if the page manages shared or complex state:
-
-   ```typescript
-   import { defineStore } from 'pinia'
-   import { ref, computed } from 'vue'
-   import { getItems } from '@/services/yourItem.service'
-
-   export const useYourItemStore = defineStore('yourItem', () => {
-     const items = ref([])
-     const loading = ref(false)
-
-     async function fetchItems() {
-       loading.value = true
-       try {
-         const response = await getItems()
-         items.value = response.data
-       } finally {
-         loading.value = false
-       }
-     }
-
-     return { items, loading, fetchItems }
-   })
-   ```
-
-5. **Add type definitions** in `src/types/models.ts` for any new data models:
-
-   ```typescript
-   export interface YourItem {
-     _id: string
-     name: string
-     teamId: string
-     createdAt: string
-     updatedAt: string
-     deletedAt: string | null
+   export function createInvoice(data: Record<string, unknown>) {
+     return apiService.post('/invoices', data)
    }
    ```
 
-6. **Use UI primitives** from `src/components/ui/` (Badge, Card, DataTable, EmptyState, SkeletonLoader, etc.) for a consistent look and feel.
+6. **Store** → `src/stores/{feature}.ts` — if the feature needs global state. Uses Pinia Composition API style.
+
+7. **Types** → `src/types/models.ts` — add interfaces for any new data models.
+
+8. **Composables** → `src/composables/` — use existing composables (`useModalState`, `useListFilters`, `useConfirmDialog`, `useAsyncAction`, `useResponsive`) to reduce boilerplate.
+
+### Component directory structure
+
+```
+src/components/
+  ui/          — Shared UI primitives (Button classes, PageContainer, PageHeader, Modal, DataTable, etc.)
+  calendar/    — Calendar page sub-components
+  campaign/    — Campaign builder sub-components
+  campaigns/   — Campaign timeline
+  client/      — Client detail sub-components
+  project/     — Project detail sub-components
+  dashboard/   — Dashboard widgets
+  tasks/       — Task-specific components (TaskForm, TaskList, TaskKanban, TaskFilters)
+  brain-dump/  — Brain dump components
+  settings/    — Settings page components (ApiKeyManager, AuditLogViewer, WebhookManager)
+  resource/    — Resource dialog
+```
+
+### Detail page pattern
+
+All detail pages (ProjectDetail, ClientDetail, etc.) follow this standard layout:
+
+```vue
+<PageContainer>
+  <PageHeader :breadcrumbs="..." :backTo="..." :title="...">
+    <template #actions>...</template>
+  </PageHeader>
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div class="lg:col-span-2"><!-- Main content --></div>
+    <div><!-- Sidebar --></div>
+  </div>
+</PageContainer>
+```
 
 ---
 

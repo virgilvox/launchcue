@@ -228,6 +228,7 @@ import { useClientStore } from '../stores/client';
 import clientService from '@/services/client.service';
 import projectService from '@/services/project.service';
 import { useToast } from 'vue-toastification';
+import { getStatusColor } from '@/utils/statusColors';
 
 const router = useRouter();
 const toast = useToast();
@@ -405,19 +406,6 @@ async function deleteClient(event) {
   }
 }
 
-// Get status color class
-function getStatusColor(status) {
-  switch (status.toLowerCase()) {
-    case 'completed':
-      return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300';
-    case 'in progress':
-      return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300';
-    case 'planned':
-      return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300';
-    default:
-      return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
-  }
-}
 
 function handleOutsideClick(event) {
   if (activeMenu.value && !event.target.closest('.relative')) {

@@ -302,6 +302,7 @@ import { ref, computed, onMounted } from 'vue';
 import { useAuthStore } from '../stores/auth';
 import teamService from '@/services/team.service';
 import { useToast } from 'vue-toastification';
+import { getInitials } from '@/utils/formatters';
 
 const authStore = useAuthStore();
 const loading = ref(false);
@@ -332,17 +333,6 @@ const userInitials = computed(() => {
   return getInitials(name);
 });
 
-function getInitials(name) {
-  if (!name) return '';
-  
-  const parts = name.split(' ');
-  
-  if (parts.length === 1) {
-    return parts[0].charAt(0).toUpperCase();
-  }
-  
-  return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
-}
 
 function handleImageError(event, member) {
   // Replace broken image with initials

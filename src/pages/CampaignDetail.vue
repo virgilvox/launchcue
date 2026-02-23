@@ -340,6 +340,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { useToast } from 'vue-toastification';
 import campaignService from '@/services/campaign.service';
 import Breadcrumb from '@/components/ui/Breadcrumb.vue';
+import { getInitials } from '@/utils/formatters';
 
 const route = useRoute();
 const router = useRouter();
@@ -422,18 +423,6 @@ function formatDate(dateString) {
   }).format(date);
 }
 
-// Get initials from a name
-function getInitials(name) {
-  if (!name) return '';
-  
-  const parts = name.split(' ');
-  
-  if (parts.length === 1) {
-    return parts[0].charAt(0).toUpperCase();
-  }
-  
-  return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
-}
 
 // Handle image loading error
 function handleImageError(event, member) {

@@ -85,8 +85,55 @@ export const ApiScope = {
   WRITE_BRAINDUMPS: 'write:braindumps',
   READ_API_KEYS: 'read:api-keys',
   WRITE_API_KEYS: 'write:api-keys',
+  READ_SCOPES: 'read:scopes',
+  WRITE_SCOPES: 'write:scopes',
+  READ_SCOPE_TEMPLATES: 'read:scope-templates',
+  WRITE_SCOPE_TEMPLATES: 'write:scope-templates',
 } as const
 export type ApiScope = (typeof ApiScope)[keyof typeof ApiScope]
+
+// ─── Scope ───
+export const ScopeStatus = {
+  DRAFT: 'draft',
+  SENT: 'sent',
+  APPROVED: 'approved',
+  REVISED: 'revised',
+} as const
+export type ScopeStatus = (typeof ScopeStatus)[keyof typeof ScopeStatus]
+
+export const DeliverableStatus = {
+  PENDING: 'pending',
+  IN_PROGRESS: 'in-progress',
+  COMPLETED: 'completed',
+  APPROVED: 'approved',
+} as const
+export type DeliverableStatus = (typeof DeliverableStatus)[keyof typeof DeliverableStatus]
+
+// ─── Invoice ───
+export const InvoiceStatus = {
+  DRAFT: 'draft',
+  SENT: 'sent',
+  VIEWED: 'viewed',
+  PAID: 'paid',
+  OVERDUE: 'overdue',
+} as const
+export type InvoiceStatus = (typeof InvoiceStatus)[keyof typeof InvoiceStatus]
+
+// ─── Onboarding ───
+export const OnboardingStepType = {
+  INFO: 'info',
+  FORM: 'form',
+  UPLOAD: 'upload',
+  APPROVAL: 'approval',
+} as const
+export type OnboardingStepType = (typeof OnboardingStepType)[keyof typeof OnboardingStepType]
+
+export const OnboardingStatus = {
+  NOT_STARTED: 'not-started',
+  IN_PROGRESS: 'in-progress',
+  COMPLETED: 'completed',
+} as const
+export type OnboardingStatus = (typeof OnboardingStatus)[keyof typeof OnboardingStatus]
 
 // ─── Invite ───
 export const InviteStatus = {

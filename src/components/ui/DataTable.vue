@@ -113,6 +113,9 @@
 import { ref, computed, watch } from 'vue'
 import { TableCellsIcon, Squares2X2Icon, ChevronUpIcon, ChevronDownIcon } from '@heroicons/vue/24/outline'
 import EmptyState from './EmptyState.vue'
+import { useResponsive } from '@/composables/useResponsive'
+
+const { isMobile } = useResponsive()
 
 const props = defineProps({
   columns: {
@@ -158,6 +161,12 @@ const props = defineProps({
 const emit = defineEmits(['row-click', 'selection-change'])
 
 const currentView = ref(props.defaultView)
+
+// Auto-switch to card view on mobile
+watch(isMobile, (mobile) => {
+  if (mobile) currentView.value = 'card'
+  else currentView.value = props.defaultView
+}, { immediate: true })
 const sortKey = ref('')
 const sortDirection = ref('asc')
 const selectedIds = ref(new Set())

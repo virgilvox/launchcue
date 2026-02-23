@@ -1,6 +1,5 @@
 <script setup>
 import { ref, watch } from 'vue';
-import AppButton from '@/components/ui/AppButton.vue';
 
 const props = defineProps({
   show: {
@@ -229,20 +228,20 @@ function removeTag(tagToRemove) {
 
         <!-- Buttons -->
         <div class="flex justify-end space-x-3 pt-4 border-t border-gray-200 dark:border-gray-700">
-          <AppButton
+          <button
             type="button"
-            variant="secondary"
+            class="btn btn-secondary"
             @click="closeDialog"
           >
             Cancel
-          </AppButton>
-          <AppButton
+          </button>
+          <button
             type="submit"
-            :loading="isSubmitting"
+            class="btn btn-primary"
             :disabled="isSubmitting"
           >
-            {{ resource ? 'Update Resource' : 'Add Resource' }}
-          </AppButton>
+            {{ isSubmitting ? 'Saving...' : (resource ? 'Update Resource' : 'Add Resource') }}
+          </button>
         </div>
       </form>
     </div>

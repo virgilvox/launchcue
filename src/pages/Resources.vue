@@ -2,9 +2,9 @@
   <div class="container px-4 py-8 mx-auto">
     <PageHeader title="Resources">
       <template #actions>
-        <AppButton @click="openResourceDialog()">
+        <button class="btn btn-primary" @click="openResourceDialog()">
           Add Resource
-        </AppButton>
+        </button>
       </template>
     </PageHeader>
 
@@ -49,18 +49,18 @@
     <!-- Error State -->
     <div v-else-if="resourceStore.error" class="p-6 text-center bg-red-100 dark:bg-red-900/30 rounded-md">
       <p class="text-red-700 dark:text-red-300">{{ resourceStore.error }}</p>
-      <AppButton @click="resourceStore.fetchResources()" class="mt-4">
+      <button class="btn btn-primary mt-4" @click="resourceStore.fetchResources()">
         Try Again
-      </AppButton>
+      </button>
     </div>
 
     <!-- Empty State -->
     <div v-else-if="!resourceStore.resources.length" class="p-12 text-center bg-gray-100 dark:bg-gray-800 rounded-md">
       <h3 class="mb-4 text-xl font-medium text-gray-800 dark:text-gray-200">No resources yet</h3>
       <p class="mb-6 text-gray-600 dark:text-gray-400">Add resources like links, documents, or references for your team.</p>
-      <AppButton @click="openResourceDialog()">
+      <button class="btn btn-primary" @click="openResourceDialog()">
         Add Your First Resource
-      </AppButton>
+      </button>
     </div>
 
     <!-- No results for filter -->
@@ -199,7 +199,6 @@ import { ref, onMounted, computed, defineAsyncComponent } from 'vue';
 import { useRouter } from 'vue-router';
 import { useResourceStore } from '@/stores/resource';
 import { useToast } from 'vue-toastification';
-import AppButton from '../components/ui/AppButton.vue';
 import PageHeader from '../components/ui/PageHeader.vue';
 
 // Import ResourceDialog using defineAsyncComponent for better error handling

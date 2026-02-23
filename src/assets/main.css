@@ -2,26 +2,25 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ─── Design Tokens ─── */
-:root {
-  /* Primary: Indigo (matches Tailwind primary-500/600) */
-  --primary-color: #6366f1;
-  --primary-hover: #4f46e5;
-  --primary-light: #818cf8;
-  --primary-dark: #4338ca;
-  /* Surfaces */
-  --bg-light: #f9fafb;
-  --bg-dark: #111827;
-  --card-light: #ffffff;
-  --card-dark: #1f2937;
-  /* Text */
-  --text-light-primary: #f9fafb;
-  --text-light-secondary: #e5e7eb;
-  --text-dark-primary: #111827;
-  --text-dark-secondary: #4b5563;
-  /* Borders */
-  --border-light: #e5e7eb;
-  --border-dark: #374151;
+/* ─── Typography Utilities ─── */
+.heading-page {
+  @apply text-xl sm:text-2xl font-bold text-gray-900 dark:text-white;
+}
+
+.heading-section {
+  @apply text-base sm:text-lg font-semibold text-gray-900 dark:text-white;
+}
+
+.heading-card {
+  @apply text-sm sm:text-base font-medium text-gray-800 dark:text-gray-100;
+}
+
+.text-body {
+  @apply text-sm text-gray-600 dark:text-gray-300;
+}
+
+.text-caption {
+  @apply text-xs text-gray-500 dark:text-gray-400;
 }
 
 /* ─── Base ─── */
@@ -43,12 +42,9 @@ body {
 }
 
 /* ─── Form Controls ─── */
-.label {
-  @apply block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1;
-}
-
+.label,
 .form-label {
-  @apply block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2;
+  @apply block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1;
 }
 
 .input,
@@ -64,6 +60,7 @@ body {
   @apply focus:ring-offset-gray-50 dark:focus:ring-offset-gray-900;
   @apply focus:ring-primary-500 focus:border-primary-500;
   transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+  min-height: 2.75rem; /* 44px touch target */
 }
 
 .form-checkbox {
@@ -107,6 +104,7 @@ select option {
   @apply dark:focus-visible:ring-offset-gray-900 focus-visible:ring-primary-500;
   transition: background-color 0.15s ease-out, border-color 0.15s ease-out, color 0.15s ease-out, box-shadow 0.15s ease-out;
   line-height: 1.25rem;
+  min-height: 2.75rem; /* 44px touch target */
 }
 
 .btn:disabled {
@@ -145,7 +143,7 @@ select option {
 }
 
 .btn-icon {
-  @apply p-1.5 w-8 h-8 text-gray-600 bg-transparent border-none rounded-md;
+  @apply p-1.5 w-10 h-10 text-gray-600 bg-transparent border-none rounded-md;
   @apply dark:text-gray-400;
 }
 .btn-icon:hover:not(:disabled) {
@@ -155,6 +153,21 @@ select option {
 
 .btn-sm {
   @apply py-1 px-3 text-xs;
+  min-height: 2rem;
+}
+
+.btn-lg {
+  @apply py-2.5 px-6 text-base;
+  min-height: 3rem; /* 48px */
+}
+
+.btn-ghost {
+  @apply text-gray-600 bg-transparent border-transparent;
+  @apply dark:text-gray-300;
+}
+.btn-ghost:hover:not(:disabled) {
+  @apply bg-gray-100 text-gray-900;
+  @apply dark:bg-gray-700 dark:text-gray-50;
 }
 
 /* ─── Tables ─── */

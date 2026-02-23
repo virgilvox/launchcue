@@ -70,6 +70,13 @@ exports.handler = async function(event, context) {
       logger.warn(`User ${user._id} has no associated teams during login`);
     }
 
+    // For client role, include projectIds in payload
+    let projectIds = null;
+    if (userRole === 'client' && userTeams.length > 0) {
+      const member = userTeams[0].members.find(m => m.userId === user._id.toString());
+      projectIds = member?.projectIds || null;
+    }
+
     const payload = {
       userId: user._id.toString(),
       teamId: teamId,
@@ -77,6 +84,7 @@ exports.handler = async function(event, context) {
       email: user.email,
       name: user.name,
       jti: generateJti(),
+      ...(projectIds ? { projectIds } : {}),
     };
 
     const token = jwt.sign(payload, jwtSecret, { expiresIn: TOKEN_EXPIRY });
@@ -87,7 +95,8 @@ exports.handler = async function(event, context) {
         id: user._id.toString(),
         email: user.email,
         name: user.name,
-        role: userRole
+        role: userRole,
+        ...(projectIds ? { projectIds } : {}),
       },
       currentTeamId: teamId
     });

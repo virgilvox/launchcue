@@ -186,6 +186,42 @@ export interface SearchResult {
   matchField: string
 }
 
+// ─── Scope Template ───
+export interface ScopeTemplateCreateRequest {
+  title: string
+  description?: string
+  deliverables?: Array<{
+    title: string
+    description?: string
+    quantity?: number
+    unit?: string
+    rate?: number
+    estimatedHours?: number
+  }>
+  terms?: string
+  tags?: string[]
+}
+
+// ─── Scope ───
+export interface ScopeCreateRequest {
+  title: string
+  description?: string
+  projectId?: string | null
+  clientId?: string | null
+  templateId?: string | null
+  deliverables?: Array<{
+    title: string
+    description?: string
+    quantity?: number
+    unit?: string
+    rate?: number
+    estimatedHours?: number
+    status?: string
+  }>
+  terms?: string
+  status?: string
+}
+
 // ─── API Key ───
 export interface ApiKeyCreateRequest {
   name: string
@@ -208,6 +244,52 @@ export interface TeamCreateRequest {
 export interface TeamInviteRequest {
   email: string
   role?: string
+}
+
+// ─── Invoice ───
+export interface InvoiceCreateRequest {
+  clientId: string
+  projectId?: string | null
+  scopeId?: string | null
+  lineItems?: Array<{
+    description: string
+    quantity?: number
+    unit?: string
+    rate?: number
+  }>
+  tax?: number | null
+  taxRate?: number | null
+  currency?: string
+  status?: string
+  notes?: string
+  dueDate?: string | null
+}
+
+// ─── Client Invitation ───
+export interface ClientInvitationCreateRequest {
+  clientId: string
+  projectIds: string[]
+  email: string
+  name: string
+}
+
+// ─── Onboarding ───
+export interface OnboardingCreateRequest {
+  clientId: string
+  projectId?: string | null
+  title: string
+  steps?: Array<{
+    title: string
+    description?: string
+    type: 'info' | 'form' | 'upload' | 'approval'
+    required?: boolean
+    formFields?: Array<{
+      label: string
+      type: 'text' | 'textarea' | 'select' | 'checkbox' | 'file'
+      required?: boolean
+      options?: string[]
+    }>
+  }>
 }
 
 // ─── Profile ───
