@@ -15,6 +15,9 @@
           <li><a href="#ai" @click.prevent="scrollToSection('ai')">AI Tools</a></li>
           <li><a href="#api" @click.prevent="scrollToSection('api')">API</a></li>
           <li><a href="https://github.com/virgilvox/launchcue" target="_blank" rel="noopener noreferrer">GitHub</a></li>
+          <li v-if="!isAuthenticated">
+            <RouterLink to="/login" class="nav-signin">Sign In</RouterLink>
+          </li>
           <li>
             <RouterLink v-if="!isAuthenticated" to="/register" class="nav-cta">Try It Free</RouterLink>
             <RouterLink v-else to="/dashboard" class="nav-cta">Dashboard</RouterLink>
@@ -463,6 +466,22 @@ nav .nav-inner {
 }
 
 .nav-links a:hover { color: var(--text); }
+
+.nav-signin {
+  border: 1px solid var(--border) !important;
+  background: transparent !important;
+  color: var(--text) !important;
+  padding: 8px 20px;
+  border-radius: 8px;
+  font-weight: 500 !important;
+  transition: all 0.2s !important;
+}
+
+.nav-signin:hover {
+  border-color: var(--accent) !important;
+  background: var(--accent-glow) !important;
+  color: var(--accent-light) !important;
+}
 
 .nav-cta {
   background: var(--accent) !important;

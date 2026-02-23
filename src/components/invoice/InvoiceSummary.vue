@@ -54,7 +54,7 @@
               min="0"
               max="100"
               step="0.1"
-              class="input text-sm text-right w-20 pr-6"
+              class="input text-sm text-right w-24 pr-6"
             />
             <span class="absolute right-2 top-1/2 -translate-y-1/2 text-sm text-gray-400 dark:text-gray-500">%</span>
           </div>
@@ -73,7 +73,7 @@
             placeholder="0.00"
             min="0"
             step="0.01"
-            class="input text-sm pl-6 text-right w-28"
+            class="input text-sm pl-6 text-right w-32"
           />
         </div>
       </div>

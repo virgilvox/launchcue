@@ -13,7 +13,7 @@
     <div
       v-show="!isMobile || isOpen"
       :class="[
-        'flex flex-col h-full bg-gray-800 text-gray-100 transition-all duration-300 ease-in-out shrink-0',
+        'flex flex-col h-full bg-gradient-to-b from-gray-800 via-gray-800 to-gray-900 text-gray-100 transition-all duration-300 ease-in-out shrink-0',
         isMobile ? 'fixed inset-y-0 left-0 z-40 w-64 shadow-xl' : (isCollapsed ? 'w-16' : 'w-64')
       ]"
     >
@@ -71,7 +71,7 @@
           :key="item.name"
           :to="item.href"
           :class="[
-            item.current ? 'bg-gray-900 text-white' : 'text-gray-300 hover:bg-gray-700 hover:text-white',
+            item.current ? 'bg-gray-900/80 text-white border-l-2 border-primary-400' : 'text-gray-300 hover:bg-gray-700 hover:text-white border-l-2 border-transparent',
             'group flex items-center px-2 py-2 text-sm font-medium rounded-md',
             isCollapsed && !isMobile ? 'justify-center' : ''
           ]"

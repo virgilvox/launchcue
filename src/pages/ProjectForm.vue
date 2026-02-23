@@ -385,7 +385,7 @@ onMounted(async () => {
     
     // If editing an existing project
     if (editMode.value && projectId) {
-      const project = await projectStore.fetchProject(projectId);
+      const project = await projectStore.getProject(projectId);
       console.log('Fetched project for editing:', project);
       
       if (project) {

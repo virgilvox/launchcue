@@ -7,7 +7,7 @@
     <Sidebar ref="sidebar" @collapsed-changed="updateSidebarState" />
 
     <div class="flex-1 flex flex-col overflow-hidden transition-all duration-300">
-      <header class="bg-white dark:bg-gray-800 shadow-sm">
+      <header class="bg-white dark:bg-gray-800 shadow-sm border-b-2 border-primary-500/20">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div class="relative flex justify-between items-center h-16">
             <!-- Left side: hamburger + search -->
@@ -27,11 +27,11 @@
               <!-- Search trigger -->
               <button
                 @click="$refs.globalSearch?.open()"
-                class="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                class="flex items-center gap-2 px-4 py-2 text-sm text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700/60 rounded-lg border border-gray-200 dark:border-gray-600 hover:bg-gray-200 dark:hover:bg-gray-600 hover:border-gray-300 dark:hover:border-gray-500 transition-colors min-w-[200px]"
               >
-                <MagnifyingGlassIcon class="h-4 w-4" />
-                <span class="hidden sm:inline">Search...</span>
-                <kbd class="hidden sm:inline-flex items-center px-1.5 py-0.5 text-[10px] font-medium bg-gray-200 dark:bg-gray-600 rounded border border-gray-300 dark:border-gray-500 ml-2">
+                <MagnifyingGlassIcon class="h-4 w-4 shrink-0" />
+                <span class="hidden sm:inline text-gray-400 dark:text-gray-500">Search...</span>
+                <kbd class="hidden sm:inline-flex items-center px-1.5 py-0.5 text-[10px] font-medium bg-gray-200 dark:bg-gray-600 rounded border border-gray-300 dark:border-gray-500 ml-auto">
                   {{ isMac ? '⌘' : 'Ctrl' }}+K
                 </kbd>
               </button>

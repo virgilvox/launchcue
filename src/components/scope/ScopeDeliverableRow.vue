@@ -29,7 +29,7 @@
           placeholder="Qty"
           min="0"
           step="1"
-          class="input text-sm max-w-[80px]"
+          class="input text-sm w-full"
         />
       </div>
 
@@ -41,7 +41,7 @@
           :value="deliverable.unit"
           @input="onTextChange('unit', $event)"
           placeholder="Unit"
-          class="input text-sm max-w-[80px]"
+          class="input text-sm w-full"
         />
       </div>
 
@@ -57,7 +57,7 @@
             placeholder="0.00"
             min="0"
             step="0.01"
-            class="input text-sm pl-6 max-w-[100px]"
+            class="input text-sm pl-6 w-full"
           />
         </div>
       </div>
@@ -72,7 +72,7 @@
           placeholder="Hrs"
           min="0"
           step="0.5"
-          class="input text-sm max-w-[80px]"
+          class="input text-sm w-full"
         />
       </div>
 

@@ -183,8 +183,8 @@ export const useAuthStore = defineStore('auth', () => {
       sessionStorage.removeItem('teams')
       sessionStorage.removeItem('currentTeam')
 
-      // Redirect to login
-      router.push('/login')
+      // Redirect to landing page
+      router.push('/')
     } catch (error) {
       // Logout errors are non-critical; state is already cleared
     }

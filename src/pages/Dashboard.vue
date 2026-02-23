@@ -1,6 +1,9 @@
 <template>
   <div>
-    <h2 class="text-2xl font-bold text-gray-800 dark:text-white mb-6">Dashboard</h2>
+    <div class="mb-6">
+      <h2 class="text-2xl font-bold text-gray-800 dark:text-white">{{ greeting }}, {{ userName }}</h2>
+      <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">{{ formattedDate }}</p>
+    </div>
 
     <!-- Stats Grid -->
     <div class="mb-8">
@@ -141,6 +144,7 @@ import { useProjectStore } from '../stores/project';
 import { useTaskStore } from '../stores/task';
 import { useClientStore } from '../stores/client';
 import { useCalendarStore } from '../stores/calendar';
+import { useAuthStore } from '../stores/auth';
 import { format, isToday, isTomorrow, addDays, isWithinInterval } from 'date-fns';
 import LoadingSpinner from '../components/LoadingSpinner.vue';
 import Card from '../components/ui/Card.vue';
@@ -155,6 +159,21 @@ const projectStore = useProjectStore();
 const taskStore = useTaskStore();
 const clientStore = useClientStore();
 const calendarStore = useCalendarStore();
+const authStore = useAuthStore();
+
+const userName = computed(() => {
+  const name = authStore.user?.name || 'there';
+  return name.split(' ')[0];
+});
+
+const greeting = computed(() => {
+  const hour = new Date().getHours();
+  if (hour < 12) return 'Good morning';
+  if (hour < 18) return 'Good afternoon';
+  return 'Good evening';
+});
+
+const formattedDate = computed(() => format(new Date(), 'EEEE, MMMM d, yyyy'));
 
 const upcomingItems = ref([]);
 const tasksLoading = ref(false);

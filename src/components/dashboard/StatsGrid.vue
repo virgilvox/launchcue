@@ -3,7 +3,8 @@
     <div
       v-for="stat in stats"
       :key="stat.label"
-      class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 sm:p-5 flex items-center space-x-4"
+      class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 sm:p-5 flex items-center space-x-4 border-t-4 hover:shadow-lg transition-shadow duration-200"
+      :style="{ borderTopColor: stat.borderColor }"
     >
       <div
         class="flex-shrink-0 w-12 h-12 rounded-lg flex items-center justify-center"
@@ -121,6 +122,7 @@ const stats = computed(() => [
     icon: ClipboardDocumentListIcon,
     iconBg: 'bg-blue-100 dark:bg-blue-900/40',
     iconColor: 'text-blue-600 dark:text-blue-400',
+    borderColor: '#3b82f6',
     trend: null,
     trendLabel: ''
   },
@@ -130,6 +132,7 @@ const stats = computed(() => [
     icon: ClipboardDocumentCheckIcon,
     iconBg: 'bg-yellow-100 dark:bg-yellow-900/40',
     iconColor: 'text-yellow-600 dark:text-yellow-400',
+    borderColor: '#eab308',
     trend: completionRate.value !== null ? (completionRate.value >= 50 ? 1 : -1) : null,
     trendLabel: completionRate.value !== null ? `${completionRate.value}% done` : ''
   },
@@ -139,6 +142,7 @@ const stats = computed(() => [
     icon: FolderIcon,
     iconBg: 'bg-purple-100 dark:bg-purple-900/40',
     iconColor: 'text-purple-600 dark:text-purple-400',
+    borderColor: '#a855f7',
     trend: null,
     trendLabel: ''
   },
@@ -148,6 +152,7 @@ const stats = computed(() => [
     icon: BoltIcon,
     iconBg: 'bg-green-100 dark:bg-green-900/40',
     iconColor: 'text-green-600 dark:text-green-400',
+    borderColor: '#22c55e',
     trend: totalProjects.value > 0 ? 1 : null,
     trendLabel: totalProjects.value > 0 ? `${Math.round((activeProjects.value / totalProjects.value) * 100)}% active` : ''
   },
@@ -157,6 +162,7 @@ const stats = computed(() => [
     icon: UserGroupIcon,
     iconBg: 'bg-indigo-100 dark:bg-indigo-900/40',
     iconColor: 'text-indigo-600 dark:text-indigo-400',
+    borderColor: '#6366f1',
     trend: null,
     trendLabel: ''
   },
@@ -166,6 +172,7 @@ const stats = computed(() => [
     icon: CalendarDaysIcon,
     iconBg: 'bg-red-100 dark:bg-red-900/40',
     iconColor: 'text-red-600 dark:text-red-400',
+    borderColor: '#ef4444',
     trend: upcomingDeadlines.value > 0 ? -1 : null,
     trendLabel: upcomingDeadlines.value > 0 ? `Due in 7 days` : ''
   }

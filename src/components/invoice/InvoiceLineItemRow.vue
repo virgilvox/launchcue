@@ -8,7 +8,7 @@
       </div>
 
       <!-- Description -->
-      <div class="col-span-1 md:col-span-4">
+      <div class="col-span-1 md:col-span-3">
         <label class="form-label md:hidden">Description</label>
         <input
           type="text"
@@ -20,7 +20,7 @@
       </div>
 
       <!-- Quantity -->
-      <div class="col-span-1 md:col-span-1">
+      <div class="col-span-1 md:col-span-2">
         <label class="form-label md:hidden">Qty</label>
         <input
           type="number"
@@ -29,19 +29,19 @@
           placeholder="Qty"
           min="0"
           step="1"
-          class="input text-sm max-w-[80px]"
+          class="input text-sm w-full"
         />
       </div>
 
       <!-- Unit -->
-      <div class="col-span-1 md:col-span-1">
+      <div class="col-span-1 md:col-span-2">
         <label class="form-label md:hidden">Unit</label>
         <input
           type="text"
           :value="item.unit"
           @input="onTextChange('unit', $event)"
           placeholder="Unit"
-          class="input text-sm max-w-[80px]"
+          class="input text-sm w-full"
         />
       </div>
 
@@ -57,13 +57,13 @@
             placeholder="0.00"
             min="0"
             step="0.01"
-            class="input text-sm pl-6 max-w-[120px]"
+            class="input text-sm pl-6 w-full"
           />
         </div>
       </div>
 
       <!-- Computed Amount (display only) -->
-      <div class="col-span-1 md:col-span-2 flex items-center pt-1 md:pt-2">
+      <div class="col-span-1 md:col-span-1 flex items-center pt-1 md:pt-2">
         <label class="form-label md:hidden mr-2">Amount</label>
         <span class="text-sm font-semibold text-gray-900 dark:text-white whitespace-nowrap">
           {{ formatCurrency(amount) }}

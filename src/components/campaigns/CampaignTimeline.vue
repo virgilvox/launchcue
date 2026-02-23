@@ -37,13 +37,13 @@
                                 type="date" 
                                 v-model="step.date"
                                 @change="emitUpdate"
-                                class="input text-xs p-1 w-32"
+                                class="input text-xs p-1 w-40"
                              />
                              <!-- Assignee Select -->
-                             <select 
-                                v-model="step.assigneeId" 
+                             <select
+                                v-model="step.assigneeId"
                                 @change="emitUpdate"
-                                class="input text-xs p-1 w-32"
+                                class="input text-xs p-1 w-40"
                               >
                                  <option :value="null">Unassigned</option>
                                  <option v-for="member in teamMembers" :key="member.id" :value="member.userId">

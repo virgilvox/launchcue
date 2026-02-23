@@ -1,7 +1,8 @@
 <template>
-  <div class="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 px-4 sm:px-6 lg:px-8">
+  <div class="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 via-white to-primary-50 dark:from-gray-900 dark:via-gray-900 dark:to-primary-950/30 px-4 sm:px-6 lg:px-8">
     <div class="max-w-md w-full">
       <div class="text-center">
+        <img src="/logo-placeholder.png" alt="LaunchCue" class="h-12 w-12 mx-auto mb-4">
         <h1 class="text-2xl font-bold text-gray-900 dark:text-white">{{ appName }}</h1>
         <h2 class="mt-2 text-lg font-medium text-gray-600 dark:text-gray-400">Sign in to your account</h2>
       </div>

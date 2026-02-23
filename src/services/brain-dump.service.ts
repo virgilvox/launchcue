@@ -72,7 +72,7 @@ class BrainDumpService {
               context: options.contextInfo || '',
               enriched: options.useEnrichedContext || false
             },
-            max_tokens: options.maxTokens || 1500
+            max_tokens: options.maxTokens || 4096
           };
 
           // Use direct call to apiService.post

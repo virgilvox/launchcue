@@ -1,5 +1,5 @@
 <template>
-  <div :class="['bg-white dark:bg-gray-800 rounded-lg shadow-md', padding, className]">
+  <div :class="['bg-white dark:bg-gray-800 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-200', padding, className]">
     <div v-if="title || $slots.header" class="flex items-center justify-between mb-4">
       <div>
         <h3 v-if="title" class="text-lg font-semibold text-gray-800 dark:text-gray-100">{{ title }}</h3>

@@ -14,42 +14,73 @@ if (!anthropicApiKey) {
 // --- Prompt Engineering Helpers ---
 
 function getBaseSystemPrompt(enriched) {
+  const base = `You are an expert DevRel and project management assistant for LaunchCue. You help developer relations teams organize thoughts, extract insights, and turn raw notes into structured, actionable output. Be concise and practical — DevRel teams move fast and need clarity, not fluff.`;
+
   if (enriched) {
-    return `You are an expert assistant helping organize thoughts, extract insights, and identify actionable items from text, using provided context effectively.
-        When analyzing the input text:
-        1. Consider the provided context (clients, projects, meetings, tasks) to identify connections, conflicts, or opportunities.
-        2. Detect patterns across past context and current input.
-        3. Be aware of existing commitments when suggesting new actions.
-        4. Flag potential conflicts with existing context.
-        5. Identify opportunities to leverage past decisions or resources.`;
-  } else {
-    return 'You are an expert assistant helping organize thoughts, extract insights, and identify actionable items from text.';
+    return `${base}
+
+When context is provided (clients, projects, tasks, campaigns, calendar):
+1. Reference specific clients, projects, or tasks by name when relevant.
+2. Flag scheduling conflicts or overlapping commitments.
+3. Connect new ideas to existing work — suggest linking to active projects.
+4. Prioritize items based on existing deadlines and workload.
+5. Note dependencies between new action items and existing tasks.`;
   }
+  return base;
 }
 
 function buildUserPrompt(type, input, context) {
   let prompt = '';
   const contextString = context ? `\n\n--- Provided Context ---\n${context}\n--- End Context ---` : '';
 
+  const jsonInstructions = `
+
+IMPORTANT: After your written analysis, output a JSON code block with actionable items. Use exactly this format:
+
+\`\`\`json
+[
+  {
+    "title": "Short action title",
+    "description": "What needs to be done and why",
+    "type": "task",
+    "priority": "high",
+    "dueDate": "YYYY-MM-DD"
+  }
+]
+\`\`\`
+
+Valid types: "task", "event", "project". Valid priorities: "low", "medium", "high". Dates and assignees are optional.`;
+
   switch (type) {
     case 'summarize':
-      prompt = `Summarize the following text clearly and concisely:${contextString}\n\n--- Input Text ---\n${input}`; break;
+      prompt = `Summarize the following text clearly and concisely. Use markdown headings and bullets for structure. Lead with the most important takeaway.${contextString}\n\n--- Input Text ---\n${input}`; break;
     case 'keyPoints':
-      prompt = `Extract and list the key points from the following text:${contextString}\n\n--- Input Text ---\n${input}`; break;
+      prompt = `Extract the key points from the following text as a prioritized list. Group related points under headings. Mark anything time-sensitive or blocking.${contextString}\n\n--- Input Text ---\n${input}`; break;
     case 'organize':
-      prompt = `Organize the following text into a structured format (headings, bullets, etc.):${contextString}\n\n--- Input Text ---\n${input}`; break;
+      prompt = `Organize this raw text into a clean, structured document with clear headings, bullet points, and logical grouping. Preserve all information but improve readability.${contextString}\n\n--- Input Text ---\n${input}`; break;
     case 'actionItems':
-      prompt = `Review the following text and generate a list of actionable items/next steps. Consider the provided context when forming these items.${contextString}\n\n--- Input Text ---\n${input}\n\n--- Instructions ---\nAfter the list, provide ONLY a valid JSON array containing objects for each actionable item. Use this format inside the JSON array:
-[{"title": "Action item title", "description": "Details...", "type": "task", "dueDate": "YYYY-MM-DD" (optional), "priority": "medium" (optional)}]`; break;
+      prompt = `Extract actionable next steps from this text. For each item, determine who should do it, the priority, and a reasonable deadline if one is implied.${contextString}\n\n--- Input Text ---\n${input}${jsonInstructions}`; break;
     case 'meetingNotes':
-      prompt = `Process the following meeting notes. Provide: 1. Summary 2. Key Decisions 3. Action Items. Consider the context.${contextString}\n\n--- Input Text ---\n${input}\n\n--- Instructions ---\nAfter the notes processing, provide ONLY a valid JSON array for actionable items/events discussed. Use this format inside the JSON array:
-[{"title": "Task/Event title", "description": "Details...", "type": "task or event", "assignee": "Name" (optional), "dueDate": "YYYY-MM-DD" (optional), "eventDateTime": "YYYY-MM-DDTHH:mm:ssZ" (optional)}]`; break;
+      prompt = `Process these meeting notes into a structured recap:
+
+1. **Summary** — 2-3 sentence overview
+2. **Key Decisions** — what was decided and by whom
+3. **Action Items** — who does what by when
+4. **Open Questions** — unresolved items needing follow-up
+${contextString}
+--- Input Text ---
+${input}${jsonInstructions.replace('"type": "task"', '"type": "task or event"')}`; break;
     case 'patterns':
-      prompt = `Analyze the text and provided context to identify patterns, themes, or connections:${contextString}\n\n--- Input Text ---\n${input}`; break;
+      prompt = `Analyze this text to identify recurring patterns, themes, and connections. Look for:
+- Repeated topics or concerns
+- Emerging trends across projects or clients
+- Potential risks or opportunities
+- Contradictions or misalignments
+${contextString}\n\n--- Input Text ---\n${input}`; break;
     case 'creative':
-      prompt = `Expand creatively on the ideas in the text, leveraging the context:${contextString}\n\n--- Input Text ---\n${input}`; break;
+      prompt = `Expand on the ideas in this text with creative, practical suggestions for a DevRel team. Think about content opportunities, community engagement angles, partnership ideas, and campaign concepts.${contextString}\n\n--- Input Text ---\n${input}`; break;
     default:
-      prompt = `Summarize and organize the following text:${contextString}\n\n--- Input Text ---\n${input}`; break;
+      prompt = `Summarize and organize the following text with clear structure:${contextString}\n\n--- Input Text ---\n${input}`; break;
   }
   return prompt;
 }
@@ -133,8 +164,8 @@ exports.handler = async function(event, context) {
     const {
       prompt: inputPrompt,
       processingDetails,
-      model = 'claude-haiku-4-5-20251001',
-      max_tokens = 1500
+      model = 'claude-sonnet-4-6',
+      max_tokens = 4096
     } = body;
 
     if (!inputPrompt) {
