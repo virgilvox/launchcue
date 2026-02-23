@@ -1,14 +1,16 @@
 <template>
   <div>
+    <Breadcrumb v-if="!loading && project" :items="breadcrumbItems" />
+
     <div v-if="loading" class="text-center py-10">
       <p class="text-gray-500 dark:text-gray-400">Loading project details...</p>
     </div>
-    
+
     <div v-else-if="!project" class="text-center py-10">
       <p class="text-gray-500 dark:text-gray-400">Project not found</p>
       <router-link to="/projects" class="btn btn-primary mt-4">Back to Projects</router-link>
     </div>
-    
+
     <div v-else>
       <!-- Project Header -->
       <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
@@ -469,6 +471,7 @@ import { useToast } from 'vue-toastification';
 import { useAuthStore } from '../stores/auth';
 import projectService from '@/services/project.service';
 import taskService from '@/services/task.service';
+import Breadcrumb from '@/components/ui/Breadcrumb.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -544,6 +547,12 @@ const projectTimelinePercentage = computed(() => {
   if (totalDuration <= 0) return 100;
   return 100;
 });
+
+const breadcrumbItems = computed(() => [
+  { label: 'Dashboard', to: '/dashboard' },
+  { label: 'Projects', to: '/projects' },
+  { label: project.value?.name || project.value?.title || 'Untitled Project' }
+]);
 
 const currentTimelinePercentage = computed(() => {
   if (!project.value || !project.value.startDate || !project.value.endDate) return 0;

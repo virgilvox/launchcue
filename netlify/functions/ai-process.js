@@ -133,7 +133,7 @@ exports.handler = async function(event, context) {
     const {
       prompt: inputPrompt,
       processingDetails,
-      model = 'claude-3-haiku-20240307',
+      model = 'claude-haiku-4-5-20251001',
       max_tokens = 1500
     } = body;
 
@@ -181,7 +181,8 @@ exports.handler = async function(event, context) {
       apiResponse = await response.json();
     } catch (error) {
       logger.error('Anthropic API call failed:', error.message);
-      return createErrorResponse(500, 'AI processing failed', error.message || 'Error calling Claude API');
+      const safeDetails = process.env.NODE_ENV === 'production' ? undefined : (error.message || 'Error calling Claude API');
+      return createErrorResponse(500, 'AI processing failed', safeDetails);
     }
 
     if (!apiResponse?.content || !apiResponse.content[0] || typeof apiResponse.content[0].text !== 'string') {
@@ -216,6 +217,7 @@ exports.handler = async function(event, context) {
     return createResponse(200, parsedResult);
   } catch (error) {
     logger.error('Unhandled error in AI processing:', error.message);
-    return createErrorResponse(500, 'Internal Server Error', error.message);
+    const safeDetails = process.env.NODE_ENV === 'production' ? undefined : error.message;
+    return createErrorResponse(500, 'Internal Server Error', safeDetails);
   }
 };

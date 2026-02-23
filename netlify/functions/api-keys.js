@@ -6,6 +6,7 @@ const { authenticate } = require('./utils/authHandler');
 const { createResponse, createErrorResponse, handleOptionsRequest } = require('./utils/response');
 const { z } = require('zod');
 const logger = require('./utils/logger');
+const { createAuditLog } = require('./utils/auditLog');
 
 const API_KEY_PREFIX = 'lc_sk_';
 const KEY_BYTE_LENGTH = 32;
@@ -30,6 +31,7 @@ const CreateKeySchema = z.object({
     (scopes) => scopes.every(scope => AVAILABLE_SCOPES.includes(scope)),
     { message: 'Invalid scope provided' }
   ).optional().default(['read:projects', 'read:tasks', 'read:clients']),
+  expiresAt: z.string().datetime().nullable().optional(),
 });
 
 function generateApiKey() {
@@ -83,6 +85,7 @@ exports.handler = async function(event, context) {
         name: k.name,
         prefix: k.prefix,
         scopes: k.scopes || [],
+        expiresAt: k.expiresAt || null,
         createdAt: k.createdAt,
         lastUsedAt: k.lastUsedAt,
         _id: undefined
@@ -100,7 +103,7 @@ exports.handler = async function(event, context) {
       if (!validationResult.success) {
         return createErrorResponse(400, 'Validation failed', validationResult.error.format());
       }
-      const { name, scopes } = validationResult.data;
+      const { name, scopes, expiresAt } = validationResult.data;
 
       const { fullKey, prefix } = generateApiKey();
       const hashedKey = await hashApiKey(fullKey);
@@ -113,17 +116,21 @@ exports.handler = async function(event, context) {
         prefix,
         hashedKey,
         scopes,
+        expiresAt: expiresAt ? new Date(expiresAt) : null,
         createdAt: now,
         lastUsedAt: null
       };
 
-      await collection.insertOne(newApiKeyDocument);
+      const insertResult = await collection.insertOne(newApiKeyDocument);
+
+      await createAuditLog(db, { userId, teamId, action: 'create', resourceType: 'apiKey', resourceId: insertResult.insertedId.toString() });
 
       return createResponse(201, {
         message: 'API Key generated successfully. Store it securely - it will not be shown again.',
         name: newApiKeyDocument.name,
         prefix: newApiKeyDocument.prefix,
         scopes: newApiKeyDocument.scopes,
+        expiresAt: newApiKeyDocument.expiresAt,
         createdAt: newApiKeyDocument.createdAt,
         apiKey: fullKey
       });
@@ -139,6 +146,7 @@ exports.handler = async function(event, context) {
       if (result.deletedCount === 0) {
         return createErrorResponse(404, 'API Key not found or user unauthorized');
       }
+      await createAuditLog(db, { userId, teamId, action: 'delete', resourceType: 'apiKey', resourceId: keyPrefixToDelete });
       return createResponse(200, { message: 'API Key deleted successfully' });
     }
 
@@ -148,6 +156,7 @@ exports.handler = async function(event, context) {
 
   } catch (error) {
     logger.error('Error handling API keys request:', error.message);
-    return createErrorResponse(500, 'Internal Server Error', error.message);
+    const safeDetails = process.env.NODE_ENV === 'production' ? undefined : error.message;
+    return createErrorResponse(500, 'Internal Server Error', safeDetails);
   }
 };

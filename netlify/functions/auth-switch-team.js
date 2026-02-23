@@ -56,9 +56,14 @@ exports.handler = async function(event, context) {
       await revokeToken(authResult.jti);
     }
 
+    // Look up the user's role in the target team
+    const member = team.members.find(m => m.userId === userId);
+    const userRole = member ? member.role : 'member';
+
     const payload = {
       userId: userId,
       teamId: targetTeamId,
+      role: userRole,
       email: user.email,
       name: user.name,
       jti: generateJti(),
@@ -71,11 +76,13 @@ exports.handler = async function(event, context) {
       currentTeam: {
         id: team._id.toString(),
         name: team.name,
+        role: userRole,
       }
     });
 
   } catch (error) {
     logger.error('Switch team error:', error.message);
-    return createErrorResponse(500, 'Internal Server Error', error.message);
+    const safeDetails = process.env.NODE_ENV === 'production' ? undefined : error.message;
+    return createErrorResponse(500, 'Internal Server Error', safeDetails);
   }
 };

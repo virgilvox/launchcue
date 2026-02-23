@@ -1,19 +1,21 @@
 <template>
   <div>
+    <Breadcrumb v-if="!loading && campaign" :items="breadcrumbItems" />
+
     <div v-if="loading" class="text-center py-10">
       <p class="text-gray-500 dark:text-gray-400">Loading campaign details...</p>
     </div>
-    
+
     <div v-else-if="error" class="text-center py-10">
       <p class="text-red-500">{{ error }}</p>
       <router-link to="/campaigns" class="btn btn-primary mt-4">Back to Campaigns</router-link>
     </div>
-    
+
     <div v-else-if="!campaign" class="text-center py-10">
       <p class="text-gray-500 dark:text-gray-400">Campaign not found</p>
       <router-link to="/campaigns" class="btn btn-primary mt-4">Back to Campaigns</router-link>
     </div>
-    
+
     <div v-else>
       <!-- Campaign Header -->
       <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
@@ -333,10 +335,11 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useToast } from 'vue-toastification';
 import campaignService from '@/services/campaign.service';
+import Breadcrumb from '@/components/ui/Breadcrumb.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -363,6 +366,13 @@ const stepForm = ref({
   description: '',
   date: ''
 });
+
+// Computed
+const breadcrumbItems = computed(() => [
+  { label: 'Dashboard', to: '/dashboard' },
+  { label: 'Campaigns', to: '/campaigns' },
+  { label: campaign.value?.title || 'Campaign' }
+]);
 
 // Load campaign data
 async function loadCampaign() {

@@ -6,7 +6,7 @@
         Add Note
       </button>
     </div>
-    
+
     <!-- Filters -->
     <div class="mb-6 bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm">
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -34,35 +34,35 @@
            <!-- Tag Filter -->
           <div>
              <label for="tagFilter" class="label text-xs">Filter by Tags (comma-sep)</label>
-             <input 
+             <input
                 id="tagFilter"
                 v-model="filters.tags"
-                type="text" 
-                class="input text-sm" 
+                type="text"
+                class="input text-sm"
                 placeholder="e.g., meeting, summary"
              />
           </div>
       </div>
     </div>
-    
+
     <div v-if="loading" class="text-center py-10">
       <LoadingSpinner text="Loading notes..." />
     </div>
-    
+
     <div v-else-if="error" class="text-center py-10">
       <p class="text-red-500">{{ error }}</p>
     </div>
-    
+
     <div v-else-if="filteredNotes.length === 0" class="text-center py-10 bg-gray-50 dark:bg-gray-800 rounded-lg">
       <p class="text-gray-500 dark:text-gray-400">No notes found matching your criteria.</p>
        <button @click="clearFilters" v-if="hasActiveFilters" class="text-primary-600 dark:text-primary-400 hover:underline mt-2">
           Clear Filters
       </button>
     </div>
-    
+
     <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      <div 
-        v-for="note in filteredNotes" 
+      <div
+        v-for="note in filteredNotes"
         :key="note.id"
         class="card hover:shadow-lg transition-shadow flex flex-col"
       >
@@ -79,13 +79,13 @@
             </div>
           </div>
         </div>
-        
-        <!-- Content Preview -->
+
+        <!-- Content Preview (rendered HTML) -->
         <div class="prose prose-sm dark:prose-invert mb-4 flex-grow max-h-48 overflow-hidden relative">
-          <div v-html="renderMarkdown(note.content)"></div>
-           <div class="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-white dark:from-gray-800 to-transparent pointer-events-none"></div> <!-- Fade out effect -->
+          <div v-html="sanitizeHtml(note.content)"></div>
+           <div class="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-white dark:from-gray-800 to-transparent pointer-events-none"></div>
         </div>
-        
+
         <!-- Tags and Metadata -->
          <div class="mt-auto pt-3 border-t border-gray-200 dark:border-gray-700">
             <div v-if="note.tags && note.tags.length > 0" class="flex flex-wrap gap-1 mb-2">
@@ -93,7 +93,7 @@
             </div>
             <div class="text-xs text-gray-500 dark:text-gray-400">
                  <span v-if="note.clientId">Client: {{ getClientName(note.clientId) }}</span>
-                 <span v-if="note.clientId && note.projectId"> • </span>
+                 <span v-if="note.clientId && note.projectId"> &bull; </span>
                  <span v-if="note.projectId">Project: {{ getProjectName(note.projectId) }}</span>
                  <span v-if="!note.clientId && !note.projectId">No associated client/project</span>
                  <br> Created: {{ formatDate(note.createdAt) }}
@@ -101,17 +101,37 @@
          </div>
       </div>
     </div>
-    
+
     <!-- Add/Edit Note Modal -->
-    <Modal v-model="showNoteModal" :title="editingNote ? 'Edit Note' : 'Add Note'">
+    <Modal v-model="showNoteModal" :title="editingNote ? 'Edit Note' : 'Add Note'" size="lg">
         <form @submit.prevent="saveNote" class="space-y-4">
              <div class="form-group">
                 <label for="noteTitle" class="label">Title *</label>
                 <input id="noteTitle" v-model="noteForm.title" type="text" class="input" required />
             </div>
+
+            <!-- Note Templates -->
+            <div class="form-group">
+              <label class="label">Quick Templates</label>
+              <div class="flex flex-wrap gap-2">
+                <button
+                  v-for="template in noteTemplates"
+                  :key="template.name"
+                  type="button"
+                  @click="applyTemplate(template)"
+                  class="btn btn-sm btn-outline"
+                >
+                  {{ template.name }}
+                </button>
+              </div>
+            </div>
+
              <div class="form-group">
-                <label for="noteContent" class="label">Content (Markdown) *</label>
-                <textarea id="noteContent" v-model="noteForm.content" rows="10" class="input font-mono" required></textarea>
+                <label class="label">Content *</label>
+                <RichTextEditor
+                  v-model="noteForm.content"
+                  placeholder="Start writing your note..."
+                />
             </div>
              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                  <div class="form-group">
@@ -139,7 +159,7 @@
             </div>
         </form>
     </Modal>
-    
+
     <!-- Delete Note Confirmation Modal -->
     <Modal v-model="showDeleteModal" title="Confirm Delete Note">
          <div v-if="noteToDelete" class="space-y-4">
@@ -155,15 +175,15 @@
 
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue';
-import { marked } from 'marked';
 import DOMPurify from 'dompurify';
 import { useAuthStore } from '../stores/auth';
-import noteService from '../services/note.service'; // Corrected path
+import noteService from '../services/note.service';
 import { useClientStore } from '../stores/client';
 import { useProjectStore } from '../stores/project';
 import { useToast } from 'vue-toastification';
 import Modal from '../components/Modal.vue';
 import LoadingSpinner from '../components/LoadingSpinner.vue';
+import RichTextEditor from '../components/ui/RichTextEditor.vue';
 
 const authStore = useAuthStore();
 const clientStore = useClientStore();
@@ -200,6 +220,22 @@ const noteForm = ref({
   projectId: null
 });
 
+// Note templates
+const noteTemplates = [
+  {
+    name: 'Meeting Notes',
+    content: '<h2>Meeting Notes</h2><p><strong>Date:</strong> </p><p><strong>Attendees:</strong> </p><h3>Agenda</h3><ul><li></li></ul><h3>Discussion</h3><p></p><h3>Action Items</h3><ul><li></li></ul>'
+  },
+  {
+    name: 'Decision Log',
+    content: '<h2>Decision</h2><p><strong>Context:</strong> </p><p><strong>Options Considered:</strong> </p><ol><li></li></ol><p><strong>Decision:</strong> </p><p><strong>Rationale:</strong> </p>'
+  },
+  {
+    name: 'Brainstorm',
+    content: '<h2>Brainstorm Session</h2><p><strong>Topic:</strong> </p><h3>Ideas</h3><ul><li></li></ul><h3>Next Steps</h3><ul><li></li></ul>'
+  }
+];
+
 // --- Computed Properties ---
 
 // Filter projects based on client selected in the *modal form*
@@ -226,10 +262,8 @@ const filteredNotes = computed(() => {
     return notes.value.filter(note => {
         const clientMatch = !filterClientId || note.clientId === filterClientId;
         const projectMatch = !filterProjectId || note.projectId === filterProjectId;
-        const tagsMatch = filterTags.length === 0 || 
+        const tagsMatch = filterTags.length === 0 ||
             (note.tags && note.tags.some(noteTag => filterTags.includes(noteTag.toLowerCase())));
-            // Alternative: Check if note.tags includes *all* filterTags
-            // filterTags.every(ft => note.tags?.some(nt => nt.toLowerCase() === ft))
 
         return clientMatch && projectMatch && tagsMatch;
     });
@@ -241,6 +275,15 @@ const hasActiveFilters = computed(() => {
 });
 
 // --- Methods ---
+
+function sanitizeHtml(content) {
+  if (!content) return '';
+  return DOMPurify.sanitize(content);
+}
+
+function applyTemplate(template) {
+  noteForm.value.content = template.content;
+}
 
 async function loadDependencies() {
     loadingClients.value = true;
@@ -264,7 +307,7 @@ async function loadNotes() {
   error.value = null;
   try {
     // Fetch all notes for the team
-    notes.value = await noteService.getNotes(); 
+    notes.value = await noteService.getNotes();
   } catch (err) {
     console.error('Error loading notes:', err);
     error.value = 'Failed to load notes. Please try again.';
@@ -274,19 +317,12 @@ async function loadNotes() {
   }
 }
 
-function renderMarkdown(content) {
-  if (!content) return '';
-  // Ensure DOMPurify runs after marked
-  const rawHtml = marked.parse(content);
-  return DOMPurify.sanitize(rawHtml);
-}
-
 function formatDate(dateString) {
   if (!dateString) return '';
   const date = new Date(dateString);
-  return date.toLocaleDateString('en-US', { 
-    month: 'short', 
-    day: 'numeric', 
+  return date.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
     year: 'numeric',
     hour: '2-digit',
     minute: '2-digit'
@@ -319,7 +355,7 @@ function openAddNoteModal() {
   editingNote.value = null;
   noteForm.value = {
     title: '',
-    content: '# ',
+    content: '',
     tags: '',
     clientId: null,
     projectId: null
@@ -348,14 +384,14 @@ async function saveNote() {
   saving.value = true;
   try {
     const tagsArray = noteForm.value.tags.split(',').map(t => t.trim()).filter(t => t !== '');
-    const noteData = { 
-        ...noteForm.value, 
+    const noteData = {
+        ...noteForm.value,
         tags: tagsArray,
         // Ensure null values are passed if empty, not empty strings
         clientId: noteForm.value.clientId || null,
         projectId: noteForm.value.projectId || null,
     };
-    
+
     if (editingNote.value) {
       const updatedNote = await noteService.updateNote(editingNote.value.id, noteData);
       const index = notes.value.findIndex(n => n.id === editingNote.value.id);
@@ -390,17 +426,17 @@ function closeDeleteModal() {
 
 async function deleteNote() {
   if (!noteToDelete.value) return;
-  
+
   deleting.value = true;
-  
+
   try {
     await noteService.deleteNote(noteToDelete.value.id);
-    
+
     const index = notes.value.findIndex(n => n.id === noteToDelete.value.id);
     if (index !== -1) {
       notes.value.splice(index, 1);
     }
-    
+
     closeDeleteModal();
   } catch (err) {
     console.error('Error deleting note:', err);
@@ -453,4 +489,4 @@ onBeforeUnmount(() => {
   gap: 0.5rem;
   margin-top: 1rem;
 }
-</style> 
+</style>

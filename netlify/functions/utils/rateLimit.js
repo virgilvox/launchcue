@@ -82,7 +82,10 @@ async function checkRateLimit(key, category = 'general') {
     };
   } catch (error) {
     logger.error('Rate limit check failed:', error.message);
-    // Fail open - don't block requests if rate limiting is broken
+    // Fail closed for auth endpoints (security-critical), fail open for others (availability)
+    if (category === 'auth') {
+      return { allowed: false, remaining: 0, resetAt: new Date(Date.now() + 60000) };
+    }
     return { allowed: true, remaining: -1, resetAt: new Date() };
   }
 }

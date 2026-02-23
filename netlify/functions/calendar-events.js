@@ -4,6 +4,8 @@ const { authenticate } = require('./utils/authHandler');
 const { createResponse, createErrorResponse, handleOptionsRequest } = require('./utils/response');
 const { z } = require('zod');
 const logger = require('./utils/logger');
+const { createAuditLog } = require('./utils/auditLog');
+const { rateLimitCheck } = require('./utils/rateLimit');
 
 // Zod Schema for Calendar Event
 const EventSchema = z.object({
@@ -15,9 +17,56 @@ const EventSchema = z.object({
     color: z.string().optional(), // e.g., 'blue', 'green'
     clientId: z.string().refine(val => ObjectId.isValid(val), { message: "Invalid Client ID" }).nullable().optional(),
     projectId: z.string().refine(val => ObjectId.isValid(val), { message: "Invalid Project ID" }).nullable().optional(),
+    recurrence: z.object({
+        frequency: z.enum(['daily', 'weekly', 'monthly', 'yearly']),
+        interval: z.number().int().min(1).default(1),
+        endDate: z.string().datetime().nullable().optional(),
+    }).nullable().optional(),
+    reminders: z.array(z.object({
+        type: z.enum(['email', 'inApp']),
+        minutesBefore: z.number().int().min(0),
+    })).optional(),
 });
 
 const EventUpdateSchema = EventSchema.partial();
+
+/**
+ * Generate recurring event occurrences within a given date range.
+ * If the event has no recurrence, returns the event as-is.
+ */
+function generateOccurrences(event, rangeStart, rangeEnd) {
+    // If no recurrence, return the event as-is
+    if (!event.recurrence) return [event];
+
+    const occurrences = [];
+    const { frequency, interval, endDate } = event.recurrence;
+    let currentDate = new Date(event.start);
+    const end = endDate ? new Date(endDate) : new Date(rangeEnd);
+    const rangeStartDate = new Date(rangeStart);
+
+    while (currentDate <= end && currentDate <= new Date(rangeEnd)) {
+        if (currentDate >= rangeStartDate) {
+            const occurrence = {
+                ...event,
+                start: currentDate.toISOString(),
+                end: event.end ? new Date(new Date(event.end).getTime() + (currentDate.getTime() - new Date(event.start).getTime())).toISOString() : null,
+                isRecurrence: true,
+                originalEventId: event.id || event._id?.toString(),
+            };
+            occurrences.push(occurrence);
+        }
+
+        // Advance by interval based on frequency
+        switch (frequency) {
+            case 'daily': currentDate.setDate(currentDate.getDate() + interval); break;
+            case 'weekly': currentDate.setDate(currentDate.getDate() + (7 * interval)); break;
+            case 'monthly': currentDate.setMonth(currentDate.getMonth() + interval); break;
+            case 'yearly': currentDate.setFullYear(currentDate.getFullYear() + interval); break;
+        }
+    }
+
+    return occurrences;
+}
 
 exports.handler = async function(event, context) {
     const optionsResponse = handleOptionsRequest(event);
@@ -39,6 +88,9 @@ exports.handler = async function(event, context) {
     
     // Use userId and teamId from the authentication context
     const { userId, teamId } = authContext;
+
+    const rateLimited = await rateLimitCheck(event, 'general', authContext.userId);
+    if (rateLimited) return rateLimited;
 
     let eventId = null;
     const pathParts = event.path.split('/');
@@ -71,14 +123,27 @@ exports.handler = async function(event, context) {
             if (projectId && ObjectId.isValid(projectId)) query.projectId = projectId;
 
             const events = await collection.find(query).sort({ start: 1 }).toArray();
-            const formattedEvents = events.map(e => ({ 
-                ...e, 
-                id: e._id.toString(), 
+            const formattedEvents = events.map(e => ({
+                ...e,
+                id: e._id.toString(),
                 // Ensure dates are ISO strings for frontend
-                start: e.start?.toISOString(), 
-                end: e.end?.toISOString(), 
-                _id: undefined 
+                start: e.start?.toISOString(),
+                end: e.end?.toISOString(),
+                _id: undefined
             }));
+
+            // Expand recurring events into individual occurrences when date range is provided
+            if (start && end) {
+                const expandedEvents = [];
+                for (const evt of formattedEvents) {
+                    const occurrences = generateOccurrences(evt, start, end);
+                    expandedEvents.push(...occurrences);
+                }
+                // Sort expanded events by start date
+                expandedEvents.sort((a, b) => new Date(a.start) - new Date(b.start));
+                return createResponse(200, expandedEvents);
+            }
+
             return createResponse(200, formattedEvents);
         }
 
@@ -119,6 +184,8 @@ exports.handler = async function(event, context) {
                 ...validatedData,
                 start: new Date(validatedData.start),
                 end: validatedData.end ? new Date(validatedData.end) : null,
+                recurrence: validatedData.recurrence || null,
+                reminders: validatedData.reminders || [],
                 teamId,
                 userId,
                 createdAt: now,
@@ -130,6 +197,7 @@ exports.handler = async function(event, context) {
             newEvent.start = newEvent.start?.toISOString();
             newEvent.end = newEvent.end?.toISOString();
             delete newEvent._id;
+            await createAuditLog(db, { userId, teamId, action: 'create', resourceType: 'calendarEvent', resourceId: result.insertedId.toString() });
             return createResponse(201, newEvent);
         }
 
@@ -156,7 +224,9 @@ exports.handler = async function(event, context) {
             if (updateFields.start) updateFields.start = new Date(updateFields.start);
             if (updateFields.end) updateFields.end = new Date(updateFields.end);
             else if (validatedData.hasOwnProperty('end')) updateFields.end = null; // Allow unsetting end date
-            
+            if (validatedData.hasOwnProperty('recurrence')) updateFields.recurrence = validatedData.recurrence || null;
+            if (validatedData.hasOwnProperty('reminders')) updateFields.reminders = validatedData.reminders || [];
+
             delete updateFields.teamId; delete updateFields.userId; delete updateFields.createdAt; delete updateFields.id;
 
             const result = await collection.updateOne({ _id: new ObjectId(eventId), teamId }, { $set: updateFields });
@@ -170,6 +240,7 @@ exports.handler = async function(event, context) {
             updatedEvent.start = updatedEvent.start?.toISOString();
             updatedEvent.end = updatedEvent.end?.toISOString();
             delete updatedEvent._id;
+            await createAuditLog(db, { userId, teamId, action: 'update', resourceType: 'calendarEvent', resourceId: eventId });
             return createResponse(200, updatedEvent);
         }
 
@@ -179,6 +250,7 @@ exports.handler = async function(event, context) {
             if (result.deletedCount === 0) {
                  return createErrorResponse(404, 'Event not found or user unauthorized');
             }
+            await createAuditLog(db, { userId, teamId, action: 'delete', resourceType: 'calendarEvent', resourceId: eventId });
             return createResponse(200, { message: 'Event deleted successfully' });
         }
 
@@ -188,6 +260,7 @@ exports.handler = async function(event, context) {
 
     } catch (error) {
         logger.error('Error handling calendar events request:', error);
-        return createErrorResponse(500, 'Internal Server Error', error.message);
+        const safeDetails = process.env.NODE_ENV === 'production' ? undefined : error.message;
+        return createErrorResponse(500, 'Internal Server Error', safeDetails);
     }
 }; 

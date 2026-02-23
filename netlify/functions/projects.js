@@ -6,6 +6,8 @@ const { z } = require('zod');
 const logger = require('./utils/logger');
 const { getPaginationParams, createPaginatedResponse } = require('./utils/pagination');
 const { notDeleted, softDelete } = require('./utils/softDelete');
+const { createAuditLog } = require('./utils/auditLog');
+const { rateLimitCheck } = require('./utils/rateLimit');
 
 // Standardize on 'title' - remove 'name' from schemas
 const ProjectCreateSchema = z.object({
@@ -85,6 +87,9 @@ exports.handler = async function(event, context) {
     return createErrorResponse(401, 'Unauthorized');
   }
   const { userId, teamId } = authContext;
+
+  const rateLimited = await rateLimitCheck(event, 'general', authContext.userId);
+  if (rateLimited) return rateLimited;
 
   let projectId = null;
   const pathParts = event.path.split('/');
@@ -182,6 +187,8 @@ exports.handler = async function(event, context) {
 
       await syncProjectWithCalendar(db, createdProject, 'create');
 
+      await createAuditLog(db, { userId, teamId, action: 'create', resourceType: 'project', resourceId: result.insertedId.toString() });
+
       return createResponse(201, createdProject);
     }
 
@@ -244,6 +251,8 @@ exports.handler = async function(event, context) {
 
       await syncProjectWithCalendar(db, updatedProject, 'update');
 
+      await createAuditLog(db, { userId, teamId, action: 'update', resourceType: 'project', resourceId: projectId });
+
       return createResponse(200, updatedProject);
     }
 
@@ -266,6 +275,8 @@ exports.handler = async function(event, context) {
 
       await syncProjectWithCalendar(db, formattedProject, 'delete');
 
+      await createAuditLog(db, { userId, teamId, action: 'delete', resourceType: 'project', resourceId: projectId });
+
       return createResponse(200, { message: 'Project deleted successfully' });
     }
 
@@ -275,6 +286,7 @@ exports.handler = async function(event, context) {
   } catch (error) {
     logger.error('Error in projects handler:', error.message);
     if (error.statusCode) { return error; }
-    return createErrorResponse(500, 'Internal Server Error', error.message);
+    const safeDetails = process.env.NODE_ENV === 'production' ? undefined : error.message;
+    return createErrorResponse(500, 'Internal Server Error', safeDetails);
   }
 };

@@ -1,20 +1,38 @@
 <template>
   <Teleport to="body">
-    <Transition name="modal-fade">
-      <div v-if="modelValue" class="modal-overlay" @click="closeOnBackdrop && close()">
-        <div class="modal-container modal-force-light" @click.stop>
-          <div class="modal-header">
-            <h3 class="modal-title">{{ title }}</h3>
-            <button class="modal-close-btn" @click="close" aria-label="Close modal">
+    <Transition name="modal-fade" @after-enter="onAfterEnter" @after-leave="onAfterLeave">
+      <div
+        v-if="modelValue"
+        class="modal-overlay"
+        @click="closeOnBackdrop && close()"
+        @keydown="onKeydown"
+      >
+        <div
+          ref="modalRef"
+          class="modal-container bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+          :class="sizeClass"
+          role="dialog"
+          aria-modal="true"
+          :aria-labelledby="titleId"
+          tabindex="-1"
+          @click.stop
+        >
+          <div class="modal-header border-b border-gray-200 dark:border-gray-700">
+            <h3 :id="titleId" class="modal-title text-gray-900 dark:text-gray-100">{{ title }}</h3>
+            <button
+              class="modal-close-btn text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700"
+              @click="close"
+              aria-label="Close modal"
+            >
               <XMarkIcon class="h-5 w-5" />
             </button>
           </div>
-          
+
           <div class="modal-body">
             <slot></slot>
           </div>
-          
-          <div v-if="$slots.footer" class="modal-footer">
+
+          <div v-if="$slots.footer" class="modal-footer border-t border-gray-200 dark:border-gray-700">
             <slot name="footer"></slot>
           </div>
         </div>
@@ -24,6 +42,7 @@
 </template>
 
 <script setup>
+import { computed, ref, nextTick } from 'vue'
 import { XMarkIcon } from '@heroicons/vue/24/outline'
 
 const props = defineProps({
@@ -38,13 +57,77 @@ const props = defineProps({
   closeOnBackdrop: {
     type: Boolean,
     default: true
+  },
+  size: {
+    type: String,
+    default: 'md',
+    validator: (value) => ['sm', 'md', 'lg', 'xl'].includes(value)
   }
 })
 
 const emit = defineEmits(['update:modelValue'])
 
+const modalRef = ref(null)
+const previousActiveElement = ref(null)
+
+// Unique ID for aria-labelledby
+const titleId = computed(() => `modal-title-${Math.random().toString(36).slice(2, 9)}`)
+
+const sizeClass = computed(() => ({
+  'max-w-sm': props.size === 'sm',
+  'max-w-lg': props.size === 'md',
+  'max-w-2xl': props.size === 'lg',
+  'max-w-4xl': props.size === 'xl',
+}))
+
 const close = () => {
   emit('update:modelValue', false)
+}
+
+// Focus management
+const onAfterEnter = () => {
+  previousActiveElement.value = document.activeElement
+  nextTick(() => {
+    modalRef.value?.focus()
+  })
+}
+
+const onAfterLeave = () => {
+  if (previousActiveElement.value && typeof previousActiveElement.value.focus === 'function') {
+    previousActiveElement.value.focus()
+  }
+  previousActiveElement.value = null
+}
+
+// Keyboard handling: Escape to close + focus trap
+const onKeydown = (e) => {
+  if (e.key === 'Escape') {
+    close()
+    return
+  }
+
+  // Focus trap: keep Tab/Shift+Tab within the modal
+  if (e.key === 'Tab' && modalRef.value) {
+    const focusable = modalRef.value.querySelectorAll(
+      'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])'
+    )
+    if (focusable.length === 0) return
+
+    const first = focusable[0]
+    const last = focusable[focusable.length - 1]
+
+    if (e.shiftKey) {
+      if (document.activeElement === first || document.activeElement === modalRef.value) {
+        e.preventDefault()
+        last.focus()
+      }
+    } else {
+      if (document.activeElement === last) {
+        e.preventDefault()
+        first.focus()
+      }
+    }
+  }
 }
 </script>
 
@@ -60,15 +143,14 @@ const close = () => {
   align-items: center;
   justify-content: center;
   z-index: 50;
+  padding: 1rem;
 }
 
 .modal-container {
-  background-color: #fff;
   border-radius: 0.5rem;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
   width: 100%;
-  max-width: 32rem;
-  max-height: 80vh;
+  max-height: 85vh;
   overflow-y: auto;
 }
 
@@ -77,27 +159,20 @@ const close = () => {
   justify-content: space-between;
   align-items: center;
   padding: 1rem 1.5rem;
-  border-bottom: 1px solid rgb(229, 231, 235);
 }
 
 .modal-title {
   font-size: 1.125rem;
   font-weight: 600;
-  color: rgb(17, 24, 39);
 }
 
 .modal-close-btn {
-  color: rgb(107, 114, 128);
   background: transparent;
   border: none;
-  padding: 0.25rem;
+  padding: 0.375rem;
   cursor: pointer;
-  border-radius: 0.25rem;
-}
-
-.modal-close-btn:hover {
-  color: rgb(17, 24, 39);
-  background-color: rgb(243, 244, 246);
+  border-radius: 0.375rem;
+  transition: all 0.15s ease;
 }
 
 .modal-body {
@@ -106,7 +181,6 @@ const close = () => {
 
 .modal-footer {
   padding: 1rem 1.5rem;
-  border-top: 1px solid rgb(229, 231, 235);
   display: flex;
   justify-content: flex-end;
   gap: 0.5rem;
@@ -122,30 +196,4 @@ const close = () => {
 .modal-fade-leave-to {
   opacity: 0;
 }
-
-/* Dark mode styles */
-@media (prefers-color-scheme: dark) {
-  .modal-container {
-    background-color: rgb(31, 41, 55);
-    color: rgb(229, 231, 235);
-  }
-  
-  .modal-header,
-  .modal-footer {
-    border-color: rgb(55, 65, 81);
-  }
-  
-  .modal-title {
-    color: rgb(229, 231, 235);
-  }
-  
-  .modal-close-btn {
-    color: rgb(156, 163, 175);
-  }
-  
-  .modal-close-btn:hover {
-    color: rgb(229, 231, 235);
-    background-color: rgb(55, 65, 81);
-  }
-}
-</style> 
+</style>

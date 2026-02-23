@@ -1,8 +1,29 @@
 const { MongoClient, ObjectId } = require('mongodb');
+const { z } = require('zod');
 const { connectToDb } = require('./utils/db');
-const { authenticate } = require('./utils/authHandler'); // Use new authentication handler
+const { authenticate, requireRole } = require('./utils/authHandler');
 const { createResponse, createErrorResponse, handleOptionsRequest } = require('./utils/response');
+const { createAuditLog } = require('./utils/auditLog');
 const logger = require('./utils/logger');
+
+const TeamCreateSchema = z.object({
+  name: z.string().min(1, 'Team name is required').max(100),
+});
+
+const TeamInviteSchema = z.object({
+  email: z.string().email('Invalid email format'),
+});
+
+const RoleUpdateSchema = z.object({
+  memberId: z.string().min(1, 'memberId is required'),
+  newRole: z.enum(['owner', 'admin', 'member', 'viewer'], {
+    errorMap: () => ({ message: 'Invalid role. Must be one of: owner, admin, member, viewer' }),
+  }),
+});
+
+const TeamUpdateSchema = z.object({
+  name: z.string().min(1, 'Team name is required for update').max(100),
+});
 
 exports.handler = async function(event, context) {
   const optionsResponse = handleOptionsRequest(event);
@@ -57,16 +78,19 @@ exports.handler = async function(event, context) {
     // Handle action=invite - Invite a user to the team
     if (event.httpMethod === 'POST' && action === 'invite' && effectiveTeamId) {
         const data = JSON.parse(event.body);
-        if (!data.email) {
-            return createErrorResponse(400, 'Email is required for team invitation');
+        const inviteValidation = TeamInviteSchema.safeParse(data);
+        if (!inviteValidation.success) {
+            return createErrorResponse(400, 'Validation failed', inviteValidation.error.format());
         }
         
-        // Check if user has permission to send invites (must be a team member)
+        // Only owner or admin can invite members
+        requireRole(authContext, ['owner', 'admin']);
+
         const team = await teamsCollection.findOne({
             _id: new ObjectId(effectiveTeamId),
             'members.userId': userId
         });
-        
+
         if (!team) {
             return createErrorResponse(404, 'Team not found or user is not a member');
         }
@@ -100,11 +124,84 @@ exports.handler = async function(event, context) {
             { $push: { members: newMember } }
         );
         
-        // TODO: Send notification email to the user (optional)
-        
-        return createResponse(200, { 
+        await createAuditLog(db, {
+            userId, teamId: effectiveTeamId, action: 'create',
+            resourceType: 'teamMember', resourceId: userToAdd._id.toString(),
+            changes: { email: { to: data.email }, role: { to: 'member' } }
+        });
+
+        return createResponse(200, {
             message: 'User added to team successfully',
             member: newMember
+        });
+    }
+
+    // PUT: Update a member's role (action=updateRole)
+    else if (event.httpMethod === 'PUT' && action === 'updateRole' && effectiveTeamId) {
+        const data = JSON.parse(event.body);
+        const roleValidation = RoleUpdateSchema.safeParse(data);
+        if (!roleValidation.success) {
+            return createErrorResponse(400, 'Validation failed', roleValidation.error.format());
+        }
+        const { memberId, newRole } = roleValidation.data;
+
+        // Only owner or admin can change roles
+        requireRole(authContext, ['owner', 'admin']);
+
+        // Cannot change your own role
+        if (memberId === userId) {
+            return createErrorResponse(400, 'You cannot change your own role');
+        }
+
+        const team = await teamsCollection.findOne({
+            _id: new ObjectId(effectiveTeamId),
+            'members.userId': userId
+        });
+
+        if (!team) {
+            return createErrorResponse(404, 'Team not found or user is not a member');
+        }
+
+        const currentUserMember = team.members.find(m => m.userId === userId);
+        const targetMember = team.members.find(m => m.userId === memberId);
+
+        if (!targetMember) {
+            return createErrorResponse(404, 'Target member not found in this team');
+        }
+
+        // Only owner can promote someone to admin or owner
+        if ((newRole === 'admin' || newRole === 'owner') && currentUserMember.role !== 'owner') {
+            return createErrorResponse(403, 'Only team owners can promote members to admin or owner');
+        }
+
+        // Cannot demote the last owner
+        if (targetMember.role === 'owner' && newRole !== 'owner') {
+            const ownerCount = team.members.filter(m => m.role === 'owner').length;
+            if (ownerCount <= 1) {
+                return createErrorResponse(400, 'Cannot demote the last owner. Promote another member to owner first.');
+            }
+        }
+
+        // Admins cannot change the role of other admins or owners
+        if (currentUserMember.role === 'admin' && (targetMember.role === 'admin' || targetMember.role === 'owner')) {
+            return createErrorResponse(403, 'Admins cannot change the role of other admins or owners');
+        }
+
+        await teamsCollection.updateOne(
+            { _id: new ObjectId(effectiveTeamId), 'members.userId': memberId },
+            { $set: { 'members.$.role': newRole, updatedAt: new Date() } }
+        );
+
+        await createAuditLog(db, {
+            userId, teamId: effectiveTeamId, action: 'update',
+            resourceType: 'teamMember', resourceId: memberId,
+            changes: { role: { from: targetMember.role, to: newRole } }
+        });
+
+        return createResponse(200, {
+            message: `Member role updated to ${newRole}`,
+            memberId,
+            newRole
         });
     }
 
@@ -151,8 +248,9 @@ exports.handler = async function(event, context) {
     // POST: Create a new team
     else if (event.httpMethod === 'POST') {
       const data = JSON.parse(event.body);
-      if (!data.name) {
-        return createErrorResponse(400, 'Team name is required');
+      const createValidation = TeamCreateSchema.safeParse(data);
+      if (!createValidation.success) {
+        return createErrorResponse(400, 'Validation failed', createValidation.error.format());
       }
 
       // Get current user details to add as owner
@@ -181,14 +279,20 @@ exports.handler = async function(event, context) {
       const createdTeam = { ...newTeam, id: result.insertedId.toString() };
       delete createdTeam._id;
 
+      await createAuditLog(db, {
+          userId, teamId: result.insertedId.toString(), action: 'create',
+          resourceType: 'team', resourceId: result.insertedId.toString(),
+      });
+
       return createResponse(201, createdTeam);
     }
     
     // PUT: Update team details (e.g., name) - Requires team ID in path
     else if (event.httpMethod === 'PUT' && effectiveTeamId) {
         const data = JSON.parse(event.body);
-        if (!data.name) {
-            return createErrorResponse(400, 'Team name is required for update');
+        const updateValidation = TeamUpdateSchema.safeParse(data);
+        if (!updateValidation.success) {
+            return createErrorResponse(400, 'Validation failed', updateValidation.error.format());
         }
         
         // Ensure user is owner to update team name
@@ -204,7 +308,13 @@ exports.handler = async function(event, context) {
         const updatedTeam = await teamsCollection.findOne({ _id: new ObjectId(effectiveTeamId) });
         updatedTeam.id = updatedTeam._id.toString();
         delete updatedTeam._id;
-        
+
+        await createAuditLog(db, {
+            userId, teamId: effectiveTeamId, action: 'update',
+            resourceType: 'team', resourceId: effectiveTeamId,
+            changes: { name: { to: data.name } }
+        });
+
         return createResponse(200, updatedTeam);
     }
     
@@ -218,12 +328,12 @@ exports.handler = async function(event, context) {
         if (deleteResult.deletedCount === 0) {
             return createErrorResponse(404, 'Team not found or user is not the owner');
         }
-        
-        // Optional: Consider deleting associated data (projects, tasks, clients) or marking them as orphaned.
-        // await db.collection('projects').deleteMany({ teamId: effectiveTeamId });
-        // await db.collection('tasks').deleteMany({ teamId: effectiveTeamId });
-        // ... etc.
-        
+
+        await createAuditLog(db, {
+            userId, teamId: effectiveTeamId, action: 'delete',
+            resourceType: 'team', resourceId: effectiveTeamId,
+        });
+
         return createResponse(200, { message: 'Team deleted successfully' });
     }
 
@@ -281,8 +391,13 @@ exports.handler = async function(event, context) {
             { _id: new ObjectId(effectiveTeamId) },
             { $pull: { members: { userId: userId } } }
         );
-        
-        return createResponse(200, { 
+
+        await createAuditLog(db, {
+            userId, teamId: effectiveTeamId, action: 'delete',
+            resourceType: 'teamMember', resourceId: userId,
+        });
+
+        return createResponse(200, {
             message: 'You have successfully left the team'
         });
     }
@@ -297,6 +412,7 @@ exports.handler = async function(event, context) {
     }
   } catch (error) {
     logger.error('Error handling teams request:', error);
-    return createErrorResponse(500, 'Internal Server Error', error.message);
+    const safeDetails = process.env.NODE_ENV === 'production' ? undefined : error.message;
+    return createErrorResponse(500, 'Internal Server Error', safeDetails);
   }
 }; 

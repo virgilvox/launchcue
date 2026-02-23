@@ -2,7 +2,7 @@
   <div class="flex flex-col h-full">
     <header class="mb-6">
       <h2 class="text-2xl font-bold text-gray-800 dark:text-white">Project Calendar View</h2>
-      
+
       <!-- Filter controls -->
       <div class="flex flex-wrap gap-4 mt-4">
         <div class="w-64">
@@ -14,7 +14,7 @@
             </option>
           </select>
         </div>
-        
+
         <div class="w-64">
           <label class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 block">Project</label>
           <select v-model="filterProjectId" class="input select-bordered w-full">
@@ -24,7 +24,7 @@
             </option>
           </select>
         </div>
-        
+
         <div class="flex items-end">
           <button @click="clearFilters" class="btn btn-outline btn-sm">
             Clear Filters
@@ -32,46 +32,92 @@
         </div>
       </div>
     </header>
-    
+
     <div class="flex flex-1 space-x-6">
       <!-- Calendar and Task List -->
       <div class="flex-1 flex flex-col">
-        <!-- Month Navigation -->
+        <!-- Navigation and View Toggle -->
         <div class="flex justify-between items-center mb-6">
-          <button 
-            @click="prevMonth" 
-            class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors text-purple-500"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-              <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" />
-            </svg>
-          </button>
-          
-          <h3 class="text-xl font-semibold text-gray-800 dark:text-white">{{ formattedCurrentMonth }}</h3>
-          
-          <button 
-            @click="nextMonth" 
-            class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors text-purple-500"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-              <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
-            </svg>
-          </button>
+          <div class="flex items-center space-x-2">
+            <button
+              @click="navigatePrev"
+              class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors text-purple-500"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" />
+              </svg>
+            </button>
+
+            <button
+              @click="goToToday"
+              class="px-3 py-1.5 text-sm font-medium rounded-md bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 hover:bg-purple-200 dark:hover:bg-purple-800 transition-colors"
+            >
+              Today
+            </button>
+
+            <button
+              @click="navigateNext"
+              class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors text-purple-500"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
+              </svg>
+            </button>
+
+            <h3 class="text-xl font-semibold text-gray-800 dark:text-white ml-2">{{ headerTitle }}</h3>
+          </div>
+
+          <!-- View Toggle Buttons -->
+          <div class="flex rounded-lg overflow-hidden border border-gray-300 dark:border-gray-600">
+            <button
+              @click="calendarView = 'month'"
+              :class="[
+                'px-4 py-1.5 text-sm font-medium transition-colors',
+                calendarView === 'month'
+                  ? 'bg-purple-600 text-white'
+                  : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+              ]"
+            >
+              Month
+            </button>
+            <button
+              @click="calendarView = 'week'"
+              :class="[
+                'px-4 py-1.5 text-sm font-medium transition-colors border-l border-r border-gray-300 dark:border-gray-600',
+                calendarView === 'week'
+                  ? 'bg-purple-600 text-white'
+                  : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+              ]"
+            >
+              Week
+            </button>
+            <button
+              @click="calendarView = 'day'"
+              :class="[
+                'px-4 py-1.5 text-sm font-medium transition-colors',
+                calendarView === 'day'
+                  ? 'bg-purple-600 text-white'
+                  : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+              ]"
+            >
+              Day
+            </button>
+          </div>
         </div>
-        
-        <!-- Calendar Grid -->
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm mb-6 overflow-hidden">
+
+        <!-- ==================== MONTH VIEW ==================== -->
+        <div v-if="calendarView === 'month'" class="bg-white dark:bg-gray-800 rounded-lg shadow-sm mb-6 overflow-hidden">
           <!-- Days of Week Header -->
           <div class="grid grid-cols-7 border-b dark:border-gray-700">
             <div v-for="day in daysOfWeek" :key="day" class="py-2 text-center text-sm font-medium text-gray-700 dark:text-gray-300">
               {{ day }}
             </div>
           </div>
-          
+
           <!-- Calendar Days -->
           <div class="grid grid-cols-7 h-[30rem]">
-            <div 
-              v-for="(day, index) in calendarDays" 
+            <div
+              v-for="(day, index) in calendarDays"
               :key="index"
               :class="[
                 'border-b border-r dark:border-gray-700 p-1 relative',
@@ -80,7 +126,7 @@
               ]"
             >
               <div class="flex justify-between p-1">
-                <span 
+                <span
                   :class="[
                     'text-sm inline-block w-6 h-6 leading-6 text-center rounded-full',
                     day.isToday ? 'bg-primary-500 text-white' : 'text-gray-700 dark:text-gray-300'
@@ -90,10 +136,10 @@
                 </span>
                 <span class="text-xs text-gray-700 dark:text-gray-300">{{ getDateInfo(day.date) }}</span>
               </div>
-              
+
               <!-- Events for this day -->
               <div class="mt-1 space-y-1 max-h-[80%] overflow-y-auto">
-                <div 
+                <div
                   v-for="event in getEventsForDay(day.date)"
                   :key="event.id"
                   :class="`bg-${event.color}-500 text-white text-xs py-1 px-2 rounded truncate cursor-pointer hover:opacity-80`"
@@ -105,23 +151,161 @@
             </div>
           </div>
         </div>
-        
+
+        <!-- ==================== WEEK VIEW ==================== -->
+        <div v-if="calendarView === 'week'" class="bg-white dark:bg-gray-800 rounded-lg shadow-sm mb-6 overflow-hidden">
+          <!-- Week Day Headers -->
+          <div class="grid grid-cols-[4rem_repeat(7,1fr)] border-b dark:border-gray-700">
+            <!-- Empty corner for time gutter -->
+            <div class="py-2 border-r dark:border-gray-700"></div>
+            <div
+              v-for="day in weekDays"
+              :key="day.dateStr"
+              :class="[
+                'py-2 text-center border-r dark:border-gray-700 last:border-r-0',
+                day.isToday ? 'bg-purple-50 dark:bg-purple-900/20' : ''
+              ]"
+            >
+              <div class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">{{ day.dayName }}</div>
+              <div
+                :class="[
+                  'text-lg font-semibold mt-0.5',
+                  day.isToday ? 'text-purple-600 dark:text-purple-400' : 'text-gray-800 dark:text-white'
+                ]"
+              >
+                {{ day.dayNum }}
+              </div>
+            </div>
+          </div>
+
+          <!-- All-Day Events Row -->
+          <div v-if="hasAllDayEventsInWeek" class="grid grid-cols-[4rem_repeat(7,1fr)] border-b dark:border-gray-700">
+            <div class="px-1 py-1 text-xs text-gray-500 dark:text-gray-400 border-r dark:border-gray-700 flex items-center justify-center">
+              All Day
+            </div>
+            <div
+              v-for="day in weekDays"
+              :key="'allday-' + day.dateStr"
+              class="px-1 py-1 border-r dark:border-gray-700 last:border-r-0 min-h-[2rem]"
+            >
+              <div
+                v-for="event in getAllDayEventsForDay(day.date)"
+                :key="event.id"
+                :class="`bg-${event.color}-500 text-white text-xs py-0.5 px-1.5 rounded truncate cursor-pointer hover:opacity-80 mb-0.5`"
+                @click="navigateToEvent(event)"
+              >
+                {{ getEventTitle(event) }}
+              </div>
+            </div>
+          </div>
+
+          <!-- Time Grid -->
+          <div class="overflow-y-auto max-h-[32rem]">
+            <div class="grid grid-cols-[4rem_repeat(7,1fr)]">
+              <template v-for="hour in weekHours" :key="hour">
+                <!-- Hour Row -->
+                <div class="h-14 border-b border-r dark:border-gray-700 px-1 text-xs text-gray-500 dark:text-gray-400 text-right pr-2 pt-0.5">
+                  {{ formatHour(hour) }}
+                </div>
+                <div
+                  v-for="day in weekDays"
+                  :key="day.dateStr + '-' + hour"
+                  :class="[
+                    'h-14 border-b border-r dark:border-gray-700 last:border-r-0 relative',
+                    day.isToday ? 'bg-purple-50/30 dark:bg-purple-900/10' : ''
+                  ]"
+                >
+                  <!-- Events positioned by time -->
+                  <div
+                    v-for="event in getTimedEventsForDayHour(day.date, hour)"
+                    :key="event.id"
+                    :class="`absolute inset-x-0.5 bg-${event.color}-500 text-white text-xs py-0.5 px-1 rounded cursor-pointer hover:opacity-80 z-10 overflow-hidden`"
+                    :style="getWeekEventStyle(event, hour)"
+                    @click="navigateToEvent(event)"
+                  >
+                    <div class="font-medium truncate">{{ getEventTitle(event) }}</div>
+                    <div v-if="event.start" class="truncate opacity-80">{{ formatEventTime(event.start) }}</div>
+                  </div>
+                </div>
+              </template>
+            </div>
+          </div>
+        </div>
+
+        <!-- ==================== DAY VIEW ==================== -->
+        <div v-if="calendarView === 'day'" class="bg-white dark:bg-gray-800 rounded-lg shadow-sm mb-6 overflow-hidden">
+          <!-- Day Header -->
+          <div class="py-3 px-4 border-b dark:border-gray-700 text-center">
+            <div class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">{{ dayViewHeader.dayName }}</div>
+            <div
+              :class="[
+                'text-2xl font-bold mt-0.5',
+                dayViewHeader.isToday ? 'text-purple-600 dark:text-purple-400' : 'text-gray-800 dark:text-white'
+              ]"
+            >
+              {{ dayViewHeader.dayNum }}
+            </div>
+          </div>
+
+          <!-- All-Day Events -->
+          <div v-if="dayAllDayEvents.length > 0" class="px-4 py-2 border-b dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
+            <div class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1 uppercase">All Day</div>
+            <div class="flex flex-wrap gap-1">
+              <div
+                v-for="event in dayAllDayEvents"
+                :key="event.id"
+                :class="`bg-${event.color}-500 text-white text-xs py-1 px-2 rounded cursor-pointer hover:opacity-80`"
+                @click="navigateToEvent(event)"
+              >
+                {{ getEventTitle(event) }}
+              </div>
+            </div>
+          </div>
+
+          <!-- Time Slots -->
+          <div class="overflow-y-auto max-h-[36rem]">
+            <div class="grid grid-cols-[5rem_1fr]">
+              <template v-for="hour in dayHours" :key="hour">
+                <div class="h-16 border-b border-r dark:border-gray-700 px-2 text-xs text-gray-500 dark:text-gray-400 text-right pr-3 pt-1">
+                  {{ formatHour(hour) }}
+                </div>
+                <div class="h-16 border-b dark:border-gray-700 relative">
+                  <!-- Timed events -->
+                  <div
+                    v-for="event in getTimedEventsForDayViewHour(currentDate, hour)"
+                    :key="event.id"
+                    :class="`absolute left-1 right-1 bg-${event.color}-500 text-white text-xs rounded cursor-pointer hover:opacity-80 z-10 overflow-hidden px-2 py-1`"
+                    :style="getDayEventStyle(event, hour)"
+                    @click="navigateToEvent(event)"
+                  >
+                    <div class="font-medium truncate">{{ getEventTitle(event) }}</div>
+                    <div class="truncate opacity-80">
+                      {{ formatEventTime(event.start) }}
+                      <span v-if="event.end"> - {{ formatEventTime(event.end) }}</span>
+                    </div>
+                  </div>
+                </div>
+              </template>
+            </div>
+          </div>
+        </div>
+
         <!-- Task List -->
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4">
           <h4 class="text-lg font-semibold text-gray-800 dark:text-white mb-4">Task List</h4>
-          
+
           <div v-if="loading || eventsLoading" class="py-4 text-center">
             <div class="inline-block animate-spin rounded-full h-6 w-6 border-2 border-primary-500 border-t-transparent"></div>
             <p class="mt-2 text-gray-600 dark:text-gray-400">Loading tasks...</p>
           </div>
-          
+
           <div v-else-if="filteredTasks.length === 0" class="py-4 text-center text-gray-700 dark:text-gray-300">
             No tasks found for this period.
           </div>
-          
+
           <div v-else class="space-y-2">
-            <div 
-              v-for="task in filteredTasks" 
+            <div
+              v-for="task in filteredTasks"
               :key="task.id"
               class="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer"
               @click="navigateToTask(task)"
@@ -142,15 +326,15 @@
           </div>
         </div>
       </div>
-      
+
       <!-- Project Details Sidebar -->
       <div class="w-80 bg-white dark:bg-gray-800 rounded-lg shadow-sm p-5">
         <h3 class="text-xl font-bold text-gray-800 dark:text-white mb-6">Event Details</h3>
-        
+
         <div v-if="!selectedEvent" class="text-center text-gray-700 dark:text-gray-300 py-8">
           Select an event to view details
         </div>
-        
+
         <div v-else class="space-y-6">
           <!-- Event Type and Title -->
           <div>
@@ -164,7 +348,7 @@
               {{ selectedEvent.description }}
             </p>
           </div>
-          
+
           <!-- Date Information -->
           <div v-if="selectedEvent.start">
             <h4 class="uppercase text-xs font-semibold text-gray-700 dark:text-gray-300 tracking-wider mb-3">Date</h4>
@@ -175,7 +359,7 @@
               </span>
             </p>
           </div>
-          
+
           <!-- Project Information (if available) -->
           <div v-if="selectedEvent.projectId">
             <h4 class="uppercase text-xs font-semibold text-gray-700 dark:text-gray-300 tracking-wider mb-3">Related Project</h4>
@@ -183,7 +367,7 @@
               {{ getProjectName(selectedEvent.projectId) }}
             </p>
           </div>
-          
+
           <!-- Associated Links -->
           <div v-if="projectLinks.length > 0">
             <h4 class="uppercase text-xs font-semibold text-gray-700 dark:text-gray-300 tracking-wider mb-3">Associated Links</h4>
@@ -196,7 +380,7 @@
               </div>
             </div>
           </div>
-          
+
           <!-- Contacts -->
           <div v-if="projectContacts.length > 0">
             <h4 class="uppercase text-xs font-semibold text-gray-700 dark:text-gray-300 tracking-wider mb-3">Contacts</h4>
@@ -212,10 +396,10 @@
               </div>
             </div>
           </div>
-          
+
           <!-- Actions -->
           <div class="pt-4">
-            <button 
+            <button
               @click="navigateToEventPage(selectedEvent)"
               class="btn btn-primary btn-sm w-full"
             >
@@ -247,7 +431,10 @@ const projects = computed(() => projectStore.projects);
 const clients = computed(() => clientStore.clients);
 const tasks = ref([]);
 
-// Current month and navigation
+// View state
+const calendarView = ref('month');
+
+// Current date reference and navigation
 const currentDate = ref(new Date());
 const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -267,16 +454,17 @@ const projectContacts = ref([]);
 const filterClientId = ref(null);
 const filterProjectId = ref(null);
 
+// ============================================================
 // Computed properties for filtering
+// ============================================================
 const filteredProjects = computed(() => {
   if (!projects.value || !Array.isArray(projects.value)) return [];
-  
-  // Make sure we have valid project names
+
   const validProjects = projects.value.map(project => ({
     ...project,
     name: project.name || project.title || 'Untitled Project'
   }));
-  
+
   if (!filterClientId.value) {
     return validProjects;
   }
@@ -285,109 +473,142 @@ const filteredProjects = computed(() => {
 
 const filteredEvents = computed(() => {
   if (!events.value) return [];
-  
+
   return events.value.filter(event => {
     let matchesProject = true;
     let matchesClient = true;
-    
+
     if (filterProjectId.value) {
       matchesProject = event.projectId === filterProjectId.value;
     }
-    
+
     if (filterClientId.value && !filterProjectId.value) {
-      // Find all projects for this client
       const clientProjects = filteredProjects.value.map(p => p.id);
       matchesClient = event.projectId && clientProjects.includes(event.projectId);
     }
-    
+
     return matchesProject && matchesClient;
   }).map(event => {
-    // Create a new object to avoid mutating the original event
     const newEvent = { ...event };
-    
-    // Ensure event has a proper title by adding project name if missing
+
     if (newEvent.type === 'project' && newEvent.projectId && (!newEvent.title || newEvent.title === 'project')) {
       const project = projects.value.find(p => p.id === newEvent.projectId);
       if (project) {
         newEvent.title = project.name || project.title || 'Project Deadline';
       }
     }
-    
+
     return newEvent;
   });
 });
 
 const filteredTasks = computed(() => {
   if (!tasks.value || !Array.isArray(tasks.value)) return [];
-  
+
   return tasks.value.filter(task => {
     let matchesProject = true;
     let matchesClient = true;
-    
+
     if (filterProjectId.value) {
       matchesProject = task.projectId === filterProjectId.value;
     }
-    
+
     if (filterClientId.value && !filterProjectId.value) {
-      // Find all projects for this client
       const clientProjects = filteredProjects.value.map(p => p.id);
       matchesClient = task.projectId && clientProjects.includes(task.projectId);
     }
-    
+
     return matchesProject && matchesClient;
   });
 });
 
-const formattedCurrentMonth = computed(() => {
-  return currentDate.value.toLocaleDateString('en-US', { 
-    month: 'long',
-    year: 'numeric'
-  });
+// ============================================================
+// Header title (context-aware based on view)
+// ============================================================
+const headerTitle = computed(() => {
+  if (calendarView.value === 'month') {
+    return currentDate.value.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  }
+  if (calendarView.value === 'week') {
+    const start = getWeekStart(currentDate.value);
+    const end = new Date(start);
+    end.setDate(end.getDate() + 6);
+    const startStr = start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const endStr = end.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    return `${startStr} - ${endStr}`;
+  }
+  // day
+  return currentDate.value.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
 });
 
-function prevMonth() {
+// Keep backward compatibility
+const formattedCurrentMonth = computed(() => {
+  return currentDate.value.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+});
+
+// ============================================================
+// Navigation (context-aware)
+// ============================================================
+function navigatePrev() {
   const date = new Date(currentDate.value);
-  date.setMonth(date.getMonth() - 1);
+  if (calendarView.value === 'month') {
+    date.setMonth(date.getMonth() - 1);
+  } else if (calendarView.value === 'week') {
+    date.setDate(date.getDate() - 7);
+  } else {
+    date.setDate(date.getDate() - 1);
+  }
   currentDate.value = date;
 }
 
-function nextMonth() {
+function navigateNext() {
   const date = new Date(currentDate.value);
-  date.setMonth(date.getMonth() + 1);
+  if (calendarView.value === 'month') {
+    date.setMonth(date.getMonth() + 1);
+  } else if (calendarView.value === 'week') {
+    date.setDate(date.getDate() + 7);
+  } else {
+    date.setDate(date.getDate() + 1);
+  }
   currentDate.value = date;
 }
+
+function goToToday() {
+  currentDate.value = new Date();
+}
+
+// Keep old functions as aliases for backward compat
+function prevMonth() { navigatePrev(); }
+function nextMonth() { navigateNext(); }
 
 function clearFilters() {
   filterClientId.value = null;
   filterProjectId.value = null;
 }
 
-// Generate calendar days for the current month
+// ============================================================
+// Month View: Calendar day grid
+// ============================================================
 const calendarDays = computed(() => {
   const year = currentDate.value.getFullYear();
   const month = currentDate.value.getMonth();
-  
-  // First day of the month
+
   const firstDay = new Date(year, month, 1);
-  // Last day of the month
   const lastDay = new Date(year, month + 1, 0);
-  
-  // Array to hold all calendar days
+
   const days = [];
-  
-  // Add days from previous month to fill the first row
+
   const daysFromPrevMonth = firstDay.getDay();
-  const prevMonth = new Date(year, month, 0);
+  const prevMonthLast = new Date(year, month, 0);
   for (let i = daysFromPrevMonth - 1; i >= 0; i--) {
-    const date = new Date(year, month - 1, prevMonth.getDate() - i);
+    const date = new Date(year, month - 1, prevMonthLast.getDate() - i);
     days.push({
       date,
       isCurrentMonth: false,
       isToday: isSameDay(date, new Date())
     });
   }
-  
-  // Add days from current month
+
   for (let i = 1; i <= lastDay.getDate(); i++) {
     const date = new Date(year, month, i);
     days.push({
@@ -396,8 +617,7 @@ const calendarDays = computed(() => {
       isToday: isSameDay(date, new Date())
     });
   }
-  
-  // Add days from next month to fill the last row
+
   const daysFromNextMonth = 7 - (days.length % 7 || 7);
   for (let i = 1; i <= daysFromNextMonth; i++) {
     const date = new Date(year, month + 1, i);
@@ -407,8 +627,7 @@ const calendarDays = computed(() => {
       isToday: isSameDay(date, new Date())
     });
   }
-  
-  // Add one more row if less than 6 weeks
+
   if (days.length < 42) {
     for (let i = daysFromNextMonth + 1; i <= daysFromNextMonth + 7; i++) {
       const date = new Date(year, month + 1, i);
@@ -419,10 +638,161 @@ const calendarDays = computed(() => {
       });
     }
   }
-  
+
   return days;
 });
 
+// ============================================================
+// Week View helpers
+// ============================================================
+// Hours displayed in week view: 8am to 8pm
+const weekHours = computed(() => {
+  const hours = [];
+  for (let h = 8; h <= 20; h++) {
+    hours.push(h);
+  }
+  return hours;
+});
+
+function getWeekStart(date) {
+  const d = new Date(date);
+  const day = d.getDay(); // 0=Sun
+  d.setDate(d.getDate() - day);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+const weekDays = computed(() => {
+  const start = getWeekStart(currentDate.value);
+  const days = [];
+  const today = new Date();
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(start);
+    d.setDate(d.getDate() + i);
+    days.push({
+      date: d,
+      dateStr: d.toISOString().slice(0, 10),
+      dayName: d.toLocaleDateString('en-US', { weekday: 'short' }),
+      dayNum: d.getDate(),
+      isToday: isSameDay(d, today)
+    });
+  }
+  return days;
+});
+
+const hasAllDayEventsInWeek = computed(() => {
+  return weekDays.value.some(day => getAllDayEventsForDay(day.date).length > 0);
+});
+
+function isAllDayEvent(event) {
+  if (event.allDay) return true;
+  // If event has no start time info (midnight-to-midnight or no time component), treat as all-day
+  if (!event.start) return true;
+  const start = new Date(event.start);
+  const end = event.end ? new Date(event.end) : null;
+  // If start is exactly midnight and end is exactly midnight of next day (or missing), consider it all-day
+  if (start.getHours() === 0 && start.getMinutes() === 0) {
+    if (!end) return true;
+    if (end.getHours() === 0 && end.getMinutes() === 0 && end.getDate() !== start.getDate()) return true;
+  }
+  return false;
+}
+
+function getAllDayEventsForDay(date) {
+  return getEventsForDay(date).filter(e => isAllDayEvent(e));
+}
+
+function getTimedEventsForDay(date) {
+  return getEventsForDay(date).filter(e => !isAllDayEvent(e));
+}
+
+function getTimedEventsForDayHour(date, hour) {
+  return getTimedEventsForDay(date).filter(event => {
+    if (!event.start) return false;
+    const startHour = new Date(event.start).getHours();
+    return startHour === hour;
+  });
+}
+
+function getWeekEventStyle(event, hour) {
+  if (!event.start) return {};
+  const start = new Date(event.start);
+  const minuteOffset = start.getMinutes();
+  const topPx = (minuteOffset / 60) * 56; // 56px = h-14 (3.5rem)
+
+  // Calculate height based on duration
+  let durationMinutes = 60; // default 1 hour
+  if (event.end) {
+    const end = new Date(event.end);
+    durationMinutes = Math.max(30, (end - start) / 60000);
+  }
+  const heightPx = Math.max(20, (durationMinutes / 60) * 56);
+
+  return {
+    top: `${topPx}px`,
+    height: `${heightPx}px`,
+    minHeight: '20px'
+  };
+}
+
+// ============================================================
+// Day View helpers
+// ============================================================
+// Hours displayed in day view: 6am to 10pm
+const dayHours = computed(() => {
+  const hours = [];
+  for (let h = 6; h <= 22; h++) {
+    hours.push(h);
+  }
+  return hours;
+});
+
+const dayViewHeader = computed(() => {
+  const d = currentDate.value;
+  const today = new Date();
+  return {
+    dayName: d.toLocaleDateString('en-US', { weekday: 'long' }),
+    dayNum: d.getDate(),
+    isToday: isSameDay(d, today)
+  };
+});
+
+const dayAllDayEvents = computed(() => {
+  return getAllDayEventsForDay(currentDate.value);
+});
+
+function getTimedEventsForDayViewHour(date, hour) {
+  return getTimedEventsForDay(date).filter(event => {
+    if (!event.start) return false;
+    const startHour = new Date(event.start).getHours();
+    return startHour === hour;
+  });
+}
+
+function getDayEventStyle(event, hour) {
+  if (!event.start) return {};
+  const start = new Date(event.start);
+  const minuteOffset = start.getMinutes();
+  const topPx = (minuteOffset / 60) * 64; // 64px = h-16 (4rem)
+
+  // Calculate height based on duration
+  let durationMinutes = 60; // default 1 hour
+  if (event.end) {
+    const end = new Date(event.end);
+    durationMinutes = Math.max(30, (end - start) / 60000);
+  }
+  const heightPx = Math.max(24, (durationMinutes / 60) * 64);
+
+  return {
+    top: `${topPx}px`,
+    height: `${heightPx}px`,
+    minHeight: '24px'
+  };
+}
+
+// ============================================================
+// Shared utility functions
+// ============================================================
 function isSameDay(date1, date2) {
   return date1.getDate() === date2.getDate() &&
          date1.getMonth() === date2.getMonth() &&
@@ -430,69 +800,98 @@ function isSameDay(date1, date2) {
 }
 
 function getDateInfo(date) {
-  // Additional date info for the calendar cell
   return '';
 }
 
-// Format date for display
 function formatDate(dateObj) {
   if (!dateObj) return '';
-  
+
   return dateObj.toLocaleDateString('en-US', {
     month: 'short',
     day: 'numeric'
   });
 }
 
-// When the current month changes, reload the calendar events
-watch(currentDate, () => {
-  loadEventsForCurrentMonth();
+function formatHour(hour) {
+  if (hour === 0) return '12 AM';
+  if (hour === 12) return '12 PM';
+  if (hour < 12) return `${hour} AM`;
+  return `${hour - 12} PM`;
+}
+
+function formatEventTime(date) {
+  if (!date) return '';
+  const d = new Date(date);
+  return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+}
+
+// ============================================================
+// Watchers for data loading
+// ============================================================
+
+// Reload events and tasks when currentDate or calendarView changes
+watch([currentDate, calendarView], () => {
+  loadEventsForCurrentView();
   fetchTasks();
 }, { immediate: false });
 
 // Watch for filter changes
 watch([filterClientId, filterProjectId], () => {
   if (filterClientId.value && !filterProjectId.value) {
-    // Filter projects based on client
     const clientProjects = projects.value.filter(p => p.clientId === filterClientId.value);
     if (clientProjects.length === 1) {
-      // If there's only one project for this client, automatically select it
       filterProjectId.value = clientProjects[0].id;
     }
   }
 });
 
-// Load events for the current month view
+// ============================================================
+// Data loading
+// ============================================================
+
+// Load events based on current view and date
+async function loadEventsForCurrentView() {
+  let startDate, endDate;
+
+  if (calendarView.value === 'month') {
+    const year = currentDate.value.getFullYear();
+    const month = currentDate.value.getMonth();
+    startDate = new Date(year, month, 1);
+    endDate = new Date(year, month + 1, 0);
+    // Buffer for events spanning previous/next months
+    startDate.setDate(startDate.getDate() - 7);
+    endDate.setDate(endDate.getDate() + 7);
+  } else if (calendarView.value === 'week') {
+    startDate = getWeekStart(currentDate.value);
+    endDate = new Date(startDate);
+    endDate.setDate(endDate.getDate() + 6);
+    endDate.setHours(23, 59, 59, 999);
+  } else {
+    // Day view
+    startDate = new Date(currentDate.value);
+    startDate.setHours(0, 0, 0, 0);
+    endDate = new Date(currentDate.value);
+    endDate.setHours(23, 59, 59, 999);
+  }
+
+  await calendarStore.fetchEvents(startDate, endDate);
+}
+
+// Keep old function name for initial mount
 async function loadEventsForCurrentMonth() {
-  const year = currentDate.value.getFullYear();
-  const month = currentDate.value.getMonth();
-  
-  // First day of the month
-  const firstDay = new Date(year, month, 1);
-  // Last day of the month
-  const lastDay = new Date(year, month + 1, 0);
-  
-  // Add buffer days to show events that span from previous/next months
-  firstDay.setDate(firstDay.getDate() - 7);
-  lastDay.setDate(lastDay.getDate() + 7);
-  
-  // Fetch events for this date range
-  await calendarStore.fetchEvents(firstDay, lastDay);
-  
-  // Not needed - the filteredEvents computed property will handle this
-  // instead of modifying events.value directly
+  await loadEventsForCurrentView();
 }
 
 // Get events for a specific day
 function getEventsForDay(date) {
   if (!filteredEvents.value || !Array.isArray(filteredEvents.value)) return [];
-  
+
   return filteredEvents.value.filter(event => {
     if (!event.start) return false;
-    
+
     const eventDate = new Date(event.start);
-    return eventDate.getDate() === date.getDate() && 
-           eventDate.getMonth() === date.getMonth() && 
+    return eventDate.getDate() === date.getDate() &&
+           eventDate.getMonth() === date.getMonth() &&
            eventDate.getFullYear() === date.getFullYear();
   });
 }
@@ -500,21 +899,37 @@ function getEventsForDay(date) {
 async function fetchTasks() {
   try {
     loading.value = true;
-    const year = currentDate.value.getFullYear();
-    const month = currentDate.value.getMonth();
-    const startDate = new Date(year, month, 1).toISOString();
-    const endDate = new Date(year, month + 1, 0).toISOString();
-    
+    let startDate, endDate;
+
+    if (calendarView.value === 'month') {
+      const year = currentDate.value.getFullYear();
+      const month = currentDate.value.getMonth();
+      startDate = new Date(year, month, 1).toISOString();
+      endDate = new Date(year, month + 1, 0).toISOString();
+    } else if (calendarView.value === 'week') {
+      const weekStart = getWeekStart(currentDate.value);
+      const weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekEnd.getDate() + 6);
+      weekEnd.setHours(23, 59, 59, 999);
+      startDate = weekStart.toISOString();
+      endDate = weekEnd.toISOString();
+    } else {
+      const dayStart = new Date(currentDate.value);
+      dayStart.setHours(0, 0, 0, 0);
+      const dayEnd = new Date(currentDate.value);
+      dayEnd.setHours(23, 59, 59, 999);
+      startDate = dayStart.toISOString();
+      endDate = dayEnd.toISOString();
+    }
+
     console.log(`Fetching tasks for date range: ${startDate} to ${endDate}`);
-    
-    // Get tasks from calendar store
+
     const tasksResponse = await calendarStore.getTaskDeadlines(startDate, endDate);
-    
-    console.log('Tasks response received:', tasksResponse ? 
-      (Array.isArray(tasksResponse) ? `Array with ${tasksResponse.length} items` : typeof tasksResponse) : 
+
+    console.log('Tasks response received:', tasksResponse ?
+      (Array.isArray(tasksResponse) ? `Array with ${tasksResponse.length} items` : typeof tasksResponse) :
       'null or undefined');
-    
-    // Handle the response - should be an array from the store now
+
     if (Array.isArray(tasksResponse)) {
       tasks.value = tasksResponse;
       console.log(`Loaded ${tasks.value.length} tasks for calendar view`);
@@ -533,7 +948,7 @@ async function fetchTasks() {
 // Helper function to get task status color
 function getTaskStatusColor(status) {
   if (!status) return 'gray';
-  
+
   const statusLower = status.toLowerCase();
   if (statusLower.includes('complete')) return 'green';
   if (statusLower.includes('progress')) return 'blue';
@@ -542,24 +957,22 @@ function getTaskStatusColor(status) {
   return 'gray';
 }
 
-// Navigate to the appropriate page based on event type
+// ============================================================
+// Event interaction
+// ============================================================
+
 function navigateToEvent(event) {
-  // First check if the event is valid
   if (!event) {
     console.warn('Attempted to navigate to invalid event');
     return;
   }
-
-  // Store the selected event
   selectedEvent.value = event;
-  
-  // Select the event to show details in the sidebar
   selectEvent(event);
 }
 
 function navigateToTask(task) {
   if (task.projectId) {
-    router.push({ 
+    router.push({
       name: 'project-detail',
       params: { id: task.projectId },
       query: { taskId: task.id }
@@ -580,36 +993,30 @@ async function selectEvent(event) {
     console.warn('No project ID found for the selected event');
     return;
   }
-  
+
   selectedProjectId.value = event.projectId;
-  projectLinks.value = []; // Clear previous links/contacts
+  projectLinks.value = [];
   projectContacts.value = [];
 
   if (selectedProjectId.value) {
     try {
-      // First try to get the project from the store
       const project = projects.value.find(p => p.id === selectedProjectId.value);
       if (project) {
-        // Use project data from store if available
         projectLinks.value = project.links || [];
         projectContacts.value = project.contacts || [];
         console.log('Found project in store:', project.name);
       } else {
-        // If not in store, try to fetch from API
         try {
-          // Ensure API endpoint is correctly formed
           const projectEndpoint = `/projects/${selectedProjectId.value}`;
           console.log('Fetching project details from API:', projectEndpoint);
-          
+
           const response = await apiService.get(projectEndpoint);
-          
-          // Check if response is valid JSON object and not HTML
+
           if (response && typeof response === 'object' && !response.toString().includes('<!DOCTYPE html>')) {
             console.log('Received project details from API:', response.name || response.title);
             projectLinks.value = response.links || [];
             projectContacts.value = response.contacts || [];
-            
-            // Update project store with the fetched project to avoid future API calls
+
             if (!projects.value.some(p => p.id === selectedProjectId.value)) {
               projectStore.addProject(response);
             }
@@ -628,55 +1035,48 @@ async function selectEvent(event) {
 
 function getProjectName(projectId) {
   if (!projectId) return 'Project';
-  
-  // Try to find the project in the store first
+
   const project = projects.value.find(p => p.id === projectId);
   if (project) {
     return project.name || project.title || 'Project';
   }
-  
-  // If we have any event that references this project, use its title as a fallback
+
   const relatedEvent = events.value.find(e => e.projectId === projectId && e.title && e.title !== 'Project');
   if (relatedEvent && relatedEvent.title) {
     return relatedEvent.title;
   }
-  
-  // Try to get the project from tasks if available
+
   const relatedTask = tasks.value.find(t => t.projectId === projectId && t.projectName);
   if (relatedTask && relatedTask.projectName) {
     return relatedTask.projectName;
   }
-  
+
   return 'Project';
 }
 
 function getEventTitle(event) {
   if (!event) return 'Untitled Event';
-  
-  // If it's a project event, ensure we get the project name
+
   if (event.type === 'project' && event.projectId) {
     const project = projects.value.find(p => p.id === event.projectId);
     if (project) {
       return project.name || project.title || 'Project Deadline';
     }
   }
-  
-  // Use the event title if available
+
   if (event.title && event.title !== 'project') {
     return event.title;
   }
-  
-  // Default fallbacks based on event type
+
   if (event.type === 'task') return 'Task';
   if (event.type === 'project') return 'Project Deadline';
-  
+
   return 'Event';
 }
 
-// Add a new function to navigate to the event page when button is clicked
 function navigateToEventPage(event) {
   if (!event) return;
-  
+
   if (event.type === 'task' && event.taskId) {
     navigateToTask({ id: event.taskId, projectId: event.projectId });
   } else if (event.type === 'project' && event.projectId) {
@@ -686,23 +1086,24 @@ function navigateToEventPage(event) {
   }
 }
 
+// ============================================================
+// Lifecycle
+// ============================================================
 onMounted(async () => {
   loading.value = true;
-  
+
   try {
-    // Load initial data
     if (projects.value.length === 0) {
       await projectStore.fetchProjects();
     }
-    
+
     if (clients.value.length === 0) {
       await clientStore.fetchClients();
     }
-    
-    // Load tasks and events for the current month
+
     await Promise.all([
       taskStore.fetchTasks(),
-      loadEventsForCurrentMonth(),
+      loadEventsForCurrentView(),
       fetchTasks()
     ]);
   } catch (err) {
@@ -711,4 +1112,4 @@ onMounted(async () => {
     loading.value = false;
   }
 });
-</script> 
+</script>

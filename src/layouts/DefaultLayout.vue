@@ -1,5 +1,8 @@
 <template>
   <div class="flex h-screen bg-gray-100 dark:bg-gray-900 overflow-hidden">
+    <!-- Global Search (Cmd+K / Ctrl+K) -->
+    <GlobalSearch ref="globalSearch" />
+
     <!-- Sidebar will be rendered by the Sidebar component -->
     <Sidebar ref="sidebar" @collapsed-changed="updateSidebarState" />
     
@@ -7,9 +10,18 @@
       <header class="bg-white dark:bg-gray-800 shadow-sm">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div class="relative flex justify-between items-center h-16">
-            <!-- Left side - placeholder for future use -->
+            <!-- Left side - Search trigger -->
             <div>
-              <!-- Removed redundant hamburger menu button -->
+              <button
+                @click="$refs.globalSearch?.open()"
+                class="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+              >
+                <MagnifyingGlassIcon class="h-4 w-4" />
+                <span class="hidden sm:inline">Search...</span>
+                <kbd class="hidden sm:inline-flex items-center px-1.5 py-0.5 text-[10px] font-medium bg-gray-200 dark:bg-gray-600 rounded border border-gray-300 dark:border-gray-500 ml-2">
+                  {{ isMac ? '⌘' : 'Ctrl' }}+K
+                </kbd>
+              </button>
             </div>
             
             <!-- Right side: Team Switcher & User Menu -->
@@ -41,6 +53,9 @@
                   Team: {{ authStore.currentTeam.name }}
               </div>
 
+              <!-- Notifications -->
+              <NotificationBell />
+
               <!-- User menu placeholder -->
               <div>
                 <!-- Add user dropdown/profile link here later -->
@@ -60,17 +75,22 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import Sidebar from '../components/Sidebar.vue'
+import GlobalSearch from '../components/GlobalSearch.vue'
+import NotificationBell from '../components/ui/NotificationBell.vue'
 import { useAuthStore } from '../stores/auth'
 import { useToast } from 'vue-toastification';
+import { MagnifyingGlassIcon } from '@heroicons/vue/24/outline'
 
 const authStore = useAuthStore()
 const toast = useToast();
 const isSwitchingTeam = ref(false);
 const sidebar = ref(null);
+const globalSearch = ref(null);
 const isSidebarCollapsed = ref(false);
 const isMobile = ref(false);
+const isMac = computed(() => typeof navigator !== 'undefined' && /Mac|iPod|iPhone|iPad/.test(navigator.platform));
 
 // Update sidebar state when the Sidebar component emits changes
 const updateSidebarState = (isCollapsed, isMobileView) => {

@@ -26,7 +26,16 @@
                     </option>
                 </select>
             </div>
-             <!-- Add status or type filters if needed -->
+            <div>
+                <label for="statusFilter" class="label text-xs">Filter by Status</label>
+                <select id="statusFilter" v-model="filters.status" class="input text-sm">
+                    <option :value="null">All Statuses</option>
+                    <option value="draft">Draft</option>
+                    <option value="active">Active</option>
+                    <option value="paused">Paused</option>
+                    <option value="completed">Completed</option>
+                </select>
+            </div>
         </div>
     </div>
 
@@ -52,13 +61,19 @@
             :to="`/campaigns/${campaign.id}`" 
             class="card hover:shadow-lg transition-shadow group"
          >
-            <h3 class="text-lg font-semibold text-gray-800 dark:text-white group-hover:text-primary-600 dark:group-hover:text-primary-400 mb-2">{{ campaign.title }}</h3>
+            <div class="flex justify-between items-start mb-2">
+                <h3 class="text-lg font-semibold text-gray-800 dark:text-white group-hover:text-primary-600 dark:group-hover:text-primary-400">{{ campaign.title }}</h3>
+                <span :class="statusBadgeClass(campaign.status)">{{ campaign.status || 'draft' }}</span>
+            </div>
             <p class="text-sm text-gray-600 dark:text-gray-400 mb-3 line-clamp-2">{{ campaign.description }}</p>
             <div class="text-xs text-gray-500 dark:text-gray-400">
                  <span v-if="campaign.clientId">Client: {{ getClientName(campaign.clientId) }}</span>
                  <span v-if="campaign.clientId && campaign.projectId"> • </span>
                  <span v-if="campaign.projectId">Project: {{ getProjectName(campaign.projectId) }}</span>
              </div>
+            <div v-if="campaign.budget != null" class="mt-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+                Budget: ${{ campaign.budget.toLocaleString() }}
+            </div>
             <div class="mt-3 pt-3 border-t dark:border-gray-700 text-xs text-gray-500 dark:text-gray-400">
                 Dates: {{ formatDate(campaign.startDate) || 'N/A' }} - {{ formatDate(campaign.endDate) || 'N/A' }}
             </div>
@@ -88,7 +103,8 @@ const loading = ref(false);
 const error = ref(null);
 const filters = ref({
     clientId: null,
-    projectId: null
+    projectId: null,
+    status: null,
 });
 
 const clients = computed(() => clientStore.clients);
@@ -104,7 +120,7 @@ const filteredCampaigns = computed(() => {
     return campaigns.value;
 });
 
-const hasActiveFilters = computed(() => filters.value.clientId || filters.value.projectId);
+const hasActiveFilters = computed(() => filters.value.clientId || filters.value.projectId || filters.value.status);
 
 async function loadInitialData() {
     loading.value = true;
@@ -130,6 +146,7 @@ async function fetchCampaigns() {
         const queryParams = {};
         if (filters.value.clientId) queryParams.clientId = filters.value.clientId;
         if (filters.value.projectId) queryParams.projectId = filters.value.projectId;
+        if (filters.value.status) queryParams.status = filters.value.status;
         campaigns.value = await campaignService.getCampaigns(queryParams);
     } catch (err) {
         console.error("Error fetching campaigns:", err);
@@ -149,7 +166,17 @@ watch(() => filters.value.clientId, () => {
 });
 
 function clearFilters() {
-    filters.value = { clientId: null, projectId: null };
+    filters.value = { clientId: null, projectId: null, status: null };
+}
+
+function statusBadgeClass(status) {
+    const base = 'inline-block px-2 py-0.5 rounded-full text-xs font-medium capitalize whitespace-nowrap';
+    switch (status) {
+        case 'active': return `${base} bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300`;
+        case 'paused': return `${base} bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300`;
+        case 'completed': return `${base} bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300`;
+        default: return `${base} bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300`;
+    }
 }
 
 function getClientName(clientId) {

@@ -5,7 +5,37 @@
         <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">Tasks</h1>
         <p class="text-gray-500 dark:text-gray-400">Manage your tasks and track their progress</p>
       </div>
-      <div class="flex gap-2">
+      <div class="flex items-center gap-2">
+        <!-- View Toggle -->
+        <div class="flex items-center bg-gray-200 dark:bg-gray-700 rounded-lg p-0.5">
+          <button
+            @click="viewMode = 'list'"
+            :class="[
+              'flex items-center gap-1 px-3 py-1.5 rounded-md text-sm font-medium transition-colors',
+              viewMode === 'list'
+                ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-gray-100 shadow-sm'
+                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+            ]"
+            title="List view"
+          >
+            <TableCellsIcon class="h-4 w-4" />
+            <span class="hidden sm:inline">List</span>
+          </button>
+          <button
+            @click="viewMode = 'kanban'"
+            :class="[
+              'flex items-center gap-1 px-3 py-1.5 rounded-md text-sm font-medium transition-colors',
+              viewMode === 'kanban'
+                ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-gray-100 shadow-sm'
+                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+            ]"
+            title="Kanban view"
+          >
+            <ViewColumnsIcon class="h-4 w-4" />
+            <span class="hidden sm:inline">Kanban</span>
+          </button>
+        </div>
+
         <button @click="openNewTaskModal" class="btn btn-primary">
           <PlusIcon class="h-5 w-5 mr-1" />
           Add Task
@@ -24,14 +54,24 @@
       <LoadingSpinner text="Loading tasks..." />
     </div>
 
-    <!-- Task List -->
-    <TaskList 
-      v-else-if="filteredAndSortedTasks.length > 0"
+    <!-- Task List View -->
+    <TaskList
+      v-else-if="viewMode === 'list' && filteredAndSortedTasks.length > 0"
       :tasks="filteredAndSortedTasks"
       @edit="handleEditTask"
       @delete="handleConfirmDeleteTask"
       @updateStatus="handleUpdateTaskStatus"
       @openChecklist="handleOpenChecklist"
+    />
+
+    <!-- Kanban View -->
+    <TaskKanban
+      v-else-if="viewMode === 'kanban' && filteredAndSortedTasks.length > 0"
+      :tasks="filteredAndSortedTasks"
+      :projects="projects"
+      @edit="handleEditTask"
+      @delete="handleConfirmDeleteTask"
+      @updateStatus="handleUpdateTaskStatus"
     />
 
     <!-- Empty State -->
@@ -101,11 +141,14 @@ import { ref, onMounted, computed } from 'vue'
 import { useTaskStore } from '../stores/task'
 import { useProjectStore } from '../stores/project'
 import { useClientStore } from '../stores/client'
+import { useTeamStore } from '../stores/team'
 import { useToast } from 'vue-toastification' // Assuming vue-toastification is installed and configured
-import { 
-  PlusIcon, 
-  ArrowPathIcon, 
-  ClipboardDocumentIcon 
+import {
+  PlusIcon,
+  ArrowPathIcon,
+  ClipboardDocumentIcon,
+  TableCellsIcon,
+  ViewColumnsIcon
 } from '@heroicons/vue/24/outline'
 
 // Import Components
@@ -114,15 +157,18 @@ import LoadingSpinner from '../components/LoadingSpinner.vue'
 import TaskFilters from '../components/tasks/TaskFilters.vue'
 import TaskList from '../components/tasks/TaskList.vue'
 import TaskForm from '../components/tasks/TaskForm.vue'
+import TaskKanban from '../components/tasks/TaskKanban.vue'
 import TaskChecklistModal from '../components/tasks/TaskChecklistModal.vue'
 
 // Stores & Toast
 const taskStore = useTaskStore()
 const projectStore = useProjectStore()
 const clientStore = useClientStore()
+const teamStore = useTeamStore()
 const toast = useToast()
 
 // State
+const viewMode = ref('list')
 const isLoading = ref(false) // Combined loading state
 const isSavingTask = ref(false)
 const isDeletingTask = ref(false)
@@ -134,6 +180,8 @@ const clients = computed(() => clientStore.clients)
 const filters = ref({
   status: '',
   type: '',
+  priority: '',
+  assigneeId: null,
   clientId: null,
   projectId: null,
   sortBy: 'dueDate' // Default sort
@@ -177,6 +225,12 @@ const filteredAndSortedTasks = computed(() => {
   }
   if (filters.value.type) {
     result = result.filter(task => task.type === filters.value.type)
+  }
+  if (filters.value.priority) {
+    result = result.filter(task => task.priority === filters.value.priority)
+  }
+  if (filters.value.assigneeId) {
+    result = result.filter(task => task.assigneeId === filters.value.assigneeId)
   }
   if (filters.value.clientId) {
       result = result.filter(task => projectClientMap[task.projectId] === filters.value.clientId);
@@ -234,30 +288,34 @@ const fetchTasks = async () => {
 }
 
 const fetchSupportData = async () => {
-  // Fetch projects and clients needed for filtering
+  // Fetch projects, clients, and team members needed for filtering
   try {
     // Use Promise.all for concurrent fetching
     await Promise.all([
         projectStore.fetchProjects(),
-        clientStore.fetchClients()
+        clientStore.fetchClients(),
+        teamStore.fetchTeamMembers()
     ]);
   } catch (error) {
-    console.error('Failed to fetch support data (projects/clients):', error)
+    console.error('Failed to fetch support data (projects/clients/team members):', error)
     // Decide if toasts are needed here
-    // toast.error('Failed to load project/client list for filtering.'); 
+    // toast.error('Failed to load project/client list for filtering.');
   }
 }
 
 // Modal Open Handlers
 const openNewTaskModal = () => {
   currentTaskForEdit.value = { // Reset to default structure for a new task
-    title: '', 
-    description: '', 
-    type: 'Development', 
-    status: 'To Do', 
+    title: '',
+    description: '',
+    type: 'Development',
+    status: 'To Do',
+    priority: 'medium',
+    assigneeId: null,
+    tags: [],
     dueDate: new Date().toISOString().split('T')[0], // Default to today
     projectId: filters.value.projectId || null, // Pre-fill if project filter is active
-    checklist: [] 
+    checklist: []
   };
   showTaskFormModal.value = true
 }

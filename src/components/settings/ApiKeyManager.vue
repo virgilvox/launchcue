@@ -15,16 +15,25 @@
     <ul v-else class="space-y-4 mb-6 border dark:border-gray-700 rounded-md p-4">
       <li v-for="key in apiKeys" :key="key.prefix" class="flex items-start justify-between group">
         <div class="flex-1 mr-4">
-          <p class="font-medium text-gray-800 dark:text-gray-200">{{ key.name }}</p>
+          <div class="flex items-center gap-2">
+            <p class="font-medium text-gray-800 dark:text-gray-200">{{ key.name }}</p>
+            <span
+              v-if="isKeyExpired(key)"
+              class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
+            >Expired</span>
+          </div>
           <p class="text-xs text-gray-500 dark:text-gray-400 font-mono">{{ key.prefix }}...</p>
           <div class="mt-1">
-              <p class="text-xs text-gray-500 dark:text-gray-400">Scopes: 
+              <p class="text-xs text-gray-500 dark:text-gray-400">Scopes:
                   <span v-if="key.scopes && key.scopes.length > 0" class="font-medium">{{ key.scopes.join(', ') }}</span>
                   <span v-else>None</span>
               </p>
           </div>
           <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Created: {{ formatDate(key.createdAt) }}</p>
-          <p v-if="key.lastUsedAt" class="text-xs text-gray-500 dark:text-gray-400">Last Used: {{ formatDate(key.lastUsedAt) }}</p>
+          <p v-if="key.lastUsedAt" class="text-xs text-gray-500 dark:text-gray-400">Last used: {{ formatDate(key.lastUsedAt) }}</p>
+          <p v-if="key.expiresAt" class="text-xs" :class="isKeyExpired(key) ? 'text-red-500 dark:text-red-400' : 'text-gray-500 dark:text-gray-400'">
+            Expires: {{ formatDate(key.expiresAt) }}
+          </p>
         </div>
          <!-- Delete button for existing keys -->
         <button 
@@ -43,17 +52,28 @@
         <div class="flex items-end gap-4 mb-4">
             <div class="flex-grow">
                 <label for="keyName" class="label text-xs">Key Name *</label>
-                <input 
+                <input
                     id="keyName"
                     v-model="newKeyName"
-                    type="text" 
-                    class="input text-sm" 
+                    type="text"
+                    class="input text-sm"
                     placeholder="e.g., Script integration"
                     :disabled="isGenerating"
                     required
                 />
             </div>
-            <button 
+            <div class="flex-shrink-0">
+                <label for="keyExpiry" class="label text-xs">Expiration Date (optional)</label>
+                <input
+                    id="keyExpiry"
+                    v-model="newKeyExpiresAt"
+                    type="date"
+                    class="input text-sm"
+                    :min="minExpirationDate"
+                    :disabled="isGenerating"
+                />
+            </div>
+            <button
                 @click="generateKey"
                 class="btn btn-secondary flex-shrink-0"
                 :disabled="isGenerating || !newKeyName.trim()"
@@ -129,7 +149,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import apiKeyService from '../../services/apiKey.service'; // Use the new service
 import { useToast } from 'vue-toastification';
 import Modal from '../Modal.vue';
@@ -142,6 +162,7 @@ const loadingKeys = ref(false);
 const isGenerating = ref(false);
 const isDeleting = ref(false);
 const newKeyName = ref('');
+const newKeyExpiresAt = ref(''); // Optional expiration date for new keys
 const newlyGeneratedKey = ref(null); // Store the newly generated key temporarily
 const showDeleteModal = ref(false);
 const keyToDelete = ref(null);
@@ -161,6 +182,18 @@ const availableScopes = [
 ];
 
 const selectedScopes = ref(['read:projects', 'read:tasks', 'read:clients']); // Default scopes
+
+// Minimum expiration date is tomorrow
+const minExpirationDate = computed(() => {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    return tomorrow.toISOString().split('T')[0];
+});
+
+function isKeyExpired(key) {
+    if (!key.expiresAt) return false;
+    return new Date(key.expiresAt) < new Date();
+}
 
 async function loadApiKeys() {
     loadingKeys.value = true;
@@ -188,14 +221,20 @@ async function generateKey() {
     isGenerating.value = true;
     newlyGeneratedKey.value = null; // Clear previous before generating
     try {
-        const result = await apiKeyService.createKey({
+        const payload = {
              name: newKeyName.value.trim(),
              scopes: selectedScopes.value // Pass selected scopes
-        });
+        };
+        // Include expiresAt if a date was selected (convert date string to ISO datetime)
+        if (newKeyExpiresAt.value) {
+            payload.expiresAt = new Date(newKeyExpiresAt.value + 'T23:59:59.999Z').toISOString();
+        }
+        const result = await apiKeyService.createKey(payload);
         if (result && result.apiKey) {
             newlyGeneratedKey.value = result.apiKey; // Display the full key
             toast.success(`API Key "${result.name}" generated successfully!`);
             newKeyName.value = ''; // Clear input
+            newKeyExpiresAt.value = ''; // Clear expiration date
             selectedScopes.value = ['read:projects', 'read:tasks', 'read:clients']; // Reset scopes
             await loadApiKeys(); // Refresh the list
         } else {

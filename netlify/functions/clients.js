@@ -6,6 +6,8 @@ const { z } = require('zod');
 const logger = require('./utils/logger');
 const { getPaginationParams, createPaginatedResponse } = require('./utils/pagination');
 const { notDeleted, softDelete } = require('./utils/softDelete');
+const { createAuditLog } = require('./utils/auditLog');
+const { rateLimitCheck } = require('./utils/rateLimit');
 
 const ContactSchema = z.object({
   name: z.string().min(1, 'Contact name is required').max(200),
@@ -54,6 +56,9 @@ exports.handler = async function(event, context) {
     return createErrorResponse(401, 'Unauthorized');
   }
   const { userId, teamId } = authContext;
+
+  const rateLimited = await rateLimitCheck(event, 'general', authContext.userId);
+  if (rateLimited) return rateLimited;
 
   // Extract client ID from path
   let clientId = null;
@@ -121,6 +126,7 @@ exports.handler = async function(event, context) {
           if (!updateResult.value) {
             return createErrorResponse(404, 'Client not found');
           }
+          await createAuditLog(db, { userId, teamId, action: 'update', resourceType: 'client', resourceId: clientId });
           return createResponse(200, updateResult.value);
         }
 
@@ -161,10 +167,23 @@ exports.handler = async function(event, context) {
             if (!clientId || !ObjectId.isValid(clientId)) {
               return createErrorResponse(400, 'Invalid client ID');
             }
+
+            // Cascade protection: prevent deleting client with active projects
+            const activeProjects = await db.collection('projects').countDocuments({
+              clientId: clientId,
+              teamId,
+              ...notDeleted,
+              status: { $nin: ['Completed', 'Cancelled'] }
+            });
+            if (activeProjects > 0) {
+              return createErrorResponse(409, `Cannot delete client with ${activeProjects} active project(s). Complete or remove them first.`);
+            }
+
             const deleteResult = await softDelete(clientsCollection, { _id: new ObjectId(clientId), teamId, ...notDeleted }, userId);
             if (deleteResult.matchedCount === 0) {
               return createErrorResponse(404, 'Client not found');
             }
+            await createAuditLog(db, { userId, teamId, action: 'delete', resourceType: 'client', resourceId: clientId });
             return createResponse(200, { success: true, message: 'Client deleted' });
           }
         }
@@ -256,7 +275,8 @@ exports.handler = async function(event, context) {
         return createErrorResponse(400, 'Invalid action or method for client ID');
       } catch (error) {
         logger.error(`Error handling client ${clientId}:`, error.message);
-        return createErrorResponse(500, 'Server error', error.message);
+        const safeDetails = process.env.NODE_ENV === 'production' ? undefined : error.message;
+        return createErrorResponse(500, 'Server error', safeDetails);
       }
     }
 
@@ -314,6 +334,8 @@ exports.handler = async function(event, context) {
       const result = await clientsCollection.insertOne(newClient);
       const createdClient = { ...newClient, id: result.insertedId.toString() };
       delete createdClient._id;
+
+      await createAuditLog(db, { userId, teamId, action: 'create', resourceType: 'client', resourceId: result.insertedId.toString() });
 
       return createResponse(201, createdClient);
     }
@@ -374,6 +396,8 @@ exports.handler = async function(event, context) {
         return createErrorResponse(404, 'Client not found after update');
       }
 
+      await createAuditLog(db, { userId, teamId, action: 'update', resourceType: 'client', resourceId: clientId });
+
       return createResponse(200, updatedClient);
     }
 
@@ -382,6 +406,7 @@ exports.handler = async function(event, context) {
     }
   } catch (error) {
     logger.error('Error handling clients request:', error.message);
-    return createErrorResponse(500, 'Internal Server Error', error.message);
+    const safeDetails = process.env.NODE_ENV === 'production' ? undefined : error.message;
+    return createErrorResponse(500, 'Internal Server Error', safeDetails);
   }
 };

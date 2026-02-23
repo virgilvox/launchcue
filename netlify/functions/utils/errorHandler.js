@@ -1,5 +1,13 @@
 const { createErrorResponse, handleOptionsRequest } = require('./response');
 const logger = require('./logger');
+const { rateLimitCheck } = require('./rateLimit');
+
+const isProduction = process.env.NODE_ENV === 'production';
+
+/** Return error details only in non-production environments */
+function safeErrorDetails(error) {
+  return isProduction ? undefined : (error.message || String(error));
+}
 
 /**
  * Wraps a Netlify function handler with standardized error handling and CORS preflight.
@@ -7,6 +15,7 @@ const logger = require('./logger');
  * @param {Function} handler - async (event, context) => response
  * @param {object} [options]
  * @param {string[]} [options.allowedMethods] - Allowed HTTP methods (e.g. ['GET', 'POST'])
+ * @param {string} [options.rateLimit] - Rate limit category ('auth', 'general', 'ai')
  * @returns {Function} Wrapped Netlify function handler
  */
 function withErrorHandling(handler, options = {}) {
@@ -20,6 +29,12 @@ function withErrorHandling(handler, options = {}) {
       return createErrorResponse(405, 'Method Not Allowed');
     }
 
+    // Rate limiting
+    if (options.rateLimit) {
+      const rateLimited = await rateLimitCheck(event, options.rateLimit);
+      if (rateLimited) return rateLimited;
+    }
+
     try {
       return await handler(event, context);
     } catch (error) {
@@ -28,9 +43,9 @@ function withErrorHandling(handler, options = {}) {
         return error;
       }
 
-      // MongoDB duplicate key
+      // MongoDB duplicate key — don't leak raw error.message
       if (error.code === 11000) {
-        return createErrorResponse(409, 'Duplicate entry', error.message);
+        return createErrorResponse(409, 'Duplicate entry', safeErrorDetails(error));
       }
 
       // Zod validation
@@ -48,11 +63,13 @@ function withErrorHandling(handler, options = {}) {
         return createErrorResponse(400, 'Invalid ID format');
       }
 
-      // Generic server error
+      // Generic server error — sanitise details in production
       logger.error('Unhandled error:', error.message || error);
-      return createErrorResponse(500, 'Internal Server Error', error.message);
+      return createErrorResponse(500, 'Internal Server Error', safeErrorDetails(error));
     }
   };
 }
+
+module.exports = { withErrorHandling, safeErrorDetails };
 
 module.exports = { withErrorHandling };

@@ -12,7 +12,8 @@ const PasswordChangeSchema = z.object({
     .min(10, 'New password must be at least 10 characters long')
     .regex(/[a-z]/, 'Password must contain at least one lowercase letter')
     .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
-    .regex(/[0-9]/, 'Password must contain at least one number'),
+    .regex(/[0-9]/, 'Password must contain at least one number')
+    .regex(/[^a-zA-Z0-9]/, 'Password must contain at least one special character'),
 });
 
 exports.handler = async function(event, context) {
@@ -78,6 +79,7 @@ exports.handler = async function(event, context) {
 
   } catch (error) {
     logger.error('Error changing password:', error.message);
-    return createErrorResponse(500, 'Internal Server Error', error.message);
+    const safeDetails = process.env.NODE_ENV === 'production' ? undefined : error.message;
+    return createErrorResponse(500, 'Internal Server Error', safeDetails);
   }
 };

@@ -1,9 +1,24 @@
 <template>
   <div class="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm mb-6">
     <label for="brainDumpInput" class="label mb-2">Your Input</label>
+
+    <!-- Template Chips -->
+    <div class="flex flex-wrap gap-2 mb-3">
+      <button
+        v-for="template in templates"
+        :key="template.name"
+        @click="applyTemplate(template)"
+        class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium transition-colors
+               bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300
+               hover:bg-primary-100 dark:hover:bg-primary-900 hover:text-primary-700 dark:hover:text-primary-300"
+      >
+        {{ template.name }}
+      </button>
+    </div>
+
     <textarea
       id="brainDumpInput"
-      :value="userInput" 
+      :value="userInput"
       @input="$emit('update:userInput', $event.target.value)"
       class="input text-sm font-mono h-60"
       placeholder="Paste your notes, meeting summaries, or ideas here..."
@@ -24,6 +39,29 @@ const props = defineProps({
 });
 
 const emit = defineEmits(['update:userInput', 'clear-input']);
+
+const templates = [
+  {
+    name: 'Daily Standup',
+    content: 'What did I accomplish yesterday? What am I working on today? Any blockers?'
+  },
+  {
+    name: 'Retrospective',
+    content: 'What went well? What could be improved? Action items for next time?'
+  },
+  {
+    name: 'Sprint Planning',
+    content: 'Goals for this sprint: \nTasks to complete: \nDependencies: \nRisks: '
+  },
+  {
+    name: 'Content Ideas',
+    content: 'Topic: \nTarget audience: \nKey points: \nFormat (blog/video/talk): '
+  },
+];
+
+function applyTemplate(template) {
+  emit('update:userInput', template.content);
+}
 
 </script>
 

@@ -1,3 +1,4 @@
+const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { z } = require('zod');
@@ -14,7 +15,8 @@ const RegistrationSchema = z.object({
     .min(10, 'Password must be at least 10 characters long')
     .regex(/[a-z]/, 'Password must contain at least one lowercase letter')
     .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
-    .regex(/[0-9]/, 'Password must contain at least one number'),
+    .regex(/[0-9]/, 'Password must contain at least one number')
+    .regex(/[^a-zA-Z0-9]/, 'Password must contain at least one special character'),
 });
 
 exports.handler = async function(event, context) {
@@ -65,6 +67,7 @@ exports.handler = async function(event, context) {
       name,
       email: email.toLowerCase(),
       password: hashedPassword,
+      emailVerified: false,
       createdAt: now,
       updatedAt: now,
     };
@@ -89,6 +92,20 @@ exports.handler = async function(event, context) {
     const teamResult = await teamsCollection.insertOne(newTeam);
     const teamId = teamResult.insertedId.toString();
 
+    // Generate email verification token
+    const verificationToken = crypto.randomBytes(32).toString('hex');
+    const verificationSalt = await bcrypt.genSalt(10);
+    const verificationTokenHash = await bcrypt.hash(verificationToken, verificationSalt);
+
+    await db.collection('emailVerifications').insertOne({
+      userId: userId,
+      tokenHash: verificationTokenHash,
+      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours
+      createdAt: now,
+    });
+
+    logger.info(`Email verification token generated for user ${userId}`);
+
     const payload = {
       userId: userId,
       teamId: teamId,
@@ -99,21 +116,29 @@ exports.handler = async function(event, context) {
 
     const token = jwt.sign(payload, jwtSecret, { expiresIn: TOKEN_EXPIRY });
 
-    return createResponse(201, {
+    const responseBody = {
       token,
       user: {
         id: userId,
         email: newUser.email,
         name: newUser.name
       },
-      currentTeamId: teamId
-    });
+      currentTeamId: teamId,
+    };
+
+    // Only include verification token in non-production environments
+    if (process.env.NODE_ENV !== 'production') {
+      responseBody.verificationToken = verificationToken;
+    }
+
+    return createResponse(201, responseBody);
 
   } catch (error) {
     logger.error('Registration error:', error.message);
     if (error.code === 11000) {
       return createErrorResponse(400, 'User already exists with this email');
     }
-    return createErrorResponse(500, 'Internal Server Error', error.message);
+    const safeDetails = process.env.NODE_ENV === 'production' ? undefined : error.message;
+    return createErrorResponse(500, 'Internal Server Error', safeDetails);
   }
 };

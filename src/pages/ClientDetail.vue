@@ -1,14 +1,16 @@
 <template>
   <div>
+    <Breadcrumb v-if="!loading && client" :items="breadcrumbItems" />
+
     <div v-if="loading" class="text-center py-10">
       <p class="text-gray-500 dark:text-gray-400">Loading client details...</p>
     </div>
-    
+
     <div v-else-if="!client" class="text-center py-10">
       <p class="text-gray-500 dark:text-gray-400">Client not found</p>
       <router-link to="/clients" class="btn btn-primary mt-4">Back to Clients</router-link>
     </div>
-    
+
     <div v-else>
       <!-- Client Header -->
       <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
@@ -379,6 +381,7 @@ import projectService from '@/services/project.service';
 import Modal from '../components/Modal.vue';
 import LoadingSpinner from '../components/LoadingSpinner.vue';
 import { PencilIcon, TrashIcon } from '@heroicons/vue/24/outline';
+import Breadcrumb from '@/components/ui/Breadcrumb.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -423,6 +426,12 @@ const contactForm = ref({
 });
 
 // Computed
+const breadcrumbItems = computed(() => [
+  { label: 'Dashboard', to: '/dashboard' },
+  { label: 'Clients', to: '/clients' },
+  { label: client.value?.name || 'Client' }
+]);
+
 const filteredProjects = computed(() => {
   if (!clientProjects.value) return [];
   

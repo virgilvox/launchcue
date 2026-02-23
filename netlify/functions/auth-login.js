@@ -1,10 +1,16 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const { z } = require('zod');
 const { connectToDb } = require('./utils/db');
 const { createResponse, createErrorResponse, handleOptionsRequest } = require('./utils/response');
 const logger = require('./utils/logger');
 const { rateLimitCheck } = require('./utils/rateLimit');
 const { generateJti, TOKEN_EXPIRY } = require('./utils/authHandler');
+
+const LoginSchema = z.object({
+  email: z.string().email('Invalid email format'),
+  password: z.string().min(1, 'Password is required'),
+});
 
 exports.handler = async function(event, context) {
   const optionsResponse = handleOptionsRequest(event);
@@ -24,12 +30,18 @@ exports.handler = async function(event, context) {
   }
 
   try {
-    const data = JSON.parse(event.body);
-    const { email, password } = data;
-
-    if (!email || !password) {
-      return createErrorResponse(400, 'Email and password are required');
+    let data;
+    try {
+      data = JSON.parse(event.body);
+    } catch (e) {
+      return createErrorResponse(400, 'Invalid JSON');
     }
+
+    const validationResult = LoginSchema.safeParse(data);
+    if (!validationResult.success) {
+      return createErrorResponse(400, 'Validation failed', validationResult.error.format());
+    }
+    const { email, password } = validationResult.data;
 
     const { db } = await connectToDb();
     const user = await db.collection('users').findOne({ email: email.toLowerCase() });
@@ -45,9 +57,13 @@ exports.handler = async function(event, context) {
     }
 
     let teamId = null;
+    let userRole = null;
     const userTeams = await db.collection('teams').find({ 'members.userId': user._id.toString() }).toArray();
     if (userTeams && userTeams.length > 0) {
       teamId = userTeams[0]._id.toString();
+      // Look up the user's role in the first team
+      const member = userTeams[0].members.find(m => m.userId === user._id.toString());
+      userRole = member ? member.role : 'member';
     }
 
     if (!teamId) {
@@ -57,6 +73,7 @@ exports.handler = async function(event, context) {
     const payload = {
       userId: user._id.toString(),
       teamId: teamId,
+      role: userRole,
       email: user.email,
       name: user.name,
       jti: generateJti(),
@@ -69,13 +86,15 @@ exports.handler = async function(event, context) {
       user: {
         id: user._id.toString(),
         email: user.email,
-        name: user.name
+        name: user.name,
+        role: userRole
       },
       currentTeamId: teamId
     });
 
   } catch (error) {
     logger.error('Login error:', error.message);
-    return createErrorResponse(500, 'Internal Server Error', error.message);
+    const safeDetails = process.env.NODE_ENV === 'production' ? undefined : error.message;
+    return createErrorResponse(500, 'Internal Server Error', safeDetails);
   }
 };

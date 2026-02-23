@@ -41,17 +41,83 @@
              <!-- Project Selector -->
              <div v-if="campaign.clientId">
                 <label for="campaignProject" class="label text-xs">Project (Optional)</label>
-                <select 
+                <select
                   id="campaignProject"
                   v-model="campaign.projectId"
                   class="input input-sm text-sm"
-                  :disabled="!campaign.clientId" 
+                  :disabled="!campaign.clientId"
                 >
                   <option :value="null">-- Select Project --</option>
                   <option v-for="project in filteredProjects" :key="project.id" :value="project.id">
                     {{ project.title }}
                   </option>
                 </select>
+             </div>
+             <!-- Status Selector -->
+             <div>
+                <label for="campaignStatus" class="label text-xs">Status</label>
+                <select
+                  id="campaignStatus"
+                  v-model="campaign.status"
+                  class="input input-sm text-sm"
+                >
+                  <option value="draft">Draft</option>
+                  <option value="active">Active</option>
+                  <option value="paused">Paused</option>
+                  <option value="completed">Completed</option>
+                </select>
+             </div>
+             <!-- Budget Input -->
+             <div>
+                <label for="campaignBudget" class="label text-xs">Budget (Optional)</label>
+                <input
+                  id="campaignBudget"
+                  type="number"
+                  v-model.number="campaign.budget"
+                  class="input input-sm text-sm"
+                  placeholder="Enter budget amount"
+                  min="0"
+                  step="0.01"
+                />
+             </div>
+             <!-- Metrics Fields (visible when active or completed) -->
+             <div v-if="campaign.status === 'active' || campaign.status === 'completed'" class="space-y-3 pt-2 border-t dark:border-gray-700">
+                <h4 class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Metrics</h4>
+                <div class="grid grid-cols-3 gap-3">
+                  <div>
+                    <label for="metricReach" class="label text-xs">Reach</label>
+                    <input
+                      id="metricReach"
+                      type="number"
+                      v-model.number="campaign.metrics.reach"
+                      class="input input-sm text-sm"
+                      placeholder="0"
+                      min="0"
+                    />
+                  </div>
+                  <div>
+                    <label for="metricEngagement" class="label text-xs">Engagement</label>
+                    <input
+                      id="metricEngagement"
+                      type="number"
+                      v-model.number="campaign.metrics.engagement"
+                      class="input input-sm text-sm"
+                      placeholder="0"
+                      min="0"
+                    />
+                  </div>
+                  <div>
+                    <label for="metricConversions" class="label text-xs">Conversions</label>
+                    <input
+                      id="metricConversions"
+                      type="number"
+                      v-model.number="campaign.metrics.conversions"
+                      class="input input-sm text-sm"
+                      placeholder="0"
+                      min="0"
+                    />
+                  </div>
+                </div>
              </div>
           </div>
         </div>
@@ -208,6 +274,9 @@ import { useProjectStore } from '../stores/project';
 import { useRoute, useRouter } from 'vue-router';
 import CampaignTimeline from '../components/campaigns/CampaignTimeline.vue';
 import Modal from '../components/Modal.vue';
+import { useToast } from 'vue-toastification';
+
+const toast = useToast();
 
 const authStore = useAuthStore();
 const clientStore = useClientStore();
@@ -231,7 +300,10 @@ const campaign = ref({
   clientId: null,
   projectId: null,
   types: [],
-  steps: []
+  steps: [],
+  status: 'draft',
+  budget: null,
+  metrics: { reach: undefined, engagement: undefined, conversions: undefined },
 });
 
 // Campaign types with toggle functionality
@@ -288,7 +360,10 @@ async function loadCampaign(id) {
       id: campaignData._id?.toString() || campaignData.id,
       startDate: campaignData.startDate ? new Date(campaignData.startDate).toISOString().split('T')[0] : null,
       endDate: campaignData.endDate ? new Date(campaignData.endDate).toISOString().split('T')[0] : null,
-      steps: campaignData.steps || []
+      steps: campaignData.steps || [],
+      status: campaignData.status || 'draft',
+      budget: campaignData.budget ?? null,
+      metrics: campaignData.metrics || { reach: undefined, engagement: undefined, conversions: undefined },
     };
     campaignTypes.value.forEach(type => {
       type.active = campaignData.types?.includes(type.name) || false;
@@ -391,7 +466,10 @@ async function saveCampaign() {
       clientId: campaign.value.clientId || null,
       projectId: campaign.value.projectId || null,
       types: campaignTypes.value.filter(t => t.active).map(t => t.name),
-      steps: campaign.value.steps
+      steps: campaign.value.steps,
+      status: campaign.value.status || 'draft',
+      budget: campaign.value.budget ?? null,
+      metrics: campaign.value.metrics || undefined,
     };
     
     let savedCampaign;
@@ -518,7 +596,9 @@ onMounted(async () => {
             id: null, title: '', description: '',
             startDate: new Date().toISOString().split('T')[0],
             endDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-            clientId: null, projectId: null, types: [], steps: []
+            clientId: null, projectId: null, types: [], steps: [],
+            status: 'draft', budget: null,
+            metrics: { reach: undefined, engagement: undefined, conversions: undefined },
         };
         campaignTypes.value.forEach(type => type.active = false);
         timelineEvents.value = [];

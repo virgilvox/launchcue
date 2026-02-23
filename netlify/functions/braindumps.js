@@ -5,6 +5,9 @@ const { createResponse, createErrorResponse, handleOptionsRequest } = require('.
 const { z } = require('zod');
 const logger = require('./utils/logger');
 const { getPaginationParams, createPaginatedResponse } = require('./utils/pagination');
+const { notDeleted, softDelete } = require('./utils/softDelete');
+const { createAuditLog } = require('./utils/auditLog');
+const { rateLimitCheck } = require('./utils/rateLimit');
 
 // Zod Schema for BrainDump
 const BrainDumpSchema = z.object({
@@ -39,6 +42,9 @@ exports.handler = async function(event, context) {
     // Use userId and teamId from the authentication context
     const { userId, teamId } = authContext;
 
+    const rateLimited = await rateLimitCheck(event, 'general', authContext.userId);
+    if (rateLimited) return rateLimited;
+
     let dumpId = null;
     const pathParts = event.path.split('/');
     const dumpsIndex = pathParts.indexOf('braindumps');
@@ -56,7 +62,7 @@ exports.handler = async function(event, context) {
         // GET: List or single item
         if (event.httpMethod === 'GET') {
             if (dumpId) {
-                const dump = await collection.findOne({ _id: new ObjectId(dumpId), teamId });
+                const dump = await collection.findOne({ _id: new ObjectId(dumpId), teamId, ...notDeleted });
                 if (!dump) {
                     return createErrorResponse(404, 'Brain dump not found');
                 }
@@ -65,7 +71,7 @@ exports.handler = async function(event, context) {
                 return createResponse(200, dump);
             } else {
                 const qp = event.queryStringParameters || {};
-                const query = { teamId };
+                const query = { teamId, ...notDeleted };
                 const formatDump = d => ({ ...d, id: d._id.toString(), _id: undefined });
 
                 if (qp.page) {
@@ -107,6 +113,7 @@ exports.handler = async function(event, context) {
             const result = await collection.insertOne(newDump);
             newDump.id = result.insertedId.toString();
             delete newDump._id;
+            await createAuditLog(db, { userId, teamId, action: 'create', resourceType: 'braindump', resourceId: result.insertedId.toString() });
             return createResponse(201, newDump);
         }
 
@@ -135,26 +142,28 @@ exports.handler = async function(event, context) {
             delete updateFields.id;
 
             const result = await collection.updateOne(
-                { _id: new ObjectId(dumpId), teamId }, // Ensure user owns the doc
+                { _id: new ObjectId(dumpId), teamId, ...notDeleted },
                 { $set: updateFields }
             );
 
             if (result.matchedCount === 0) {
                 return createErrorResponse(404, 'Brain dump not found or user unauthorized');
             }
-            
+
             const updatedDump = await collection.findOne({ _id: new ObjectId(dumpId), teamId });
             updatedDump.id = updatedDump._id.toString();
             delete updatedDump._id;
+            await createAuditLog(db, { userId, teamId, action: 'update', resourceType: 'braindump', resourceId: dumpId });
             return createResponse(200, updatedDump);
         }
 
         // DELETE: Delete item
         else if (event.httpMethod === 'DELETE' && dumpId) {
-            const result = await collection.deleteOne({ _id: new ObjectId(dumpId), teamId });
-            if (result.deletedCount === 0) {
+            const result = await softDelete(collection, { _id: new ObjectId(dumpId), teamId, ...notDeleted }, userId);
+            if (result.matchedCount === 0) {
                  return createErrorResponse(404, 'Brain dump not found or user unauthorized');
             }
+            await createAuditLog(db, { userId, teamId, action: 'delete', resourceType: 'braindump', resourceId: dumpId });
             return createResponse(200, { message: 'Brain dump deleted successfully' });
         }
 
@@ -165,6 +174,7 @@ exports.handler = async function(event, context) {
 
     } catch (error) {
         logger.error('Error handling braindumps request:', error);
-        return createErrorResponse(500, 'Internal Server Error', error.message);
+        const safeDetails = process.env.NODE_ENV === 'production' ? undefined : error.message;
+        return createErrorResponse(500, 'Internal Server Error', safeDetails);
     }
 }; 

@@ -134,6 +134,7 @@ exports.handler = async function(event, context) {
     }
   } catch (error) {
     logger.error(`Error handling project/${projectId} request:`, error);
-    return createErrorResponse(500, 'Internal Server Error', error.message);
+    const safeDetails = process.env.NODE_ENV === 'production' ? undefined : error.message;
+    return createErrorResponse(500, 'Internal Server Error', safeDetails);
   }
 }; 

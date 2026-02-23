@@ -120,7 +120,7 @@ Generate and manage API keys for external integrations. Configure system-wide se
 
 ### Prerequisites
 
-- Node.js (v16 or later recommended)
+- Node.js 18+ recommended
 - npm or yarn
 - MongoDB Atlas account
 - Anthropic API key for Claude integration
@@ -141,12 +141,10 @@ Generate and manage API keys for external integrations. Configure system-wide se
 
 3. Create a `.env` file in the root directory with the following variables:
    ```
+   MONGODB_URI=your_mongodb_connection_string
+   JWT_SECRET=your_jwt_secret_at_least_64_characters
    ANTHROPIC_API_KEY=your_claude_api_key
-   VITE_MONGODB_URI=your_mongodb_connection_string
-   JWT_SECRET=your_jwt_secret_for_tokens
-   VITE_MONGODB_REALM_APPID=your_mongodb_realm_app_id
-   VITE_MONGODB_DATABASE=launchcue
-   VITE_APP_NAME=LaunchCue
+   ALLOWED_ORIGINS=https://your-site.netlify.app
    ```
 
 4. Run the development server with Netlify Functions:
@@ -175,49 +173,43 @@ Generate and manage API keys for external integrations. Configure system-wide se
 
 ```
 launchcue/
+├── docs/                    # Documentation (architecture, deployment, API, etc.)
 ├── netlify/
-│   └── functions/        # Serverless functions for backend API
-│       ├── ai/           # Claude AI integration functions
-│       ├── auth/         # Authentication functions
-│       ├── tasks/        # Task management functions
-│       └── brain-dump/   # Brain dump related functions
-├── public/               # Static assets
+│   └── functions/           # Serverless backend (flat file structure)
+│       ├── utils/           # Shared utilities (db, auth, rateLimit, etc.)
+│       ├── tasks.js, clients.js, projects.js, ...  # CRUD endpoints
+│       ├── auth-login.js, auth-register.js, ...     # Auth endpoints
+│       └── ai-process.js, search.js, ...            # Feature endpoints
 ├── src/
-│   ├── assets/           # CSS and other assets
-│   ├── components/       # Reusable Vue components
-│   ├── layouts/          # Page layouts
-│   ├── pages/            # Page components
-│   ├── router/           # Vue Router configuration
-│   ├── services/         # API services for communicating with backend
-│   ├── stores/           # Pinia stores
-│   ├── App.vue           # Root component
-│   └── main.js           # Entry point
-├── .env                  # Environment variables
-├── index.html            # HTML template
-├── vite.config.js        # Vite configuration
-├── netlify.toml          # Netlify configuration
-└── tailwind.config.js    # Tailwind CSS configuration
+│   ├── assets/              # CSS (main.css with Tailwind)
+│   ├── components/          # Reusable Vue components
+│   │   ├── ui/              # UI primitives (Badge, Card, DataTable, etc.)
+│   │   ├── dashboard/       # Dashboard widgets
+│   │   └── tasks/           # Task-specific (TaskForm, TaskList, TaskKanban)
+│   ├── layouts/             # Page layouts (DefaultLayout)
+│   ├── pages/               # Route-level page components
+│   ├── router/index.ts      # Vue Router configuration
+│   ├── services/*.ts        # API service layer
+│   ├── stores/*.ts          # Pinia stores
+│   ├── types/               # TypeScript type definitions
+│   ├── App.vue              # Root component
+│   └── main.ts              # Entry point
+├── index.html               # HTML template
+├── vite.config.ts           # Vite configuration
+├── netlify.toml             # Netlify configuration
+└── tailwind.config.js       # Tailwind CSS configuration
 ```
 
-## Backend Architecture
+## Documentation
 
-LaunchCue uses a serverless architecture with Netlify Functions to handle backend logic:
+For detailed documentation, see the [docs/](docs/) folder:
 
-1. **Authentication**: JWT-based auth system with login/register endpoints
-2. **Data Access**: MongoDB integration for data storage and retrieval
-3. **AI Processing**: Claude API integration for brain dump processing
-4. **API Organization**: RESTful API endpoints organized by resource type
-
-All API calls are routed through the `/api/*` path which maps to the Netlify Functions.
-
-## Frontend Architecture
-
-The frontend uses a service-based approach:
-
-1. **API Service**: Central service for handling HTTP requests to the backend
-2. **Feature Services**: Domain-specific services that use the API service
-3. **Stores**: Pinia stores for state management
-4. **Components**: Reusable UI components
+- **[Architecture](docs/architecture.md)** — System design, data flow, and key decisions
+- **[Deployment](docs/deployment.md)** — Production deployment guide for Netlify + MongoDB Atlas
+- **[API Reference](docs/api-reference.md)** — Complete endpoint documentation
+- **[Database](docs/database.md)** — Schema documentation and relationships
+- **[Security](docs/security.md)** — Auth flows, RBAC, rate limiting, security headers
+- **[Development](docs/development.md)** — Developer setup, conventions, and checklists
 
 ## License
 
@@ -230,73 +222,3 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 - [MongoDB](https://www.mongodb.com/)
 - [Netlify Functions](https://www.netlify.com/products/functions/)
 - [Anthropic Claude](https://www.anthropic.com/)
-
-## API Usage
-
-LaunchCue provides a RESTful API for external integrations. For detailed documentation with all endpoints and examples, see [API-DOCS.md](API-DOCS.md).
-
-### Authentication
-
-API requests can be authenticated in two ways:
-
-1.  **JWT Token (User Session):** For requests made from the LaunchCue frontend application after a user logs in. Handled automatically by the app.
-2.  **API Key (External Integrations):** For requests made by external scripts or services. Generate an API Key in the application settings (Settings > API Keys).
-    Include the key in the `Authorization` header:
-    ```
-    Authorization: Bearer YOUR_API_KEY_HERE
-    ```
-    Replace `YOUR_API_KEY_HERE` with your generated secret key (prefixed with `lc_sk_`).
-
-**Example Request with API Key:**
-```bash
-curl -X GET "https://launchcue.netlify.app/.netlify/functions/tasks" \
-  -H "Authorization: Bearer lc_sk_AbCdEfGhIjKlMnOpQrStUv" \
-  -H "Content-Type: application/json"
-```
-
-**Note:** API Key authentication is scoped to the Team associated with the user who generated the key. Each API key is paired with specific permission scopes that determine which endpoints can be accessed.
-
-#### API Key Scopes
-
-LaunchCue uses a granular scope-based permission system for API keys. Each endpoint requires specific scopes for access:
-
-- `read:resource` - Allows GET operations on the resource
-- `write:resource` - Allows POST, PUT, DELETE operations on the resource
-
-Available scopes include:
-- `read:projects`, `write:projects` - Project access
-- `read:tasks`, `write:tasks` - Task access
-- `read:clients`, `write:clients` - Client access
-- `read:notes`, `write:notes` - Notes access
-- `read:teams`, `write:teams` - Team access
-- `read:resources`, `write:resources` - Resources access
-- `read:campaigns`, `write:campaigns` - Campaign access
-- `read:calendar-events`, `write:calendar-events` - Calendar events access
-- `read:braindumps`, `write:braindumps` - Brain dump access
-- `read:api-keys`, `write:api-keys` - API key management (requires JWT authentication for security)
-
-When generating an API key in Settings, you must select which scopes the key will have. For security, always follow the principle of least privilege and only grant the minimum scopes needed.
-
-### Quick Examples
-
-#### Get Tasks
-```bash
-curl -X GET "https://launchcue.netlify.app/.netlify/functions/tasks" \
-  -H "Authorization: Bearer lc_sk_AbCdEfGhIjKlMnOpQrStUv"
-```
-
-#### Create a Task
-```bash
-curl -X POST "https://launchcue.netlify.app/.netlify/functions/tasks" \
-  -H "Authorization: Bearer lc_sk_AbCdEfGhIjKlMnOpQrStUv" \
-  -H "Content-Type: application/json" \
-  -d '{"title":"New Task","description":"Task description","status":"To Do","projectId":"PROJECT_ID"}'
-```
-
-#### Get Projects
-```bash
-curl -X GET "https://launchcue.netlify.app/.netlify/functions/projects" \
-  -H "Authorization: Bearer lc_sk_AbCdEfGhIjKlMnOpQrStUv"
-```
-
-For the complete API reference with all endpoints, parameters, and examples, refer to [API-DOCS.md](API-DOCS.md).

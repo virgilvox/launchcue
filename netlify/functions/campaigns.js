@@ -6,6 +6,8 @@ const { z } = require('zod');
 const logger = require('./utils/logger');
 const { getPaginationParams, createPaginatedResponse } = require('./utils/pagination');
 const { notDeleted, softDelete } = require('./utils/softDelete');
+const { createAuditLog } = require('./utils/auditLog');
+const { rateLimitCheck } = require('./utils/rateLimit');
 
 // Zod Schema for Campaign Step
 const CampaignStepSchema = z.object({
@@ -27,7 +29,13 @@ const CampaignSchema = z.object({
     startDate: z.string().datetime({ message: "Invalid start date format" }).optional().nullable(),
     endDate: z.string().datetime({ message: "Invalid end date format" }).optional().nullable(),
     steps: z.array(CampaignStepSchema).optional().default([]), // Add steps array
-    // Add other fields like status, goals, steps later if needed
+    status: z.enum(['draft', 'active', 'paused', 'completed']).default('draft'),
+    budget: z.number().min(0).nullable().optional(),
+    metrics: z.object({
+        reach: z.number().optional(),
+        engagement: z.number().optional(),
+        conversions: z.number().optional(),
+    }).optional(),
 });
 
 const CampaignUpdateSchema = CampaignSchema.partial();
@@ -52,6 +60,9 @@ exports.handler = async function(event, context) {
     
     // Use userId and teamId from the authentication context
     const { userId, teamId } = authContext;
+
+    const rateLimited = await rateLimitCheck(event, 'general', authContext.userId);
+    if (rateLimited) return rateLimited;
 
     let campaignId = null;
     const pathParts = event.path.split('/');
@@ -83,6 +94,7 @@ exports.handler = async function(event, context) {
                 const query = { teamId, ...notDeleted };
                 if (qp.clientId && ObjectId.isValid(qp.clientId)) query.clientId = qp.clientId;
                 if (qp.projectId && ObjectId.isValid(qp.projectId)) query.projectId = qp.projectId;
+                if (qp.status && ['draft', 'active', 'paused', 'completed'].includes(qp.status)) query.status = qp.status;
 
                 const formatCampaign = c => ({ ...c, id: c._id.toString(), _id: undefined });
 
@@ -133,6 +145,9 @@ exports.handler = async function(event, context) {
                     ...step,
                     id: new ObjectId() // Assign new DB ID for each step on creation
                 })),
+                status: validatedData.status || 'draft',
+                budget: validatedData.budget ?? null,
+                metrics: validatedData.metrics || undefined,
                 teamId,
                 userId,
                 createdAt: now,
@@ -144,6 +159,7 @@ exports.handler = async function(event, context) {
             newCampaign.steps = newCampaign.steps.map(s => ({...s, id: s.id.toString()}));
             newCampaign.id = result.insertedId.toString();
             delete newCampaign._id;
+            await createAuditLog(db, { userId, teamId, action: 'create', resourceType: 'campaign', resourceId: result.insertedId.toString() });
             return createResponse(201, newCampaign);
         }
 
@@ -203,6 +219,7 @@ exports.handler = async function(event, context) {
             updatedCampaign.steps = (updatedCampaign.steps || []).map(s => ({...s, id: s.id.toString()}));
             updatedCampaign.id = updatedCampaign._id.toString();
             delete updatedCampaign._id;
+            await createAuditLog(db, { userId, teamId, action: 'update', resourceType: 'campaign', resourceId: campaignId });
             return createResponse(200, updatedCampaign);
         }
 
@@ -215,6 +232,7 @@ exports.handler = async function(event, context) {
             if (result.matchedCount === 0) {
                  return createErrorResponse(404, 'Campaign not found or user unauthorized');
             }
+            await createAuditLog(db, { userId, teamId, action: 'delete', resourceType: 'campaign', resourceId: campaignId });
             return createResponse(200, { message: 'Campaign deleted successfully' });
         }
 
@@ -225,6 +243,7 @@ exports.handler = async function(event, context) {
 
     } catch (error) {
         logger.error('Error handling campaigns request:', error);
-        return createErrorResponse(500, 'Internal Server Error', error.message);
+        const safeDetails = process.env.NODE_ENV === 'production' ? undefined : error.message;
+        return createErrorResponse(500, 'Internal Server Error', safeDetails);
     }
 }; 

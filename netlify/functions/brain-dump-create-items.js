@@ -3,6 +3,7 @@ const { connectToDb } = require('./utils/db');
 const { authenticate } = require('./utils/authHandler');
 const { createResponse, createErrorResponse, handleOptionsRequest } = require('./utils/response');
 const logger = require('./utils/logger');
+const { rateLimitCheck } = require('./utils/rateLimit');
 
 const itemTypeMapping = {
   task: {
@@ -33,6 +34,9 @@ exports.handler = async function(event, context) {
     return createErrorResponse(401, 'Unauthorized');
   }
   const { userId, teamId } = authResult;
+
+  const rateLimited = await rateLimitCheck(event, 'ai', authResult.userId);
+  if (rateLimited) return rateLimited;
 
   if (event.httpMethod !== 'POST') {
     return createErrorResponse(405, 'Method Not Allowed');
@@ -119,6 +123,7 @@ exports.handler = async function(event, context) {
 
   } catch (error) {
     logger.error('Error creating items from AI data:', error.message);
-    return createErrorResponse(500, 'Internal Server Error', error.message);
+    const safeDetails = process.env.NODE_ENV === 'production' ? undefined : error.message;
+    return createErrorResponse(500, 'Internal Server Error', safeDetails);
   }
 };

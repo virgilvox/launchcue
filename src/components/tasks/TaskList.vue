@@ -4,6 +4,8 @@
       <thead>
         <tr class="bg-gray-50 dark:bg-gray-700 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
           <th class="p-3 border-b dark:border-gray-600">Title</th>
+          <th class="p-3 border-b dark:border-gray-600">Priority</th>
+          <th class="p-3 border-b dark:border-gray-600">Assignee</th>
           <th class="p-3 border-b dark:border-gray-600">Type</th>
           <th class="p-3 border-b dark:border-gray-600">Status</th>
           <th class="p-3 border-b dark:border-gray-600">Due Date</th>
@@ -21,6 +23,20 @@
           <td class="p-3">
             <div class="font-medium text-gray-900 dark:text-gray-100">{{ task.title }}</div>
             <div class="text-sm text-gray-500 dark:text-gray-400 truncate max-w-xs">{{ task.description }}</div>
+          </td>
+          <td class="p-3">
+            <span class="px-2 py-1 text-xs font-medium rounded-full" :class="getPriorityClass(task.priority)">
+              {{ task.priority ? task.priority.charAt(0).toUpperCase() + task.priority.slice(1) : 'Medium' }}
+            </span>
+          </td>
+          <td class="p-3">
+            <div v-if="task.assigneeId" class="flex items-center gap-2">
+              <span class="inline-flex items-center justify-center h-6 w-6 rounded-full bg-primary-100 dark:bg-primary-900 text-xs font-medium text-primary-700 dark:text-primary-300">
+                {{ getAssigneeInitials(task.assigneeId) }}
+              </span>
+              <span class="text-sm text-gray-700 dark:text-gray-300">{{ getAssigneeName(task.assigneeId) }}</span>
+            </div>
+            <span v-else class="text-sm text-gray-400 dark:text-gray-500">Unassigned</span>
           </td>
           <td class="p-3">
             <span class="px-2 py-1 text-xs rounded" :class="getTypeClass(task.type)">
@@ -82,10 +98,11 @@
 <script setup>
 import { computed } from 'vue';
 import { useProjectStore } from '../../stores/project';
-import { 
-  PencilIcon, 
-  TrashIcon, 
-  ClipboardDocumentCheckIcon 
+import { useTeamStore } from '../../stores/team';
+import {
+  PencilIcon,
+  TrashIcon,
+  ClipboardDocumentCheckIcon
 } from '@heroicons/vue/24/outline';
 
 const props = defineProps({
@@ -98,11 +115,33 @@ const props = defineProps({
 const emit = defineEmits(['edit', 'delete', 'updateStatus', 'openChecklist']);
 
 const projectStore = useProjectStore();
+const teamStore = useTeamStore();
 const projects = computed(() => projectStore.projects);
+const teamMembers = computed(() => teamStore.validTeamMembers);
 
 const getProjectName = (projectId) => {
   const project = projects.value.find(p => p.id === projectId);
   return project ? project.title : '-';
+};
+
+const getPriorityClass = (priority) => {
+  const classes = {
+    'low': 'bg-gray-100 text-gray-800 dark:bg-gray-600 dark:text-gray-200',
+    'medium': 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
+    'high': 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
+    'urgent': 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
+  };
+  return classes[priority] || classes['medium'];
+};
+
+const getAssigneeName = (assigneeId) => {
+  const member = teamMembers.value.find(m => m.id === assigneeId);
+  return member ? (member.displayName || member.email) : 'Unknown';
+};
+
+const getAssigneeInitials = (assigneeId) => {
+  const member = teamMembers.value.find(m => m.id === assigneeId);
+  return teamStore.getUserInitials(member);
 };
 
 const getTypeClass = (type) => {

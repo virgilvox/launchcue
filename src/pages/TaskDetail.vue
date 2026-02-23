@@ -1,4 +1,5 @@
 <template>
+  <Breadcrumb v-if="!loading && task" :items="breadcrumbItems" class="px-6 pt-6" />
   <div v-if="loading" class="p-8 text-center">Loading task details...</div>
   <div v-else-if="error" class="p-8 text-center text-red-500">Error loading task: {{ error }}</div>
   <div v-else-if="task" class="p-6">
@@ -40,6 +41,7 @@ import { useTaskStore } from '../stores/task';
 import { useProjectStore } from '../stores/project';
 import { useClientStore } from '../stores/client';
 import { format } from 'date-fns';
+import Breadcrumb from '@/components/ui/Breadcrumb.vue';
 
 const props = defineProps({
   id: {
@@ -90,6 +92,12 @@ const projectName = computed(() => {
   const project = projectStore.projects.find(p => p.id === task.value.projectId);
   return project ? project.title : 'Unknown Project';
 });
+
+const breadcrumbItems = computed(() => [
+  { label: 'Dashboard', to: '/dashboard' },
+  { label: 'Tasks', to: '/tasks' },
+  { label: task.value?.title || 'Task' }
+]);
 
 const clientName = computed(() => {
   if (!task.value?.clientId) return 'N/A'; // Note: Tasks might not have direct clientId

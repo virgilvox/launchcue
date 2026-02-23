@@ -2,22 +2,29 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Base Styles */
+/* ─── Design Tokens ─── */
 :root {
-  --primary-color: #6366f1; /* Example primary color (Indigo) */
+  /* Primary: Indigo (matches Tailwind primary-500/600) */
+  --primary-color: #6366f1;
   --primary-hover: #4f46e5;
-  --bg-light: #f9fafb; /* Light mode background */
-  --bg-dark: #111827;  /* Dark mode background */
+  --primary-light: #818cf8;
+  --primary-dark: #4338ca;
+  /* Surfaces */
+  --bg-light: #f9fafb;
+  --bg-dark: #111827;
   --card-light: #ffffff;
   --card-dark: #1f2937;
+  /* Text */
   --text-light-primary: #f9fafb;
   --text-light-secondary: #e5e7eb;
   --text-dark-primary: #111827;
   --text-dark-secondary: #4b5563;
+  /* Borders */
   --border-light: #e5e7eb;
   --border-dark: #374151;
 }
 
+/* ─── Base ─── */
 body {
   @apply font-sans antialiased;
   @apply bg-gray-50 text-gray-900;
@@ -26,18 +33,22 @@ body {
   line-height: 1.6;
 }
 
-/* Custom Components (using @apply with ONLY standard Tailwind classes) */
+/* ─── Card ─── */
 .card {
   @apply bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 sm:p-6;
 }
 
-/* Style headings within cards for better contrast */
 .card h3 {
-    @apply text-gray-800 dark:text-gray-100; /* Ensure contrast in both modes */
+  @apply text-gray-800 dark:text-gray-100;
 }
 
+/* ─── Form Controls ─── */
 .label {
   @apply block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1;
+}
+
+.form-label {
+  @apply block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2;
 }
 
 .input,
@@ -49,181 +60,104 @@ body {
   @apply bg-white dark:bg-gray-700;
   @apply text-gray-900 dark:text-gray-50;
   @apply placeholder-gray-400 dark:placeholder-gray-400;
-  @apply focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-50 dark:focus:ring-offset-gray-900 focus:ring-indigo-500 focus:border-indigo-500;
+  @apply focus:outline-none focus:ring-2 focus:ring-offset-2;
+  @apply focus:ring-offset-gray-50 dark:focus:ring-offset-gray-900;
+  @apply focus:ring-primary-500 focus:border-primary-500;
   transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
 }
 
-/* Force dark mode text color for inputs/textareas */
-.dark .input,
-.dark .form-input,
-.dark .form-select,
-.dark .form-textarea {
-    color: #f9fafb !important; /* Light text */
-    background-color: #374151 !important; /* gray-700 */
-    border-color: #4b5563 !important; /* gray-600 */
+.form-checkbox {
+  @apply h-4 w-4 rounded border-gray-300 dark:border-gray-600;
+  @apply text-primary-600 focus:ring-primary-500;
+  @apply dark:bg-gray-600 dark:checked:bg-primary-600;
 }
 
-/* Specific override for inputs inside dark modals */
-.dark .modal-container .input,
-.dark .modal-container .form-input,
-.dark .modal-container .form-select,
-.dark .modal-container .form-textarea {
-    color: #f9fafb !important; 
-    background-color: #4b5563 !important; /* gray-600 */
-    border-color: #6b7280 !important; /* gray-500 */
+.form-group {
+  @apply mb-4;
 }
 
-/* Ensure labels in dark modals are light */
-.dark .modal-container .label {
-    color: #d1d5db !important; /* gray-300 */
-}
-
-/* Ensure general text within dark modals is light */
-.dark .modal-container p,
-.dark .modal-container div,
-.dark .modal-container span,
-.dark .modal-container li {
-     color: #e5e7eb; /* gray-200 - Use default light text */
-}
-
-/* Override specific dark modal text colors if needed */
-.dark .modal-container .text-gray-700 { color: #d1d5db !important; } /* gray-300 */
-.dark .modal-container .text-gray-600 { color: #d1d5db !important; } /* Brighter than before */
-.dark .modal-container .text-gray-500 { color: #e5e7eb !important; } /* Made much brighter */
-
-/* Ensure modal title is light in dark mode */
-.dark .modal-container .modal-title {
-     color: #f9fafb !important; /* gray-50 */
-}
-
-/* Ensure select dropdown arrows are visible in dark mode */
+/* Dark mode select arrow fix */
 .dark select.input,
 .dark select.form-select {
-    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%239ca3af' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
-    background-position: right 0.5rem center;
-    background-repeat: no-repeat;
-    background-size: 1.5em 1.5em;
-    padding-right: 2.5rem; 
-    -webkit-appearance: none;
-    -moz-appearance: none;
-    appearance: none;
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%239ca3af' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+  background-position: right 0.5rem center;
+  background-repeat: no-repeat;
+  background-size: 1.5em 1.5em;
+  padding-right: 2.5rem;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
 }
 
-.form-checkbox {
-  @apply h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-indigo-600 focus:ring-indigo-500 dark:bg-gray-600 dark:checked:bg-indigo-600; /* Adjusted dark bg */
+/* Select option colors */
+select option {
+  color: #111827;
+}
+.dark select option {
+  color: #f9fafb;
+  background-color: #374151;
 }
 
-/* Reusable Button Styles (Refined slightly) */
+/* ─── Buttons ─── */
 .btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0.5rem 1rem;
-  font-size: 0.875rem;
-  font-weight: 500;
-  border-radius: 0.375rem;
-  cursor: pointer;
+  @apply inline-flex items-center justify-center;
+  @apply px-4 py-2 text-sm font-medium rounded-md;
+  @apply border border-transparent cursor-pointer;
+  @apply focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2;
+  @apply dark:focus-visible:ring-offset-gray-900 focus-visible:ring-primary-500;
   transition: background-color 0.15s ease-out, border-color 0.15s ease-out, color 0.15s ease-out, box-shadow 0.15s ease-out;
-  border: 1px solid transparent;
   line-height: 1.25rem;
-  @apply focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-900 focus-visible:ring-indigo-500;
 }
 
 .btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
+  @apply opacity-60 cursor-not-allowed;
 }
 
-/* Primary Button */
 .btn-primary {
-  color: white;
-  background-color: var(--primary-color);
-  border-color: var(--primary-color);
+  @apply text-white bg-primary-500 border-primary-500;
 }
 .btn-primary:hover:not(:disabled) {
-  background-color: var(--primary-hover);
-  border-color: var(--primary-hover);
+  @apply bg-primary-600 border-primary-600;
 }
 
-/* Secondary Button */
 .btn-secondary {
-  color: #111827; /* text-gray-900 */
-  background-color: #e5e7eb; /* gray-200 */
-  border-color: #d1d5db; /* gray-300 */
+  @apply text-gray-900 bg-gray-200 border-gray-300;
+  @apply dark:text-gray-50 dark:bg-gray-700 dark:border-gray-600;
 }
 .btn-secondary:hover:not(:disabled) {
-  background-color: #d1d5db; /* gray-300 */
-}
-.dark .btn-secondary {
-  color: #f9fafb; /* text-gray-50 */
-  background-color: #374151; /* gray-700 */
-  border-color: #4b5563; /* gray-600 */
-}
-.dark .btn-secondary:hover:not(:disabled) {
-  background-color: #4b5563; /* gray-600 */
+  @apply bg-gray-300 dark:bg-gray-600;
 }
 
-/* Outline Button */
 .btn-outline {
-  color: #4b5563; /* text-gray-600 */
-  background-color: transparent;
-  border-color: #d1d5db; /* gray-300 */
+  @apply text-gray-600 bg-transparent border-gray-300;
+  @apply dark:text-gray-300 dark:border-gray-600;
 }
 .btn-outline:hover:not(:disabled) {
-  background-color: #f3f4f6; /* gray-100 */
-  border-color: #9ca3af; /* gray-400 */
-  color: #111827; /* text-gray-900 */
-}
-.dark .btn-outline {
-  color: #d1d5db; /* text-gray-300 */
-  border-color: #4b5563; /* gray-600 */
-}
-.dark .btn-outline:hover:not(:disabled) {
-  background-color: #374151; /* gray-700 */
-  border-color: #6b7280; /* gray-500 */
-  color: #f9fafb; /* text-gray-50 */
+  @apply bg-gray-100 border-gray-400 text-gray-900;
+  @apply dark:bg-gray-700 dark:border-gray-500 dark:text-gray-50;
 }
 
-/* Danger Button */
 .btn-danger {
-  color: white;
-  background-color: #ef4444; /* red-500 */
-  border-color: #ef4444;
+  @apply text-white bg-red-500 border-red-500;
 }
 .btn-danger:hover:not(:disabled) {
-  background-color: #dc2626; /* red-600 */
-  border-color: #dc2626;
+  @apply bg-red-600 border-red-600;
 }
 
-/* Icon Button */
 .btn-icon {
-  padding: 0.375rem; /* p-1.5 */
-  width: 2rem; /* w-8 */
-  height: 2rem; /* h-8 */
-  color: #4b5563; /* text-gray-600 */
-  background-color: transparent;
-  border: none;
-  border-radius: 0.375rem; /* Added radius */
+  @apply p-1.5 w-8 h-8 text-gray-600 bg-transparent border-none rounded-md;
+  @apply dark:text-gray-400;
 }
 .btn-icon:hover:not(:disabled) {
-  background-color: #f3f4f6; /* gray-100 */
-  color: #111827; /* text-gray-900 */
-}
-.dark .btn-icon {
-  color: #9ca3af; /* text-gray-400 */
-}
-.dark .btn-icon:hover:not(:disabled) {
-  background-color: #374151; /* gray-700 */
-  color: #f9fafb; /* text-gray-50 */
+  @apply bg-gray-100 text-gray-900;
+  @apply dark:bg-gray-700 dark:text-gray-50;
 }
 
-/* Small Button Variant */
 .btn-sm {
-    padding: 0.25rem 0.75rem; /* py-1 px-3 */
-    font-size: 0.75rem; /* text-xs */
+  @apply py-1 px-3 text-xs;
 }
 
-/* Table Styles (using @apply with standard classes) */
+/* ─── Tables ─── */
 table {
   @apply w-full;
 }
@@ -240,59 +174,36 @@ td {
   @apply px-4 py-3 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300;
 }
 
-/* Custom Scrollbar (using standard CSS, removing @apply) */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-::-webkit-scrollbar-track {
-  background-color: #f9fafb; /* Light bg */
-}
-.dark ::-webkit-scrollbar-track {
-    background-color: #374151; /* Dark bg (gray-700) */
-}
-::-webkit-scrollbar-thumb {
-  background-color: #cbd5e1; /* gray-300 */
-  border-radius: 4px;
-}
-.dark ::-webkit-scrollbar-thumb {
-    background-color: #6b7280; /* gray-500 */
-}
-::-webkit-scrollbar-thumb:hover {
-  background-color: #94a3b8; /* gray-400 */
-}
-.dark ::-webkit-scrollbar-thumb:hover {
-    background-color: #9ca3af; /* gray-400 (same as light hover maybe?) */
-}
-
-/* Add other global styles or component layer styles here */
-
-/* Status badges */
+/* ─── Badges ─── */
 .badge {
   @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
 }
 
 .badge-blue {
-  @apply bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200; /* Adjusted dark mode */
+  @apply bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300;
 }
 
 .badge-green {
-  @apply bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200; /* Adjusted dark mode */
+  @apply bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300;
 }
 
 .badge-yellow {
-  @apply bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200; /* Adjusted dark mode */
+  @apply bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-300;
 }
 
 .badge-red {
-  @apply bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200; /* Adjusted dark mode */
+  @apply bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300;
 }
 
 .badge-purple {
-  @apply bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200; /* Adjusted dark mode */
+  @apply bg-purple-100 text-purple-800 dark:bg-purple-900/50 dark:text-purple-300;
 }
 
-/* Calendar styles */
+.badge-gray {
+  @apply bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300;
+}
+
+/* ─── Calendar ─── */
 .calendar-day {
   @apply h-24 border border-gray-200 dark:border-gray-700 p-1 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors;
 }
@@ -301,153 +212,27 @@ td {
   @apply rounded p-1 text-xs mb-1 cursor-pointer truncate;
 }
 
-/* Form controls */
-.form-group {
-  margin-bottom: 1rem;
+/* ─── Scrollbar ─── */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
 }
-
-.form-label {
-  display: block;
-  margin-bottom: 0.5rem;
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: #374151;
+::-webkit-scrollbar-track {
+  background-color: #f9fafb;
 }
-
-/* Remove redundant dark mode rules for buttons/forms defined with standard CSS above */
-/* @media (prefers-color-scheme: dark) { ... } */
-
-/* --- Force Light Theme for Modals --- */
-.modal-force-light {
-  background-color: #ffffff !important; /* White bg */
-  color: #111827 !important; /* Dark text */
+.dark ::-webkit-scrollbar-track {
+  background-color: #374151;
 }
-
-.modal-force-light .modal-title {
-   color: #1f2937 !important; /* Darker heading */
+::-webkit-scrollbar-thumb {
+  background-color: #cbd5e1;
+  border-radius: 4px;
 }
-
-.modal-force-light .modal-header,
-.modal-force-light .modal-footer {
-    border-color: #e5e7eb !important; /* Light border */
+.dark ::-webkit-scrollbar-thumb {
+  background-color: #6b7280;
 }
-
-.modal-force-light .modal-close-btn {
-    color: #6b7280 !important; /* Gray-500 */
+::-webkit-scrollbar-thumb:hover {
+  background-color: #94a3b8;
 }
-.modal-force-light .modal-close-btn:hover {
-    color: #111827 !important; /* Darker gray */
-    background-color: #f3f4f6 !important; /* Lighter gray bg */
+.dark ::-webkit-scrollbar-thumb:hover {
+  background-color: #9ca3af;
 }
-
-.modal-force-light .label {
-    color: #4b5563 !important; /* text-gray-600 */
-}
-
-.modal-force-light .input,
-.modal-force-light .form-input,
-.modal-force-light .form-select,
-.modal-force-light .form-textarea {
-    color: #111827 !important; 
-    background-color: #ffffff !important; 
-    border-color: #d1d5db !important; /* gray-300 */
-    /* Override focus styles if needed for light */
-    &:focus {
-         box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.25) !important; 
-         border-color: #6366f1 !important; 
-    }
-}
-
-.modal-force-light .form-checkbox {
-    border-color: #d1d5db !important;
-    color: #6366f1 !important; /* Primary color */
-    background-color: #ffffff !important;
-}
-.modal-force-light .form-checkbox:checked {
-     background-color: #6366f1 !important; 
-     border-color: #6366f1 !important;
-}
-
-.modal-force-light p,
-.modal-force-light div,
-.modal-force-light span,
-.modal-force-light li {
-     color: #374151; /* gray-700 - Adjust default text color for light modal */
-}
-
-/* Override specific text colors for light modal if needed */
-.modal-force-light .text-gray-700 { color: #374151 !important; } 
-.modal-force-light .text-gray-600 { color: #4b5563 !important; }
-.modal-force-light .text-gray-500 { color: #4b5563 !important; }
-.modal-force-light .text-red-600 { color: #dc2626 !important; } /* Adjust danger color if needed */
-
-/* Force light theme buttons inside modal */
-.modal-force-light .btn-primary { /* Keep primary as is */ }
-.modal-force-light .btn-secondary { 
-    color: #111827 !important; 
-    background-color: #e5e7eb !important; 
-    border-color: #d1d5db !important; 
-}
-.modal-force-light .btn-secondary:hover { 
-    background-color: #d1d5db !important; 
-}
-.modal-force-light .btn-outline {
-    color: #4b5563 !important; 
-    background-color: transparent !important;
-    border-color: #d1d5db !important;
-}
-.modal-force-light .btn-outline:hover {
-    background-color: #f3f4f6 !important;
-    border-color: #9ca3af !important;
-    color: #111827 !important;
-}
-.modal-force-light .btn-danger { /* Keep danger as is */ }
-
-/* --- TARGETING SPECIFIC ELEMENTS IN LIGHT MODAL --- */
-
-/* Title */
-.modal-force-light .modal-header .modal-title {
-   color: #111827 !important; /* Darkest gray/black */
-}
-
-/* Labels */
-.modal-force-light .modal-body .label {
-    color: #374151 !important; /* Dark gray (gray-700) */
-}
-
-/* General Paragraph Text */
-.modal-force-light .modal-body p {
-     color: #4b5563 !important; /* Medium-dark gray (gray-600) */
-}
-
-/* Inputs / Textareas / Selects */
-.modal-force-light .modal-body .input,
-.modal-force-light .modal-body .form-input,
-.modal-force-light .modal-body .form-select,
-.modal-force-light .modal-body .form-textarea {
-    color: #111827 !important; /* Dark text for input */
-    background-color: #ffffff !important; /* White background */
-    border-color: #d1d5db !important; /* gray-300 border */
-}
-
-/* ... rest of modal forced light styles ... */
-
-/* Fix for option text in select dropdowns */
-select option {
-  color: #111827; /* Dark text for light mode */
-}
-.dark select option {
-  color: #f9fafb; /* Light text for dark mode */
-  background-color: #374151; /* Dark background */
-}
-
-/* Make text-gray-500 darker in light mode for better contrast */
-.text-gray-500 {
-  color: #4b5563 !important; /* Using gray-600 instead of gray-500 */
-}
-.dark .text-gray-500 {
-  color: #d1d5db !important; /* Using gray-300 in dark mode for better visibility */
-}
-
-/* Force modal light theme overrides */
-.modal-force-light .text-gray-500 { color: #4b5563 !important; } 

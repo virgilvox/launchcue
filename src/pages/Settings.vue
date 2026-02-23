@@ -25,6 +25,12 @@
         <!-- API Keys Section -->
         <ApiKeyManager />
 
+        <!-- Webhooks Section -->
+        <WebhookManager />
+
+        <!-- Audit Log Section -->
+        <AuditLogViewer />
+
         <!-- Billing Section -->
         <section id="billing" class="card">
           <h3 class="text-lg font-semibold mb-4">Billing</h3>
@@ -48,6 +54,8 @@
 <script setup>
 import { ref } from 'vue';
 import ApiKeyManager from '../components/settings/ApiKeyManager.vue';
+import WebhookManager from '../components/settings/WebhookManager.vue';
+import AuditLogViewer from '../components/settings/AuditLogViewer.vue';
 
 // const activeSection = ref('profile'); // Optional: for highlighting active nav link if sidebar nav is added
 

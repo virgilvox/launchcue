@@ -6,6 +6,8 @@ const { createResponse, createErrorResponse, handleOptionsRequest } = require('.
 const logger = require('./utils/logger');
 const { getPaginationParams, createPaginatedResponse } = require('./utils/pagination');
 const { notDeleted, softDelete } = require('./utils/softDelete');
+const { createAuditLog } = require('./utils/auditLog');
+const { rateLimitCheck } = require('./utils/rateLimit');
 
 // Zod schema for validating new task data (POST)
 const TaskCreateSchema = z.object({
@@ -13,8 +15,14 @@ const TaskCreateSchema = z.object({
   description: z.string().max(5000).optional(),
   status: z.enum(['To Do', 'In Progress', 'Blocked', 'Done']).default('To Do'),
   type: z.string().optional(), // Consider an enum if types are fixed
+  priority: z.enum(['low', 'medium', 'high', 'urgent']).default('medium'),
+  assigneeId: z.string()
+    .refine(val => val === null || val === undefined || ObjectId.isValid(val),
+      { message: "Invalid Assignee ID format" })
+    .nullable().optional(),
+  tags: z.array(z.string()).optional(),
   projectId: z.string()
-    .refine(val => val === null || val === undefined || ObjectId.isValid(val), 
+    .refine(val => val === null || val === undefined || ObjectId.isValid(val),
       { message: "Invalid Project ID format" })
     .optional(),
   dueDate: z.string().datetime({ message: "Invalid date format" }).nullable().optional(),
@@ -98,6 +106,9 @@ exports.handler = async function(event, context) {
   // Proceed with userId and teamId from the successful auth context
   const { userId, teamId } = authContext;
 
+  const rateLimited = await rateLimitCheck(event, 'general', authContext.userId);
+  if (rateLimited) return rateLimited;
+
   // Extract task ID from path for single-task operations
   let taskId = null;
   const pathParts = event.path.split('/');
@@ -131,6 +142,8 @@ exports.handler = async function(event, context) {
         if (qp.projectId && ObjectId.isValid(qp.projectId)) query.projectId = qp.projectId;
         if (qp.status) query.status = qp.status;
         if (qp.type) query.type = qp.type;
+        if (qp.priority) query.priority = qp.priority;
+        if (qp.assigneeId && ObjectId.isValid(qp.assigneeId)) query.assigneeId = qp.assigneeId;
 
         const formatTask = t => ({ ...t, id: t._id.toString(), _id: undefined });
 
@@ -172,8 +185,11 @@ exports.handler = async function(event, context) {
             description: validatedData.description,
             status: validatedData.status,
             type: validatedData.type || 'task',
-            projectId: validatedData.projectId || null, 
-            dueDate: validatedData.dueDate ? new Date(validatedData.dueDate) : null, 
+            priority: validatedData.priority || 'medium',
+            assigneeId: validatedData.assigneeId || null,
+            tags: validatedData.tags || [],
+            projectId: validatedData.projectId || null,
+            dueDate: validatedData.dueDate ? new Date(validatedData.dueDate) : null,
             checklist: validatedData.checklist || [],
             teamId: teamId,
             createdAt: now,
@@ -199,7 +215,8 @@ exports.handler = async function(event, context) {
                 logger.debug(`Project verification successful for ID: ${newTask.projectId}`);
             } catch (err) {
                 logger.error(`Error verifying project existence: ${err.message}`);
-                return createErrorResponse(500, 'Error verifying project existence', err.message);
+                const safeDetails = process.env.NODE_ENV === 'production' ? undefined : err.message;
+                return createErrorResponse(500, 'Error verifying project existence', safeDetails);
             }
         }
 
@@ -212,11 +229,14 @@ exports.handler = async function(event, context) {
             
             // Sync task with calendar
             await syncTaskWithCalendar(db, createdTask, 'create');
-            
+
+            await createAuditLog(db, { userId, teamId, action: 'create', resourceType: 'task', resourceId: result.insertedId.toString() });
+
             return createResponse(201, createdTask);
         } catch (err) {
             logger.error(`Error inserting task: ${err.message}`);
-            return createErrorResponse(500, 'Error creating task', err.message);
+            const safeDetails = process.env.NODE_ENV === 'production' ? undefined : err.message;
+            return createErrorResponse(500, 'Error creating task', safeDetails);
         }
     } 
     
@@ -276,7 +296,9 @@ exports.handler = async function(event, context) {
         
         // Sync task with calendar
         await syncTaskWithCalendar(db, updatedTask, 'update');
-        
+
+        await createAuditLog(db, { userId, teamId, action: 'update', resourceType: 'task', resourceId: taskId });
+
         return createResponse(200, updatedTask);
     } 
     
@@ -300,7 +322,9 @@ exports.handler = async function(event, context) {
       
       // Sync deletion with calendar
       await syncTaskWithCalendar(db, formattedTask, 'delete');
-      
+
+      await createAuditLog(db, { userId, teamId, action: 'delete', resourceType: 'task', resourceId: taskId });
+
       return createResponse(200, { message: 'Task deleted successfully' });
     } 
     
@@ -312,6 +336,7 @@ exports.handler = async function(event, context) {
     if (error.statusCode) {
         return error;
     }
-    return createErrorResponse(500, 'Internal Server Error', error.message);
-  } 
+    const safeDetails = process.env.NODE_ENV === 'production' ? undefined : error.message;
+    return createErrorResponse(500, 'Internal Server Error', safeDetails);
+  }
 }; 

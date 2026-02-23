@@ -5,6 +5,8 @@ const { createResponse, createErrorResponse, handleOptionsRequest } = require('.
 const { z } = require('zod');
 const logger = require('./utils/logger');
 const { getPaginationParams, createPaginatedResponse } = require('./utils/pagination');
+const { createAuditLog } = require('./utils/auditLog');
+const { rateLimitCheck } = require('./utils/rateLimit');
 
 // Resource schema validation
 const ResourceSchema = z.object({
@@ -40,7 +42,10 @@ exports.handler = async (event, context) => {
   
   // Use userId and teamId from the authentication context
   const { userId, teamId } = authContext;
-  
+
+  const rateLimited = await rateLimitCheck(event, 'general', authContext.userId);
+  if (rateLimited) return rateLimited;
+
   // Extract resource ID from path if available
   const pathParts = event.path.split('/');
   const resourcesIndex = pathParts.indexOf('resources');
@@ -142,7 +147,9 @@ exports.handler = async (event, context) => {
       const createdResource = await resourcesCollection.findOne({ _id: result.insertedId });
       createdResource.id = createdResource._id.toString();
       delete createdResource._id;
-      
+
+      await createAuditLog(db, { userId, teamId, action: 'create', resourceType: 'resource', resourceId: result.insertedId.toString() });
+
       return createResponse(201, createdResource);
     }
     
@@ -201,7 +208,9 @@ exports.handler = async (event, context) => {
       const updatedResource = await resourcesCollection.findOne({ _id: new ObjectId(specificResourceId) });
       updatedResource.id = updatedResource._id.toString();
       delete updatedResource._id;
-      
+
+      await createAuditLog(db, { userId, teamId, action: 'update', resourceType: 'resource', resourceId: specificResourceId });
+
       return createResponse(200, updatedResource);
     }
     
@@ -221,11 +230,13 @@ exports.handler = async (event, context) => {
       }
       
       // Delete the resource
-      const result = await resourcesCollection.deleteOne({ 
+      const result = await resourcesCollection.deleteOne({
         _id: new ObjectId(specificResourceId),
         teamId: teamId
       });
-      
+
+      await createAuditLog(db, { userId, teamId, action: 'delete', resourceType: 'resource', resourceId: specificResourceId });
+
       return createResponse(200, { message: 'Resource deleted successfully' });
     }
     
@@ -235,6 +246,7 @@ exports.handler = async (event, context) => {
     }
   } catch (error) {
     logger.error('Error processing request:', error);
-    return createErrorResponse(500, 'Internal Server Error', error.message);
+    const safeDetails = process.env.NODE_ENV === 'production' ? undefined : error.message;
+    return createErrorResponse(500, 'Internal Server Error', safeDetails);
   }
 }; 

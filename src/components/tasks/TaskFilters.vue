@@ -34,6 +34,35 @@
         </select>
       </div>
       <div class="flex items-center gap-2">
+        <label for="priority-filter" class="text-sm font-medium text-gray-700 dark:text-gray-300">Priority:</label>
+        <select
+          id="priority-filter"
+          :value="modelValue.priority"
+          @input="updateFilter('priority', $event.target.value)"
+          class="form-select text-sm py-1 px-2 rounded"
+        >
+          <option value="">All</option>
+          <option value="low">Low</option>
+          <option value="medium">Medium</option>
+          <option value="high">High</option>
+          <option value="urgent">Urgent</option>
+        </select>
+      </div>
+      <div class="flex items-center gap-2">
+        <label for="assignee-filter" class="text-sm font-medium text-gray-700 dark:text-gray-300">Assignee:</label>
+        <select
+          id="assignee-filter"
+          :value="modelValue.assigneeId"
+          @input="updateFilter('assigneeId', $event.target.value || null)"
+          class="form-select text-sm py-1 px-2 rounded"
+        >
+          <option value="">All</option>
+          <option v-for="member in teamMembers" :key="member.id" :value="member.id">
+            {{ member.displayName || member.email }}
+          </option>
+        </select>
+      </div>
+      <div class="flex items-center gap-2">
         <label for="client-filter" class="text-sm font-medium text-gray-700 dark:text-gray-300">Client:</label>
         <select
           id="client-filter"
@@ -75,6 +104,7 @@
         <option value="title">Title</option>
         <option value="status">Status</option>
         <option value="type">Type</option>
+        <option value="priority">Priority</option>
       </select>
     </div>
   </div>
@@ -84,17 +114,20 @@
 import { computed } from 'vue';
 import { useProjectStore } from '../../stores/project';
 import { useClientStore } from '../../stores/client';
+import { useTeamStore } from '../../stores/team';
 
 const props = defineProps({
   modelValue: {
     type: Object,
     required: true,
-    default: () => ({ 
-        status: '', 
-        type: '', 
+    default: () => ({
+        status: '',
+        type: '',
+        priority: '',
+        assigneeId: null,
         clientId: null,
-        projectId: null, 
-        sortBy: 'dueDate' 
+        projectId: null,
+        sortBy: 'dueDate'
     })
   }
 });
@@ -103,9 +136,11 @@ const emit = defineEmits(['update:modelValue']);
 
 const projectStore = useProjectStore();
 const clientStore = useClientStore();
+const teamStore = useTeamStore();
 
 const projects = computed(() => projectStore.projects);
 const clients = computed(() => clientStore.clients);
+const teamMembers = computed(() => teamStore.validTeamMembers);
 
 const filteredProjectsForClient = computed(() => {
     if (!props.modelValue.clientId) {

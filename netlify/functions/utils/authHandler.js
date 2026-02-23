@@ -55,6 +55,7 @@ async function authenticateWithJwt(event, token) {
     return {
       userId: decoded.userId,
       teamId: decoded.teamId,
+      role: decoded.role || null,
       jti: decoded.jti || null,
       authType: 'jwt'
     };
@@ -74,8 +75,8 @@ async function isTokenRevoked(jti) {
     return !!blocked;
   } catch (error) {
     logger.error('Token blocklist check failed:', error.message);
-    // Fail open to avoid blocking all requests if DB is down
-    return false;
+    // Fail closed — if DB is unreachable, treat token as potentially revoked
+    return true;
   }
 }
 
@@ -131,6 +132,11 @@ async function authenticateWithApiKey(event, apiKey, options = {}) {
     const isMatch = await bcrypt.compare(apiKey, apiKeyDocument.hashedKey);
     if (!isMatch) {
       throw createErrorResponse(401, 'Unauthorized', 'Invalid API Key');
+    }
+
+    // Check if the API key has expired
+    if (apiKeyDocument.expiresAt && new Date(apiKeyDocument.expiresAt) < new Date()) {
+      throw createErrorResponse(401, 'Unauthorized', 'API Key has expired');
     }
 
     const method = event.httpMethod;
@@ -197,12 +203,25 @@ function deriveRequiredScopes(resourceType, method) {
   return [];
 }
 
+/**
+ * Require that the authenticated user has one of the allowed roles.
+ * Throws a 403 error response if the user's role is not in the allowedRoles list.
+ * @param {Object} authContext - The authentication context (must contain `role`)
+ * @param {string[]} allowedRoles - Array of acceptable roles, e.g. ['owner', 'admin']
+ */
+function requireRole(authContext, allowedRoles) {
+  if (!authContext.role || !allowedRoles.includes(authContext.role)) {
+    throw createErrorResponse(403, 'Insufficient permissions. Required role: ' + allowedRoles.join(' or '));
+  }
+}
+
 module.exports = {
   authenticate,
   authenticateWithJwt,
   authenticateWithApiKey,
   revokeToken,
   generateJti,
+  requireRole,
   API_KEY_PREFIX,
   TOKEN_EXPIRY,
 };

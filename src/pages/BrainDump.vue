@@ -1,14 +1,109 @@
 <template>
   <div>
     <!-- Header -->
-    <div class="mb-6">
-      <h2 class="text-2xl font-bold text-gray-800 dark:text-white">Brain Dump</h2>
-      <p class="text-gray-600 dark:text-gray-400 mt-1">
-        Use AI to help brainstorm and organize your thoughts.
-      </p>
+    <div class="mb-6 flex justify-between items-start">
+      <div>
+        <h2 class="text-2xl font-bold text-gray-800 dark:text-white">Brain Dump</h2>
+        <p class="text-gray-600 dark:text-gray-400 mt-1">
+          Use AI to help brainstorm and organize your thoughts.
+        </p>
+      </div>
+      <!-- Tab Toggle -->
+      <div class="flex bg-gray-200 dark:bg-gray-700 rounded-lg p-0.5">
+        <button
+          @click="activeTab = 'new'"
+          :class="[
+            'px-4 py-1.5 rounded-md text-sm font-medium transition-colors',
+            activeTab === 'new'
+              ? 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white shadow-sm'
+              : 'text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200'
+          ]"
+        >
+          New
+        </button>
+        <button
+          @click="activeTab = 'history'; loadHistory()"
+          :class="[
+            'px-4 py-1.5 rounded-md text-sm font-medium transition-colors',
+            activeTab === 'history'
+              ? 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white shadow-sm'
+              : 'text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200'
+          ]"
+        >
+          History
+        </button>
+      </div>
     </div>
-    
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+    <!-- History Tab -->
+    <div v-if="activeTab === 'history'">
+      <div v-if="historyLoading" class="text-center py-10">
+        <div class="animate-spin inline-block h-6 w-6 border-t-2 border-r-2 border-primary-600 rounded-full"></div>
+        <p class="text-gray-500 dark:text-gray-400 mt-2 text-sm">Loading history...</p>
+      </div>
+      <div v-else-if="historyItems.length === 0" class="text-center py-10 bg-gray-50 dark:bg-gray-800 rounded-lg">
+        <p class="text-gray-500 dark:text-gray-400">No brain dumps yet. Start by creating one!</p>
+        <button @click="activeTab = 'new'" class="text-primary-600 dark:text-primary-400 hover:underline mt-2 text-sm">Go to New</button>
+      </div>
+      <div v-else class="space-y-4">
+        <div
+          v-for="item in historyItems"
+          :key="item.id"
+          class="bg-white dark:bg-gray-800 rounded-lg shadow-sm overflow-hidden"
+        >
+          <div class="p-4">
+            <div class="flex justify-between items-start">
+              <div class="flex-1 min-w-0">
+                <h3 class="text-base font-semibold text-gray-800 dark:text-white truncate">{{ item.title }}</h3>
+                <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                  {{ formatHistoryDate(item.createdAt) }}
+                </p>
+              </div>
+              <div class="flex items-center space-x-2 ml-3">
+                <button
+                  @click="toggleExpandItem(item.id)"
+                  class="text-gray-500 dark:text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 text-sm"
+                >
+                  {{ expandedItems.has(item.id) ? 'Collapse' : 'View' }}
+                </button>
+                <button
+                  @click="deleteHistoryItem(item.id)"
+                  class="text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+                  title="Delete"
+                >
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+            <!-- Tags -->
+            <div v-if="item.tags && item.tags.length > 0" class="mt-2 flex flex-wrap gap-1">
+              <span
+                v-for="tag in item.tags"
+                :key="tag"
+                class="inline-block bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-2 py-0.5 rounded text-xs"
+              >
+                {{ tag }}
+              </span>
+            </div>
+            <!-- Truncated Content -->
+            <p v-if="!expandedItems.has(item.id)" class="text-sm text-gray-600 dark:text-gray-400 mt-2 line-clamp-2">
+              {{ item.content }}
+            </p>
+          </div>
+          <!-- Expanded Full Content -->
+          <div v-if="expandedItems.has(item.id)" class="px-4 pb-4">
+            <div class="bg-gray-50 dark:bg-gray-900 rounded-lg p-4 mt-1">
+              <pre class="whitespace-pre-wrap text-sm text-gray-700 dark:text-gray-300 font-sans">{{ item.content }}</pre>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- New Brain Dump Tab -->
+    <div v-if="activeTab === 'new'" class="grid grid-cols-1 lg:grid-cols-2 gap-6">
       
       <!-- Left Column: Input, Links, Context -->
       <div> 
@@ -130,6 +225,58 @@ import ActionableItems from '../components/brain-dump/ActionableItems.vue';
 const toast = useToast();
 const clientStore = useClientStore();
 const projectStore = useProjectStore();
+
+// State for tabs and history
+const activeTab = ref('new');
+const historyItems = ref([]);
+const historyLoading = ref(false);
+const expandedItems = ref(new Set());
+
+async function loadHistory() {
+  if (historyLoading.value) return;
+  historyLoading.value = true;
+  try {
+    const data = await brainDumpService.getDumps();
+    historyItems.value = Array.isArray(data) ? data : (data.data || []);
+  } catch (err) {
+    console.error('Error loading brain dump history:', err);
+    toast.error('Failed to load brain dump history');
+    historyItems.value = [];
+  } finally {
+    historyLoading.value = false;
+  }
+}
+
+function toggleExpandItem(id) {
+  const newSet = new Set(expandedItems.value);
+  if (newSet.has(id)) {
+    newSet.delete(id);
+  } else {
+    newSet.add(id);
+  }
+  expandedItems.value = newSet;
+}
+
+async function deleteHistoryItem(id) {
+  if (!confirm('Are you sure you want to delete this brain dump?')) return;
+  try {
+    await brainDumpService.deleteDump(id);
+    historyItems.value = historyItems.value.filter(item => item.id !== id);
+    toast.success('Brain dump deleted');
+  } catch (err) {
+    console.error('Error deleting brain dump:', err);
+    toast.error('Failed to delete brain dump');
+  }
+}
+
+function formatHistoryDate(dateString) {
+  if (!dateString) return '';
+  try {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit'
+    });
+  } catch { return ''; }
+}
 
 // State for linking
 const selectedClient = ref(null);

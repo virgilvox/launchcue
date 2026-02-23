@@ -3,7 +3,7 @@
     <div class="flex justify-between items-center mb-6">
       <h2 class="text-2xl font-bold text-gray-800 dark:text-white">Team Management</h2>
       <div class="flex space-x-2">
-        <button @click="openInviteModal" class="btn btn-secondary">
+        <button v-if="authStore.canManageTeam" @click="openInviteModal" class="btn btn-secondary">
           Invite Member
         </button>
         <button @click="openCreateTeamModal" class="btn btn-primary">
@@ -52,7 +52,7 @@
           <div v-else-if="!teamMembers || teamMembers.length === 0" class="p-6 text-center bg-white rounded-lg shadow">
             <p class="text-gray-500">No team members found. Invite someone to join your team!</p>
           </div>
-          <div v-else v-for="member in validTeamMembers" :key="member.id" class="p-4 bg-white rounded-lg shadow flex items-center justify-between">
+          <div v-else v-for="member in validTeamMembers" :key="member.id" class="p-4 bg-white dark:bg-gray-800 rounded-lg shadow flex items-center justify-between">
             <div class="flex items-center space-x-3">
               <div v-if="member.photoURL" class="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center overflow-hidden">
                 <img :src="member.photoURL" alt="Profile photo" class="h-full w-full object-cover" />
@@ -63,24 +63,37 @@
                 </span>
               </div>
               <div>
-                <h3 class="font-medium text-gray-900">{{ member.displayName || member.email }}</h3>
-                <p class="text-sm text-gray-500">{{ member.email }}</p>
+                <h3 class="font-medium text-gray-900 dark:text-white">{{ member.displayName || member.name || member.email }}</h3>
+                <p class="text-sm text-gray-500 dark:text-gray-400">{{ member.email }}</p>
               </div>
-            </div>
-            <div>
-              <span v-if="isCurrentUserOwner && member.id !== authStore.user?.id" class="inline-flex items-center mr-2">
-                <button
-                  @click="openRemoveMemberModal(member)"
-                  class="text-red-500 hover:text-red-700 focus:outline-none"
-                >
-                  Remove
-                </button>
+              <!-- Role Badge -->
+              <span :class="getRoleBadgeClass(member.role)" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium">
+                {{ formatRole(member.role) }}
               </span>
               <span v-if="member.id === authStore.user?.id" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                 You
               </span>
-              <span v-if="member.id === authStore.currentTeam?.owner" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                Owner
+            </div>
+            <div class="flex items-center space-x-2">
+              <!-- Role Dropdown (visible to owners/admins, not for self) -->
+              <select
+                v-if="authStore.canManageTeam && member.id !== authStore.user?.id"
+                :value="member.role"
+                @change="confirmRoleChange(member, $event.target.value)"
+                class="text-sm border border-gray-300 dark:border-gray-600 rounded-md px-2 py-1 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500"
+              >
+                <option value="owner" :disabled="!authStore.isOwner">Owner</option>
+                <option value="admin" :disabled="!authStore.isOwner">Admin</option>
+                <option value="member">Member</option>
+                <option value="viewer">Viewer</option>
+              </select>
+              <span v-if="authStore.canManageTeam && member.id !== authStore.user?.id" class="inline-flex items-center">
+                <button
+                  @click="openRemoveMemberModal(member)"
+                  class="text-red-500 hover:text-red-700 focus:outline-none text-sm"
+                >
+                  Remove
+                </button>
               </span>
             </div>
           </div>
@@ -253,6 +266,34 @@
         </div>
       </div>
     </div>
+    <!-- Role Change Confirmation Modal -->
+    <div v-if="showRoleChangeModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-md">
+        <h3 class="text-xl font-semibold text-gray-800 dark:text-white mb-4">
+          Change Member Role
+        </h3>
+
+        <p class="text-gray-600 dark:text-gray-400 mb-4">
+          Are you sure you want to change <strong>{{ roleChangeTarget?.name || roleChangeTarget?.email }}</strong>'s role from <strong>{{ formatRole(roleChangeTarget?.role) }}</strong> to <strong>{{ formatRole(roleChangeNewRole) }}</strong>?
+        </p>
+
+        <div class="flex justify-end space-x-3">
+          <button
+            @click="cancelRoleChange"
+            class="btn btn-secondary"
+          >
+            Cancel
+          </button>
+          <button
+            @click="executeRoleChange"
+            class="btn btn-primary"
+            :disabled="changingRole"
+          >
+            {{ changingRole ? 'Updating...' : 'Confirm Change' }}
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -279,6 +320,10 @@ const inviteError = ref(null);
 const toast = useToast();
 const teamMembers = ref([]);
 const isLoadingMembers = ref(false);
+const showRoleChangeModal = ref(false);
+const roleChangeTarget = ref(null);
+const roleChangeNewRole = ref('');
+const changingRole = ref(false);
 
 const userInitials = computed(() => {
   if (!authStore.user) return '';
@@ -493,6 +538,70 @@ function getUserInitials(user) {
 const isCurrentUserOwner = computed(() => {
   return authStore.currentTeam?.owner === authStore.user?.id;
 });
+
+// Role badge styling
+function getRoleBadgeClass(role) {
+  switch (role) {
+    case 'owner':
+      return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200';
+    case 'admin':
+      return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
+    case 'member':
+      return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
+    case 'viewer':
+      return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
+    default:
+      return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
+  }
+}
+
+function formatRole(role) {
+  if (!role) return 'Member';
+  return role.charAt(0).toUpperCase() + role.slice(1);
+}
+
+function confirmRoleChange(member, newRole) {
+  if (newRole === member.role) return;
+  roleChangeTarget.value = member;
+  roleChangeNewRole.value = newRole;
+  showRoleChangeModal.value = true;
+}
+
+function cancelRoleChange() {
+  showRoleChangeModal.value = false;
+  roleChangeTarget.value = null;
+  roleChangeNewRole.value = '';
+}
+
+async function executeRoleChange() {
+  if (!roleChangeTarget.value || !roleChangeNewRole.value) return;
+
+  changingRole.value = true;
+
+  try {
+    const result = await teamService.updateMemberRole(
+      authStore.currentTeam.id,
+      roleChangeTarget.value.id,
+      roleChangeNewRole.value
+    );
+
+    if (result.success) {
+      toast.success(`Role updated to ${formatRole(roleChangeNewRole.value)}`);
+      // Refresh team members to reflect the change
+      await loadTeamMembers();
+    } else {
+      toast.error(result.error || 'Failed to update role');
+    }
+  } catch (err) {
+    console.error('Error changing role:', err);
+    toast.error('Failed to update member role');
+  } finally {
+    changingRole.value = false;
+    showRoleChangeModal.value = false;
+    roleChangeTarget.value = null;
+    roleChangeNewRole.value = '';
+  }
+}
 
 onMounted(async () => {
   loading.value = true;
