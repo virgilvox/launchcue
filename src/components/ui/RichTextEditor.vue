@@ -3,7 +3,7 @@
     <!-- Toolbar -->
     <div
       v-if="editor"
-      class="toolbar flex flex-wrap items-center gap-0.5 p-2 border border-b-0 border-gray-300 dark:border-gray-600 rounded-t-md bg-gray-50 dark:bg-gray-700"
+      class="toolbar flex flex-wrap items-center gap-0.5 p-2 border border-b-0 border-[var(--border-light)] bg-[var(--surface)]"
     >
       <!-- Text Formatting -->
       <button
@@ -31,7 +31,7 @@
         <span class="line-through text-sm">S</span>
       </button>
 
-      <div class="w-px h-6 bg-gray-300 dark:bg-gray-500 mx-1"></div>
+      <div class="w-px h-6 bg-[var(--border-light)] mx-1"></div>
 
       <!-- Headings -->
       <button
@@ -59,7 +59,7 @@
         <span class="text-sm font-semibold">H3</span>
       </button>
 
-      <div class="w-px h-6 bg-gray-300 dark:bg-gray-500 mx-1"></div>
+      <div class="w-px h-6 bg-[var(--border-light)] mx-1"></div>
 
       <!-- Lists -->
       <button
@@ -83,7 +83,7 @@
         </svg>
       </button>
 
-      <div class="w-px h-6 bg-gray-300 dark:bg-gray-500 mx-1"></div>
+      <div class="w-px h-6 bg-[var(--border-light)] mx-1"></div>
 
       <!-- Block Formatting -->
       <button
@@ -107,7 +107,7 @@
         </svg>
       </button>
 
-      <div class="w-px h-6 bg-gray-300 dark:bg-gray-500 mx-1"></div>
+      <div class="w-px h-6 bg-[var(--border-light)] mx-1"></div>
 
       <!-- Link -->
       <button
@@ -121,7 +121,7 @@
         </svg>
       </button>
 
-      <div class="w-px h-6 bg-gray-300 dark:bg-gray-500 mx-1"></div>
+      <div class="w-px h-6 bg-[var(--border-light)] mx-1"></div>
 
       <!-- Undo / Redo -->
       <button
@@ -186,7 +186,7 @@ const editor = useEditor({
     Link.configure({
       openOnClick: false,
       HTMLAttributes: {
-        class: 'text-primary-600 dark:text-primary-400 underline'
+        class: 'text-[var(--accent-primary)] underline'
       }
     })
   ],
@@ -225,33 +225,41 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .toolbar-btn {
-  @apply p-1.5 rounded text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors;
+  @apply p-1.5 transition-colors;
   @apply disabled:opacity-40 disabled:cursor-not-allowed;
+  color: var(--text-secondary);
   min-width: 28px;
   min-height: 28px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
 }
-
+.toolbar-btn:hover {
+  background-color: var(--surface);
+}
 .toolbar-btn.active {
-  @apply bg-primary-100 dark:bg-primary-900/50 text-primary-700 dark:text-primary-300;
+  background-color: var(--accent-primary-wash);
+  color: var(--accent-primary);
 }
 </style>
 
 <style>
 /* Editor content styles - unscoped so they apply to tiptap content */
 .editor-content .tiptap {
-  @apply px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-b-md;
-  @apply bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50;
-  @apply focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 focus:border-primary-500;
-  @apply focus:ring-offset-gray-50 dark:focus:ring-offset-gray-900;
+  @apply px-3 py-2;
+  border: 2px solid var(--border-light);
+  background-color: var(--surface-elevated);
+  color: var(--text-primary);
   min-height: 200px;
-  transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+  transition: border-color 0.15s ease-in-out;
+}
+.editor-content .tiptap:focus {
+  outline: none;
+  border-color: var(--accent-primary);
 }
 
 .editor-content .tiptap p.is-editor-empty:first-child::before {
-  @apply text-gray-400 dark:text-gray-400;
+  color: var(--text-secondary);
   content: attr(data-placeholder);
   float: left;
   height: 0;
@@ -260,13 +268,16 @@ onBeforeUnmount(() => {
 
 /* Prose styling inside editor */
 .editor-content .tiptap h1 {
-  @apply text-2xl font-bold mb-3 text-gray-900 dark:text-gray-50;
+  @apply text-2xl font-bold mb-3;
+  color: var(--text-primary);
 }
 .editor-content .tiptap h2 {
-  @apply text-xl font-bold mb-2 text-gray-900 dark:text-gray-50;
+  @apply text-xl font-bold mb-2;
+  color: var(--text-primary);
 }
 .editor-content .tiptap h3 {
-  @apply text-lg font-semibold mb-2 text-gray-900 dark:text-gray-50;
+  @apply text-lg font-semibold mb-2;
+  color: var(--text-primary);
 }
 .editor-content .tiptap p {
   @apply mb-2;
@@ -281,19 +292,24 @@ onBeforeUnmount(() => {
   @apply mb-1;
 }
 .editor-content .tiptap blockquote {
-  @apply border-l-4 border-gray-300 dark:border-gray-500 pl-4 italic text-gray-600 dark:text-gray-400 mb-2;
+  @apply pl-4 italic mb-2;
+  border-left: 4px solid var(--border-light);
+  color: var(--text-secondary);
 }
 .editor-content .tiptap pre {
-  @apply bg-gray-100 dark:bg-gray-800 rounded-md p-3 mb-2 overflow-x-auto;
+  @apply p-3 mb-2 overflow-x-auto;
+  background-color: var(--surface);
 }
 .editor-content .tiptap code {
-  @apply bg-gray-100 dark:bg-gray-800 rounded px-1 py-0.5 text-sm font-mono;
+  @apply px-1 py-0.5 text-sm font-mono;
+  background-color: var(--surface);
 }
 .editor-content .tiptap pre code {
   @apply bg-transparent p-0;
 }
 .editor-content .tiptap hr {
-  @apply border-gray-300 dark:border-gray-600 my-4;
+  @apply my-4;
+  border-color: var(--border-light);
 }
 .editor-content .tiptap strong {
   @apply font-bold;

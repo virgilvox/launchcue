@@ -331,12 +331,8 @@ export const useCalendarStore = defineStore('calendar', () => {
       // Use the calendar service to fetch task deadlines
       const data: Array<Record<string, unknown>> = await calendarService.getTaskDeadlines(startDate, endDate)
 
-      // Log what we received for debugging
-      console.log('Task deadlines received:', Array.isArray(data) ? `${data.length} tasks` : typeof data)
-
       // Ensure we have an array
       if (!data || !Array.isArray(data)) {
-        console.warn('getTaskDeadlines in store: Expected array but got', typeof data)
         return []
       }
 

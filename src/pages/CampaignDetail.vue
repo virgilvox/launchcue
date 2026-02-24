@@ -3,16 +3,16 @@
     <Breadcrumb v-if="!loading && campaign" :items="breadcrumbItems" />
 
     <div v-if="loading" class="text-center py-10">
-      <p class="text-gray-500 dark:text-gray-400">Loading campaign details...</p>
+      <p class="text-[var(--text-secondary)]">Loading campaign details...</p>
     </div>
 
     <div v-else-if="error" class="text-center py-10">
-      <p class="text-red-500">{{ error }}</p>
+      <p class="text-[var(--danger)]">{{ error }}</p>
       <router-link to="/campaigns" class="btn btn-primary mt-4">Back to Campaigns</router-link>
     </div>
 
     <div v-else-if="!campaign" class="text-center py-10">
-      <p class="text-gray-500 dark:text-gray-400">Campaign not found</p>
+      <p class="text-[var(--text-secondary)]">Campaign not found</p>
       <router-link to="/campaigns" class="btn btn-primary mt-4">Back to Campaigns</router-link>
     </div>
 
@@ -21,18 +21,18 @@
       <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
         <div>
           <div class="flex items-center gap-3">
-            <router-link to="/campaigns" class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300">
+            <router-link to="/campaigns" class="text-[var(--text-secondary)] hover:text-[var(--text-primary)]">
               <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                 <path fill-rule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clip-rule="evenodd" />
               </svg>
             </router-link>
-            <h2 class="text-2xl font-bold text-gray-800 dark:text-white">{{ campaign.title }}</h2>
+            <h2 class="text-2xl font-bold text-[var(--text-primary)]">{{ campaign.title }}</h2>
           </div>
           <div class="flex items-center mt-2">
             <span 
               v-for="type in campaign.types" 
               :key="type"
-              class="mr-2 px-2 py-1 rounded-full text-xs bg-primary-100 text-primary-800 dark:bg-primary-900 dark:text-primary-300"
+              class="mr-2 px-2 py-1 text-xs bg-[var(--accent-primary-wash)] text-[var(--accent-primary)]"
             >
               {{ type }}
             </span>
@@ -52,28 +52,28 @@
       <!-- Campaign Details -->
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
         <div class="lg:col-span-2">
-          <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 mb-6">
-            <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-4">Campaign Details</h3>
+          <div class="bg-[var(--surface-elevated)] border-2 border-[var(--border-light)] p-6 mb-6">
+            <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">Campaign Details</h3>
             
             <div class="space-y-4">
               <div>
-                <h4 class="text-sm font-medium text-gray-500 dark:text-gray-400">Description</h4>
-                <p class="text-gray-800 dark:text-white whitespace-pre-line">
+                <h4 class="text-sm font-medium text-[var(--text-secondary)]">Description</h4>
+                <p class="text-[var(--text-primary)] whitespace-pre-line">
                   {{ campaign.description || 'No description available' }}
                 </p>
               </div>
               
               <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <h4 class="text-sm font-medium text-gray-500 dark:text-gray-400">Start Date</h4>
-                  <p class="text-gray-800 dark:text-white">
+                  <h4 class="text-sm font-medium text-[var(--text-secondary)]">Start Date</h4>
+                  <p class="text-[var(--text-primary)]">
                     {{ formatDate(campaign.startDate) }}
                   </p>
                 </div>
                 
                 <div>
-                  <h4 class="text-sm font-medium text-gray-500 dark:text-gray-400">End Date</h4>
-                  <p class="text-gray-800 dark:text-white">
+                  <h4 class="text-sm font-medium text-[var(--text-secondary)]">End Date</h4>
+                  <p class="text-[var(--text-primary)]">
                     {{ formatDate(campaign.endDate) }}
                   </p>
                 </div>
@@ -82,21 +82,21 @@
           </div>
           
           <!-- Timeline -->
-          <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+          <div class="bg-[var(--surface-elevated)] border-2 border-[var(--border-light)] p-6">
             <div class="flex justify-between items-center mb-4">
-              <h3 class="text-lg font-semibold text-gray-800 dark:text-white">Timeline</h3>
+              <h3 class="text-lg font-semibold text-[var(--text-primary)]">Timeline</h3>
               <button @click="openAddStepModal" class="btn btn-primary btn-sm">
                 Add Step
               </button>
             </div>
             
             <div v-if="stepsLoading" class="text-center py-4">
-              <p class="text-gray-500 dark:text-gray-400">Loading timeline...</p>
+              <p class="text-[var(--text-secondary)]">Loading timeline...</p>
             </div>
             
             <div v-else-if="!campaignSteps || campaignSteps.length === 0" class="text-center py-6">
-              <p class="text-gray-500 dark:text-gray-400">No timeline steps found for this campaign</p>
-              <button @click="openAddStepModal" class="text-primary-600 dark:text-primary-400 hover:underline mt-2">
+              <p class="text-[var(--text-secondary)]">No timeline steps found for this campaign</p>
+              <button @click="openAddStepModal" class="text-[var(--accent-primary)] hover:underline mt-2">
                 Add your first step
               </button>
             </div>
@@ -108,27 +108,27 @@
                 class="relative"
               >
                 <!-- Timeline Dot -->
-                <div class="absolute -left-8 top-0 w-4 h-4 rounded-full bg-primary-500"></div>
+                <div class="absolute -left-8 top-0 w-4 h-4 rounded-full bg-[var(--accent-primary)]"></div>
                 
                 <!-- Timeline Line -->
-                <div v-if="index < campaignSteps.length - 1" class="absolute -left-6 top-4 w-0.5 h-full bg-gray-300 dark:bg-gray-600"></div>
+                <div v-if="index < campaignSteps.length - 1" class="absolute -left-6 top-4 w-0.5 h-full bg-[var(--border-light)]"></div>
                 
                 <!-- Timeline Content -->
                 <div class="flex flex-col mb-6">
                   <div class="flex justify-between items-start">
                     <div>
-                      <div class="text-sm text-gray-500 dark:text-gray-400">{{ formatDate(step.date) }}</div>
-                      <div class="text-lg font-medium text-gray-900 dark:text-white">{{ step.title }}</div>
-                      <div class="text-gray-600 dark:text-gray-300 mt-1">{{ step.description }}</div>
+                      <div class="text-sm text-[var(--text-secondary)]">{{ formatDate(step.date) }}</div>
+                      <div class="text-lg font-medium text-[var(--text-primary)]">{{ step.title }}</div>
+                      <div class="text-[var(--text-secondary)] mt-1">{{ step.description }}</div>
                     </div>
                     
                     <div class="flex gap-2">
-                      <button @click="editStep(step)" class="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300">
+                      <button @click="editStep(step)" class="text-[var(--accent-primary)] hover:text-[var(--accent-primary-hover)]">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                           <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
                         </svg>
                       </button>
-                      <button @click="confirmDeleteStep(step)" class="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300">
+                      <button @click="confirmDeleteStep(step)" class="text-[var(--danger)] hover:opacity-80">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                           <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
                         </svg>
@@ -138,10 +138,10 @@
                   
                   <!-- Assigned Person (if any) -->
                   <div v-if="step.assignee" class="flex items-center mt-2">
-                    <div class="w-6 h-6 rounded-full bg-primary-500 text-white flex items-center justify-center text-xs font-bold">
+                    <div class="w-6 h-6 rounded-full bg-[var(--accent-primary)] text-white flex items-center justify-center text-xs font-bold">
                       {{ getInitials(step.assignee.name) }}
                     </div>
-                    <span class="text-sm text-gray-700 dark:text-gray-300 ml-2">{{ step.assignee.name }}</span>
+                    <span class="text-sm text-[var(--text-primary)] ml-2">{{ step.assignee.name }}</span>
                   </div>
                 </div>
               </div>
@@ -151,11 +151,11 @@
         
         <div>
           <!-- Team Members Section -->
-          <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 mb-6">
-            <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-4">Team Members</h3>
-            
+          <div class="bg-[var(--surface-elevated)] border-2 border-[var(--border-light)] p-6 mb-6">
+            <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">Team Members</h3>
+
             <div v-if="!campaign.teamMembers || campaign.teamMembers.length === 0" class="text-center py-4">
-              <p class="text-gray-500 dark:text-gray-400">No team members assigned</p>
+              <p class="text-[var(--text-secondary)]">No team members assigned</p>
             </div>
             
             <div v-else class="space-y-3">
@@ -170,12 +170,12 @@
                          class="w-full h-full object-cover"
                          @error="handleImageError($event, member)"/>
                   </div>
-                  <div v-else class="w-8 h-8 rounded-full bg-primary-500 text-white flex items-center justify-center">
+                  <div v-else class="w-8 h-8 rounded-full bg-[var(--accent-primary)] text-white flex items-center justify-center">
                     {{ getInitials(member.name) }}
                   </div>
                   <div class="ml-3">
-                    <p class="text-sm font-medium text-gray-800 dark:text-white">{{ member.name }}</p>
-                    <p class="text-xs text-gray-500 dark:text-gray-400">{{ member.role }}</p>
+                    <p class="text-sm font-medium text-[var(--text-primary)]">{{ member.name }}</p>
+                    <p class="text-xs text-[var(--text-secondary)]">{{ member.role }}</p>
                   </div>
                 </div>
               </div>
@@ -183,11 +183,11 @@
           </div>
           
           <!-- Campaign Export -->
-          <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
-            <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-4">Export Campaign</h3>
-            
+          <div class="bg-[var(--surface-elevated)] border-2 border-[var(--border-light)] p-6">
+            <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">Export Campaign</h3>
+
             <div class="space-y-4">
-              <p class="text-gray-600 dark:text-gray-400 text-sm">Export this campaign timeline and details in your preferred format.</p>
+              <p class="text-[var(--text-secondary)] text-sm">Export this campaign timeline and details in your preferred format.</p>
               
               <div class="flex flex-col space-y-2">
                 <button 
@@ -219,15 +219,15 @@
     </div>
     
     <!-- Add/Edit Step Modal -->
-    <div v-if="showStepModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-md">
-        <h3 class="text-xl font-semibold text-gray-800 dark:text-white mb-4">
+    <div v-if="showStepModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div class="bg-[var(--surface-elevated)] border-2 border-[var(--border-light)] p-6 w-full max-w-md">
+        <h3 class="text-xl font-semibold text-[var(--text-primary)] mb-4">
           {{ editingStep ? 'Edit Step' : 'Add Step' }}
         </h3>
         
         <form @submit.prevent="saveStep">
           <div class="mb-4">
-            <label for="stepTitle" class="label">Title <span class="text-red-500">*</span></label>
+            <label for="stepTitle" class="label">Title <span class="text-[var(--danger)]">*</span></label>
             <input 
               id="stepTitle"
               v-model="stepForm.title"
@@ -250,7 +250,7 @@
           </div>
           
           <div class="mb-4">
-            <label for="stepDate" class="label">Date <span class="text-red-500">*</span></label>
+            <label for="stepDate" class="label">Date <span class="text-[var(--danger)]">*</span></label>
             <input 
               id="stepDate"
               v-model="stepForm.date"
@@ -281,10 +281,10 @@
     </div>
     
     <!-- Delete Step Confirmation Modal -->
-    <div v-if="showDeleteStepModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-md">
-        <h3 class="text-xl font-semibold text-gray-800 dark:text-white mb-4">Confirm Delete</h3>
-        <p class="text-gray-600 dark:text-gray-400 mb-6">
+    <div v-if="showDeleteStepModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div class="bg-[var(--surface-elevated)] border-2 border-[var(--border-light)] p-6 w-full max-w-md">
+        <h3 class="text-xl font-semibold text-[var(--text-primary)] mb-4">Confirm Delete</h3>
+        <p class="text-[var(--text-secondary)] mb-6">
           Are you sure you want to delete this step? This action cannot be undone.
         </p>
         
@@ -307,10 +307,10 @@
     </div>
     
     <!-- Delete Campaign Confirmation Modal -->
-    <div v-if="showDeleteModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-md">
-        <h3 class="text-xl font-semibold text-gray-800 dark:text-white mb-4">Confirm Delete</h3>
-        <p class="text-gray-600 dark:text-gray-400 mb-6">
+    <div v-if="showDeleteModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div class="bg-[var(--surface-elevated)] border-2 border-[var(--border-light)] p-6 w-full max-w-md">
+        <h3 class="text-xl font-semibold text-[var(--text-primary)] mb-4">Confirm Delete</h3>
+        <p class="text-[var(--text-secondary)] mb-6">
           Are you sure you want to delete this campaign? This action cannot be undone and will also delete all steps and team member associations.
         </p>
         
@@ -341,6 +341,7 @@ import { useToast } from 'vue-toastification';
 import campaignService from '@/services/campaign.service';
 import Breadcrumb from '@/components/ui/Breadcrumb.vue';
 import { getInitials } from '@/utils/formatters';
+import { formatDate } from '@/utils/dateFormatter';
 
 const route = useRoute();
 const router = useRouter();
@@ -410,19 +411,6 @@ async function loadCampaignSteps(campaignId) {
     stepsLoading.value = false;
   }
 }
-
-// Format date
-function formatDate(dateString) {
-  if (!dateString) return 'Not set';
-  
-  const date = new Date(dateString);
-  return new Intl.DateTimeFormat('en-US', { 
-    year: 'numeric', 
-    month: 'short', 
-    day: 'numeric' 
-  }).format(date);
-}
-
 
 // Handle image loading error
 function handleImageError(event, member) {

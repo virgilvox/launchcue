@@ -1,32 +1,32 @@
 <template>
   <Modal :modelValue="modelValue" @update:modelValue="emit('update:modelValue')" title="Task Checklist">
     <div v-if="task && task.id" class="space-y-4">
-      <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">{{ task.title }}</h3>
+      <h3 class="text-lg font-medium text-[var(--text-primary)]">{{ task.title }}</h3>
       
       <div v-if="localChecklist && localChecklist.length > 0" class="space-y-2 max-h-60 overflow-y-auto pr-2">
         <div 
           v-for="(item, index) in localChecklist" 
           :key="item.id || index" 
-          class="flex items-center p-2 border-b dark:border-gray-700"
+          class="flex items-center p-2 border-b border-[var(--border-light)]"
         >
           <input 
             :id="`checklist-${item.id || index}`" 
             v-model="item.completed" 
             type="checkbox" 
-            class="form-checkbox h-4 w-4 mr-3 text-primary-600 focus:ring-primary-500 dark:bg-gray-600 dark:border-gray-500"
+            class="form-checkbox h-4 w-4 mr-3"
             @change="emitUpdate()" 
           />
           <input 
             type="text"
             v-model="item.title"
-            class="flex-grow bg-transparent border-none p-0 focus:ring-0 text-sm text-gray-800 dark:text-gray-200" 
+            class="flex-grow bg-transparent border-none p-0 text-sm text-[var(--text-primary)]" 
             placeholder="Item description"
             @change="emitUpdate()"
             @keyup.enter="$event.target.blur()" 
           />
           <button 
             @click="removeItem(index)" 
-            class="btn-icon text-gray-400 hover:text-red-600 dark:hover:text-red-500 ml-2"
+            class="btn-icon text-[var(--text-secondary)] hover:text-[var(--danger)] ml-2"
             title="Remove Item"
           >
             <XMarkIcon class="h-4 w-4" />
@@ -34,7 +34,7 @@
         </div>
       </div>
       
-      <div v-else class="text-center my-4 text-gray-500 dark:text-gray-400">
+      <div v-else class="text-center my-4 text-[var(--text-secondary)]">
         No items in checklist
       </div>
       
@@ -56,7 +56,7 @@
       </div>
       
       <div class="form-actions mt-6">
-         <span class="text-sm text-gray-500 dark:text-gray-400 mr-auto">
+         <span class="text-sm text-[var(--text-secondary)] mr-auto">
              {{ completedCount }} / {{ totalCount }} completed
          </span>
         <button type="button" @click="emit('update:modelValue', false)" class="btn-primary">
@@ -64,7 +64,7 @@
         </button>
       </div>
     </div>
-    <div v-else class="text-center text-gray-500">Loading checklist...</div>
+    <div v-else class="text-center text-[var(--text-secondary)]">Loading checklist...</div>
   </Modal>
 </template>
 

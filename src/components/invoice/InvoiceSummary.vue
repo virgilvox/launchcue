@@ -1,12 +1,12 @@
 <template>
-  <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-5 ml-auto max-w-sm w-full">
+  <div class="bg-[var(--surface-elevated)] border-2 border-[var(--border-light)] p-5 ml-auto max-w-sm w-full">
     <h3 class="heading-section mb-4">Invoice Summary</h3>
 
     <div class="space-y-3">
       <!-- Subtotal -->
       <div class="flex justify-between items-center">
-        <span class="text-sm text-gray-600 dark:text-gray-300">Subtotal</span>
-        <span class="text-sm font-semibold text-gray-900 dark:text-white">
+        <span class="text-sm text-[var(--text-secondary)]">Subtotal</span>
+        <span class="text-sm font-semibold text-[var(--text-primary)]">
           {{ formatCurrency(subtotal, currency) }}
         </span>
       </div>
@@ -16,10 +16,10 @@
         <button
           type="button"
           :class="[
-            'text-xs px-2 py-1 rounded-md transition-colors',
+            'text-xs px-2 py-1 transition-colors',
             taxMode === 'rate'
-              ? 'bg-primary-100 text-primary-700 dark:bg-primary-900/50 dark:text-primary-300'
-              : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200',
+              ? 'bg-[var(--accent-primary)]/10 text-[var(--accent-primary)]'
+              : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]',
           ]"
           @click="taxMode = 'rate'"
         >
@@ -28,10 +28,10 @@
         <button
           type="button"
           :class="[
-            'text-xs px-2 py-1 rounded-md transition-colors',
+            'text-xs px-2 py-1 transition-colors',
             taxMode === 'fixed'
-              ? 'bg-primary-100 text-primary-700 dark:bg-primary-900/50 dark:text-primary-300'
-              : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200',
+              ? 'bg-[var(--accent-primary)]/10 text-[var(--accent-primary)]'
+              : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]',
           ]"
           @click="taxMode = 'fixed'"
         >
@@ -41,7 +41,7 @@
 
       <!-- Tax row -->
       <div class="flex justify-between items-center gap-3">
-        <span class="text-sm text-gray-600 dark:text-gray-300 shrink-0">Tax</span>
+        <span class="text-sm text-[var(--text-secondary)] shrink-0">Tax</span>
 
         <!-- Tax rate input -->
         <div v-if="taxMode === 'rate'" class="flex items-center gap-2">
@@ -56,16 +56,16 @@
               step="0.1"
               class="input text-sm text-right w-24 pr-6"
             />
-            <span class="absolute right-2 top-1/2 -translate-y-1/2 text-sm text-gray-400 dark:text-gray-500">%</span>
+            <span class="absolute right-2 top-1/2 -translate-y-1/2 text-sm text-[var(--text-secondary)]">%</span>
           </div>
-          <span class="text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap">
+          <span class="text-sm text-[var(--text-secondary)] whitespace-nowrap">
             {{ formatCurrency(computedTaxFromRate, currency) }}
           </span>
         </div>
 
         <!-- Fixed tax amount input -->
         <div v-else class="relative">
-          <span class="absolute left-2.5 top-1/2 -translate-y-1/2 text-sm text-gray-400 dark:text-gray-500">$</span>
+          <span class="absolute left-2.5 top-1/2 -translate-y-1/2 text-sm text-[var(--text-secondary)]">$</span>
           <input
             type="number"
             :value="tax"
@@ -79,9 +79,9 @@
       </div>
 
       <!-- Total -->
-      <div class="flex justify-between items-center pt-3 border-t border-gray-200 dark:border-gray-700">
-        <span class="text-base font-bold text-gray-900 dark:text-white">Total</span>
-        <span class="text-lg font-bold text-gray-900 dark:text-white">
+      <div class="flex justify-between items-center pt-3 border-t border-[var(--border-light)]">
+        <span class="text-base font-bold text-[var(--text-primary)]">Total</span>
+        <span class="text-lg font-bold text-[var(--text-primary)]">
           {{ formatCurrency(total, currency) }}
         </span>
       </div>

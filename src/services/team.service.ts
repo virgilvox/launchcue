@@ -115,24 +115,15 @@ const teamService: TeamServiceInterface = {
       };
     }
 
-    console.log(`Inviting user ${email} to team ${teamId}`);
-
     try {
       const response = await api.post(`${TEAM_ENDPOINT}?id=${teamId}&action=invite`, { email });
-      console.log('Invitation response:', response);
       return {
         success: true,
         invite: response
       };
     } catch (error: unknown) {
       console.error('Error inviting user:', error);
-
-      // Detailed error logging
       const err = error as { response?: { data?: { error?: string }; status?: number }; message?: string };
-      if (err.response) {
-        console.error('Response error data:', err.response.data);
-        console.error('Response status:', err.response.status);
-      }
 
       return {
         success: false,

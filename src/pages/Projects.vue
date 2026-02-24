@@ -104,9 +104,10 @@
           
           <p class="text-body mb-4">{{ project.description }}</p>
           
-          <div class="text-body-sm mb-3">
+          <div class="text-body-sm mb-3 flex items-center gap-2">
             <span class="overline">CLIENT</span>
-            <span class="ml-2">{{ getClientName(project.clientId) }}</span>
+            <ClientColorDot :color="getClientColorId(project.clientId)" />
+            <span>{{ getClientName(project.clientId) }}</span>
           </div>
           
           <div class="flex flex-wrap mb-4 gap-1">
@@ -255,14 +256,18 @@ import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue';
 import { useProjectStore } from '../stores/project';
 import { useClientStore } from '../stores/client';
 import { getStatusColor } from '@/utils/statusColors';
+import { formatDate } from '@/utils/dateFormatter';
+import { useEntityLookup } from '@/composables/useEntityLookup';
 import { PlusIcon, BriefcaseIcon, EllipsisVerticalIcon } from '@heroicons/vue/24/outline';
 import Modal from '../components/Modal.vue';
 import PageHeader from '../components/ui/PageHeader.vue';
 import LoadingSpinner from '../components/LoadingSpinner.vue';
 import EmptyState from '../components/ui/EmptyState.vue';
+import ClientColorDot from '../components/ui/ClientColorDot.vue';
 
 const projectStore = useProjectStore();
 const clientStore = useClientStore();
+const { getClientName, getClientColorId } = useEntityLookup();
 
 const loading = ref(false);
 const projects = computed(() => projectStore.projects);
@@ -359,23 +364,6 @@ function toggleProjectMenu(projectId) {
     activeMenu.value = null;
   } else {
     activeMenu.value = projectId;
-  }
-}
-
-function getClientName(clientId) {
-  const client = clients.value.find(c => c.id === clientId);
-  return client ? client.name : 'Unknown Client';
-}
-
-function formatDate(dateString) {
-  if (!dateString) return 'No deadline';
-  try {
-    const date = new Date(dateString);
-    if (isNaN(date.getTime())) return 'Invalid date';
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-  } catch (err) {
-    console.error('Error formatting date:', err, dateString);
-    return 'Invalid date';
   }
 }
 

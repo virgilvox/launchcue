@@ -21,7 +21,7 @@
           <div class="flex items-center space-x-2">
             <button
               @click="navigatePrev"
-              class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors text-[var(--accent-primary)]"
+              class="p-2 hover:bg-[var(--surface)] transition-colors text-[var(--accent-primary)]"
             >
               <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                 <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" />
@@ -30,32 +30,32 @@
 
             <button
               @click="goToToday"
-              class="px-3 py-1.5 text-sm font-medium rounded-md bg-[var(--accent-primary-wash)] text-[var(--accent-primary)] hover:bg-[var(--accent-primary-wash)] transition-colors"
+              class="px-3 py-1.5 text-sm font-medium bg-[var(--accent-primary-wash)] text-[var(--accent-primary)] hover:bg-[var(--accent-primary-wash)] transition-colors"
             >
               Today
             </button>
 
             <button
               @click="navigateNext"
-              class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors text-[var(--accent-primary)]"
+              class="p-2 hover:bg-[var(--surface)] transition-colors text-[var(--accent-primary)]"
             >
               <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                 <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
               </svg>
             </button>
 
-            <h3 class="text-xl font-semibold text-gray-800 dark:text-white ml-2">{{ headerTitle }}</h3>
+            <h3 class="text-xl font-semibold text-[var(--text-primary)] ml-2">{{ headerTitle }}</h3>
           </div>
 
           <!-- View Toggle Buttons -->
-          <div class="flex rounded-lg overflow-hidden border border-gray-300 dark:border-gray-600">
+          <div class="flex overflow-hidden border-2 border-[var(--border-light)]">
             <button
               @click="calendarView = 'month'"
               :class="[
                 'px-4 py-1.5 text-sm font-medium transition-colors',
                 calendarView === 'month'
                   ? 'bg-[var(--accent-primary)] text-white'
-                  : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                  : 'bg-[var(--surface-elevated)] text-[var(--text-primary)] hover:bg-[var(--surface)]'
               ]"
             >
               Month
@@ -63,10 +63,10 @@
             <button
               @click="calendarView = 'week'"
               :class="[
-                'px-4 py-1.5 text-sm font-medium transition-colors border-l border-r border-gray-300 dark:border-gray-600',
+                'px-4 py-1.5 text-sm font-medium transition-colors border-l-2 border-r-2 border-[var(--border-light)]',
                 calendarView === 'week'
                   ? 'bg-[var(--accent-primary)] text-white'
-                  : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                  : 'bg-[var(--surface-elevated)] text-[var(--text-primary)] hover:bg-[var(--surface)]'
               ]"
             >
               Week
@@ -77,7 +77,7 @@
                 'px-4 py-1.5 text-sm font-medium transition-colors',
                 calendarView === 'day'
                   ? 'bg-[var(--accent-primary)] text-white'
-                  : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                  : 'bg-[var(--surface-elevated)] text-[var(--text-primary)] hover:bg-[var(--surface)]'
               ]"
             >
               Day
@@ -127,15 +127,15 @@
         />
 
         <!-- Task List -->
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4">
-          <h4 class="text-lg font-semibold text-gray-800 dark:text-white mb-4">Task List</h4>
+        <div class="bg-[var(--surface-elevated)] border-2 border-[var(--border-light)] p-4">
+          <h4 class="text-lg font-semibold text-[var(--text-primary)] mb-4">Task List</h4>
 
           <div v-if="loading || eventsLoading" class="py-4 text-center">
-            <div class="inline-block animate-spin rounded-full h-6 w-6 border-2 border-primary-500 border-t-transparent"></div>
-            <p class="mt-2 text-gray-600 dark:text-gray-400">Loading tasks...</p>
+            <div class="inline-block animate-spin rounded-full h-6 w-6 border-2 border-[var(--accent-primary)] border-t-transparent"></div>
+            <p class="mt-2 text-[var(--text-secondary)]">Loading tasks...</p>
           </div>
 
-          <div v-else-if="filteredTasks.length === 0" class="py-4 text-center text-gray-700 dark:text-gray-300">
+          <div v-else-if="filteredTasks.length === 0" class="py-4 text-center text-[var(--text-primary)]">
             No tasks found for this period.
           </div>
 
@@ -143,18 +143,18 @@
             <div
               v-for="task in filteredTasks"
               :key="task.id"
-              class="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer"
+              class="flex items-center justify-between p-3 hover:bg-[var(--surface)] transition-colors cursor-pointer"
               @click="navigateToTask(task)"
             >
               <div class="flex items-center">
                 <div :class="`w-2 h-2 rounded-full bg-${task.statusColor}-500 mr-3`"></div>
-                <span class="text-gray-800 dark:text-gray-200">{{ task.title }}</span>
+                <span class="text-[var(--text-primary)]">{{ task.title }}</span>
               </div>
-              <div class="flex items-center text-sm text-gray-700 dark:text-gray-300">
+              <div class="flex items-center text-sm text-[var(--text-primary)]">
                 <span>{{ task.status }}</span>
                 <span class="mx-2">&bull;</span>
-                <span>{{ formatDate(task.dueDate) }}</span>
-                <svg class="h-5 w-5 ml-2 text-gray-700 dark:text-gray-300" viewBox="0 0 20 20" fill="currentColor">
+                <span>{{ formatShortDate(task.dueDate) }}</span>
+                <svg class="h-5 w-5 ml-2 text-[var(--text-secondary)]" viewBox="0 0 20 20" fill="currentColor">
                   <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
                 </svg>
               </div>
@@ -170,7 +170,7 @@
         :project-links="projectLinks"
         :project-contacts="projectContacts"
         :get-event-title="getEventTitle"
-        :format-date="formatDate"
+        :format-date="formatShortDate"
         @navigate-to-event="navigateToEventPage"
       />
     </div>
@@ -185,6 +185,8 @@ import { useProjectStore } from '../stores/project';
 import { useTaskStore } from '../stores/task';
 import { useClientStore } from '../stores/client';
 import apiService from '../services/api.service';
+import { formatShortDate } from '@/utils/dateFormatter';
+import { useEntityLookup } from '@/composables/useEntityLookup';
 import PageContainer from '@/components/ui/PageContainer.vue';
 import PageHeader from '@/components/ui/PageHeader.vue';
 import CalendarFilters from '@/components/calendar/CalendarFilters.vue';
@@ -198,6 +200,7 @@ const calendarStore = useCalendarStore();
 const projectStore = useProjectStore();
 const taskStore = useTaskStore();
 const clientStore = useClientStore();
+const { getProjectName } = useEntityLookup();
 
 const projects = computed(() => projectStore.projects);
 const clients = computed(() => clientStore.clients);
@@ -581,15 +584,6 @@ function getDateInfo(date) {
   return '';
 }
 
-function formatDate(dateObj) {
-  if (!dateObj) return '';
-
-  return dateObj.toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric'
-  });
-}
-
 function formatHour(hour) {
   if (hour === 0) return '12 AM';
   if (hour === 12) return '12 PM';
@@ -700,19 +694,11 @@ async function fetchTasks() {
       endDate = dayEnd.toISOString();
     }
 
-    console.log(`Fetching tasks for date range: ${startDate} to ${endDate}`);
-
     const tasksResponse = await calendarStore.getTaskDeadlines(startDate, endDate);
-
-    console.log('Tasks response received:', tasksResponse ?
-      (Array.isArray(tasksResponse) ? `Array with ${tasksResponse.length} items` : typeof tasksResponse) :
-      'null or undefined');
 
     if (Array.isArray(tasksResponse)) {
       tasks.value = tasksResponse;
-      console.log(`Loaded ${tasks.value.length} tasks for calendar view`);
     } else {
-      console.warn('fetchTasks: Expected array but got', typeof tasksResponse);
       tasks.value = [];
     }
   } catch (err) {
@@ -741,7 +727,6 @@ function getTaskStatusColor(status) {
 
 function navigateToEvent(event) {
   if (!event) {
-    console.warn('Attempted to navigate to invalid event');
     return;
   }
   selectedEvent.value = event;
@@ -768,7 +753,6 @@ function navigateToProject(projectId) {
 
 async function selectEvent(event) {
   if (!event || !event.projectId) {
-    console.warn('No project ID found for the selected event');
     return;
   }
 
@@ -782,24 +766,18 @@ async function selectEvent(event) {
       if (project) {
         projectLinks.value = project.links || [];
         projectContacts.value = project.contacts || [];
-        console.log('Found project in store:', project.name);
       } else {
         try {
           const projectEndpoint = `/projects/${selectedProjectId.value}`;
-          console.log('Fetching project details from API:', projectEndpoint);
-
           const response = await apiService.get(projectEndpoint);
 
           if (response && typeof response === 'object' && !response.toString().includes('<!DOCTYPE html>')) {
-            console.log('Received project details from API:', response.name || response.title);
             projectLinks.value = response.links || [];
             projectContacts.value = response.contacts || [];
 
             if (!projects.value.some(p => p.id === selectedProjectId.value)) {
               projectStore.addProject(response);
             }
-          } else {
-            console.warn('Invalid project details response format', response);
           }
         } catch (apiError) {
           console.error('API error fetching project details:', apiError);
@@ -809,27 +787,6 @@ async function selectEvent(event) {
       console.error('Error in selectEvent:', err);
     }
   }
-}
-
-function getProjectName(projectId) {
-  if (!projectId) return 'Project';
-
-  const project = projects.value.find(p => p.id === projectId);
-  if (project) {
-    return project.name || project.title || 'Project';
-  }
-
-  const relatedEvent = events.value.find(e => e.projectId === projectId && e.title && e.title !== 'Project');
-  if (relatedEvent && relatedEvent.title) {
-    return relatedEvent.title;
-  }
-
-  const relatedTask = tasks.value.find(t => t.projectId === projectId && t.projectName);
-  if (relatedTask && relatedTask.projectName) {
-    return relatedTask.projectName;
-  }
-
-  return 'Project';
 }
 
 function getEventTitle(event) {

@@ -13,22 +13,20 @@
     <div
       v-show="!isMobile || isOpen"
       :class="[
-        'flex flex-col h-full bg-[var(--sidebar-bg)] border-r-2 border-[var(--border)] transition-all duration-300 ease-in-out shrink-0',
+        'flex flex-col h-full bg-[var(--sidebar-bg)] border-r border-[var(--sidebar-border)] transition-all duration-300 ease-in-out shrink-0',
         isMobile ? 'fixed inset-y-0 left-0 z-40 w-64' : (isCollapsed ? 'w-16' : 'w-64')
       ]"
     >
       <!-- Logo and Toggle -->
-      <div class="flex items-center h-16 flex-shrink-0 px-4 border-b-2 border-[var(--border)] justify-between">
+      <div class="flex items-center h-16 flex-shrink-0 px-4 border-b border-[var(--sidebar-border)] justify-between">
         <div class="flex items-center">
-          <div class="w-8 h-8 bg-[var(--accent-primary)] flex items-center justify-center flex-shrink-0">
-            <span class="text-white font-heading font-bold text-sm">LC</span>
-          </div>
-          <span v-if="!isCollapsed || isMobile" class="ml-3 font-heading text-lg font-bold text-[var(--text-primary)]">LaunchCue</span>
+          <img src="/logo-placeholder.png" alt="LaunchCue" class="w-8 h-8 flex-shrink-0 object-contain" />
+          <span v-if="!isCollapsed || isMobile" class="ml-3 font-heading text-lg font-bold text-[var(--sidebar-text-active)]">LaunchCue</span>
         </div>
         <button
           v-if="!isMobile"
           @click="toggleSidebar"
-          class="p-1 border-2 border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--border)] focus:outline-none"
+          class="p-1 text-[var(--sidebar-text)] hover:text-[var(--sidebar-text-active)] focus:outline-none"
           aria-label="Toggle sidebar"
         >
           <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -39,7 +37,7 @@
         <button
           v-else
           @click="closeMobile"
-          class="p-1 border-2 border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--border)] focus:outline-none"
+          class="p-1 text-[var(--sidebar-text)] hover:text-[var(--sidebar-text-active)] focus:outline-none"
           aria-label="Close menu"
         >
           <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -57,10 +55,10 @@
               class="w-full flex items-center justify-between px-2 py-1.5 mt-3 first:mt-0 cursor-pointer group"
               @click="toggleGroup(group.label)"
             >
-              <span class="overline text-[var(--text-secondary)] group-hover:text-[var(--text-primary)]">{{ group.label }}</span>
+              <span class="text-[10px] font-bold uppercase tracking-[0.1em] text-[var(--sidebar-text)] opacity-60 group-hover:opacity-100">{{ group.label }}</span>
               <ChevronDownIcon
                 :class="[
-                  'h-3.5 w-3.5 text-[var(--text-secondary)] transition-transform duration-200',
+                  'h-3.5 w-3.5 text-[var(--sidebar-text)] opacity-40 transition-transform duration-200',
                   collapsedGroups[group.label] ? '-rotate-90' : ''
                 ]"
               />
@@ -72,10 +70,10 @@
                   :key="item.name"
                   :to="item.href"
                   :class="[
-                    'group flex items-center px-2 py-2 text-body-sm font-medium transition-colors',
+                    'group flex items-center px-2 py-2 text-sm font-medium transition-colors rounded-sm',
                     item.current
-                      ? 'bg-[var(--accent-primary-wash)] text-[var(--accent-primary)] border-l-4 border-[var(--accent-primary)]'
-                      : 'text-[var(--text-secondary)] hover:bg-[var(--surface)] hover:text-[var(--text-primary)] border-l-4 border-transparent'
+                      ? 'bg-white/10 text-[var(--sidebar-text-active)] border-l-[3px] border-[var(--accent-primary)]'
+                      : 'text-[var(--sidebar-text)] hover:bg-[var(--sidebar-hover)] hover:text-[var(--sidebar-text-active)] border-l-[3px] border-transparent'
                   ]"
                   :title="item.name"
                   @click="isMobile && closeMobile()"
@@ -89,16 +87,16 @@
 
           <!-- Collapsed sidebar: dividers between groups, icon-only -->
           <div v-else>
-            <div v-if="group.label !== 'CORE'" class="mx-2 my-2 border-t border-[var(--border-light)]"></div>
+            <div v-if="group.label !== 'CORE'" class="mx-2 my-2 border-t border-[var(--sidebar-border)]"></div>
             <router-link
               v-for="item in group.items"
               :key="item.name"
               :to="item.href"
               :class="[
-                'group flex items-center justify-center py-2 transition-colors relative',
+                'group flex items-center justify-center py-2 transition-colors relative rounded-sm',
                 item.current
-                  ? 'bg-[var(--accent-primary-wash)] text-[var(--accent-primary)] border-l-4 border-[var(--accent-primary)]'
-                  : 'text-[var(--text-secondary)] hover:bg-[var(--surface)] hover:text-[var(--text-primary)] border-l-4 border-transparent'
+                  ? 'bg-white/10 text-[var(--sidebar-text-active)] border-l-[3px] border-[var(--accent-primary)]'
+                  : 'text-[var(--sidebar-text)] hover:bg-[var(--sidebar-hover)] hover:text-[var(--sidebar-text-active)] border-l-[3px] border-transparent'
               ]"
               :title="item.name"
             >
@@ -109,19 +107,19 @@
       </nav>
 
       <!-- User Info / Logout -->
-      <div class="mt-auto p-3 border-t-2 border-[var(--border)]">
+      <div class="mt-auto p-3 border-t border-[var(--sidebar-border)]">
         <div v-if="authStore.user" class="flex items-center mb-2" :class="{'justify-center': isCollapsed && !isMobile}">
-          <div class="w-8 h-8 bg-[var(--accent-primary)] text-white flex items-center justify-center text-xs font-heading font-bold flex-shrink-0">
+          <div class="w-8 h-8 bg-[var(--accent-primary)] text-white flex items-center justify-center text-xs font-heading font-bold flex-shrink-0 rounded-sm">
             {{ userInitials }}
           </div>
           <div v-if="!isCollapsed || isMobile" class="ml-3 flex-1 min-w-0">
-            <p class="text-body-sm font-medium text-[var(--text-primary)] truncate">{{ authStore.user.name }}</p>
-            <p class="text-xs text-[var(--text-secondary)] truncate mono">{{ authStore.user.email }}</p>
+            <p class="text-sm font-medium text-[var(--sidebar-text-active)] truncate">{{ authStore.user.name }}</p>
+            <p class="text-xs text-[var(--sidebar-text)] truncate">{{ authStore.user.email }}</p>
           </div>
         </div>
         <button
           @click="handleLogout"
-          class="w-full flex items-center px-3 py-2 text-body-sm font-medium text-[var(--text-secondary)] hover:bg-[var(--accent-primary-wash)] hover:text-[var(--accent-primary)] transition-colors border-2 border-transparent hover:border-[var(--accent-primary)]"
+          class="w-full flex items-center px-3 py-2 text-sm font-medium text-[var(--sidebar-text)] hover:bg-[var(--sidebar-hover)] hover:text-[var(--sidebar-text-active)] transition-colors rounded-sm"
           :class="{'justify-center': isCollapsed && !isMobile}"
           title="Logout"
         >

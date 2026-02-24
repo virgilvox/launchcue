@@ -4,21 +4,21 @@
       <div class="flex items-center gap-3">
         <router-link 
           :to="clientId ? `/clients/${clientId}` : '/projects'" 
-          class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+          class="text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
         >
           <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
             <path fill-rule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clip-rule="evenodd" />
           </svg>
         </router-link>
-        <h2 class="text-2xl font-bold text-gray-800 dark:text-white">
+        <h2 class="text-2xl font-bold text-[var(--text-primary)]">
           {{ isEditing ? 'Edit Project' : 'Create Project' }}
         </h2>
       </div>
     </div>
     
-    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+    <div class="bg-[var(--surface-elevated)] border-2 border-[var(--border-light)] p-6">
       <div v-if="loading" class="text-center py-4">
-        <p class="text-gray-500 dark:text-gray-400">Loading...</p>
+        <p class="text-[var(--text-secondary)]">Loading...</p>
       </div>
       
       <div v-else>
@@ -26,7 +26,7 @@
           <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <div class="mb-4">
-                <label for="projectName" class="label">Project Title <span class="text-red-500">*</span></label>
+                <label for="projectName" class="label">Project Title <span class="text-[var(--danger)]">*</span></label>
                 <input 
                   id="projectName"
                   v-model="projectForm.title"
@@ -38,7 +38,7 @@
               </div>
               
               <div class="mb-4">
-                <label for="projectClient" class="label">Client <span class="text-red-500">*</span></label>
+                <label for="projectClient" class="label">Client <span class="text-[var(--danger)]">*</span></label>
                 <select 
                   id="projectClient"
                   v-model="projectForm.clientId"
@@ -76,13 +76,13 @@
                   <span 
                     v-for="(tag, index) in projectForm.tags" 
                     :key="index"
-                    class="bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 px-3 py-1 rounded-full text-sm flex items-center"
+                    class="bg-[var(--surface)] text-[var(--text-primary)] px-3 py-1 text-sm flex items-center border-2 border-[var(--border-light)]"
                   >
                     {{ tag }}
                     <button 
                       type="button" 
                       @click="removeTag(index)" 
-                      class="ml-1 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+                      class="ml-1 text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
                     >
                       &times;
                     </button>
@@ -93,7 +93,7 @@
             
             <div>
               <div class="mb-4">
-                <label for="projectStatus" class="label">Status <span class="text-red-500">*</span></label>
+                <label for="projectStatus" class="label">Status <span class="text-[var(--danger)]">*</span></label>
                 <select 
                   id="projectStatus"
                   v-model="projectForm.status"
@@ -251,7 +251,6 @@ async function loadProject() {
   if (isEditing.value) {
     try {
       const projectId = route.params.id;
-      console.log('Loading project with ID:', projectId);
       const project = await projectService.getProject(projectId);
       
       projectForm.value = {
@@ -335,8 +334,6 @@ async function submitForm() {
     
     if (editMode.value) {
       // Update existing project
-      console.log('Updating project with ID:', projectId);
-      console.log('Project data:', projectData);
       result = await projectStore.updateProject(projectId, projectData);
       toast.success('Project updated successfully');
     } else {
@@ -386,8 +383,6 @@ onMounted(async () => {
     // If editing an existing project
     if (editMode.value && projectId) {
       const project = await projectStore.getProject(projectId);
-      console.log('Fetched project for editing:', project);
-      
       if (project) {
         // Handle both name and title for backward compatibility
         projectForm.value.title = project.title || project.name || '';

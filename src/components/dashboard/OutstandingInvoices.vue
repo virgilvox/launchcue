@@ -28,7 +28,10 @@
             ]"
           >
             <td class="mono">{{ inv.invoiceNumber || '—' }}</td>
-            <td>{{ inv.clientName || '—' }}</td>
+            <td class="flex items-center gap-2">
+              <ClientColorDot :color="inv.clientColor" />
+              {{ inv.clientName || '—' }}
+            </td>
             <td class="text-right mono">{{ formatCurrency(inv.total) }}</td>
             <td class="text-right">
               <span
@@ -49,6 +52,7 @@
 <script setup>
 import { computed } from 'vue'
 import { formatCurrency } from '@/utils/formatters'
+import ClientColorDot from '@/components/ui/ClientColorDot.vue'
 
 const props = defineProps({
   invoices: { type: Array, default: () => [] },

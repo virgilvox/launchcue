@@ -29,6 +29,7 @@ const ClientCreateSchema = z.object({
   address: z.string().max(500).optional(),
   notes: z.string().max(5000).optional(),
   contacts: z.array(ContactSchema).optional(),
+  color: z.enum(['slate', 'red', 'orange', 'amber', 'emerald', 'teal', 'cyan', 'blue', 'violet', 'pink']).optional(),
 });
 
 const ClientUpdateSchema = ClientCreateSchema.partial();
@@ -325,11 +326,19 @@ exports.handler = async function(event, context) {
         contactPhone: validatedData.contactPhone || '',
         address: validatedData.address || '',
         notes: validatedData.notes || '',
+        color: validatedData.color || undefined,
         teamId: teamId,
         createdAt: now,
         updatedAt: now,
         createdBy: userId
       };
+
+      // Auto-assign color if not provided
+      if (!newClient.color) {
+        const clientCount = await clientsCollection.countDocuments({ teamId, ...notDeleted });
+        const colorPalette = ['slate', 'red', 'orange', 'amber', 'emerald', 'teal', 'cyan', 'blue', 'violet', 'pink'];
+        newClient.color = colorPalette[clientCount % colorPalette.length];
+      }
 
       const result = await clientsCollection.insertOne(newClient);
       const createdClient = { ...newClient, id: result.insertedId.toString() };

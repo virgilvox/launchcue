@@ -30,7 +30,7 @@ defineProps({
 }
 
 svg {
-  color: #3b82f6;
+  color: var(--accent-primary);
   width: 2rem;
   height: 2rem;
 }
@@ -47,18 +47,7 @@ svg {
 
 .loading-text {
   margin-top: 0.5rem;
-  color: #6b7280;
+  color: var(--text-secondary);
   font-size: 0.875rem;
-}
-
-/* Dark mode styles */
-@media (prefers-color-scheme: dark) {
-  svg {
-    color: #60a5fa;
-  }
-  
-  .loading-text {
-    color: #9ca3af;
-  }
 }
 </style>

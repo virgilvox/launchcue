@@ -14,6 +14,7 @@
         v-for="client in topClients"
         :key="client.id"
         class="flex items-center justify-between py-2 border-b border-[var(--border-light)] last:border-0"
+        :style="{ borderLeftWidth: '3px', borderLeftColor: getClientColor(client.color), paddingLeft: '0.75rem' }"
       >
         <div class="flex items-center gap-3 min-w-0">
           <div
@@ -38,6 +39,7 @@
 
 <script setup>
 import { computed } from 'vue'
+import { getClientColor } from '@/constants/clientColors'
 
 const props = defineProps({
   clients: { type: Array, default: () => [] },

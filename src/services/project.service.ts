@@ -60,15 +60,8 @@ class ProjectService {
    */
   async updateProject(id: string, data: Partial<ProjectCreateRequest>): Promise<Project> {
     try {
-      console.log(`Updating project with ID: ${id}`);
-      console.log('Project data:', data);
-
-      // Make sure we're using the correct endpoint format
       const endpoint = `${PROJECT_ENDPOINT}/${id}`;
-      console.log('Using endpoint:', endpoint);
-
       const result = await apiService.put<Project>(endpoint, data);
-      console.log('Update result:', result);
       return result;
     } catch (error) {
       console.error(`Error updating project ${id}:`, error);

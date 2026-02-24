@@ -52,7 +52,7 @@
     </div>
 
     <div v-else-if="error" class="text-center py-10">
-      <p class="text-red-500">{{ error }}</p>
+      <p class="text-[var(--danger)]">{{ error }}</p>
     </div>
 
     <EmptyState
@@ -71,39 +71,39 @@
       <div
         v-for="note in filteredNotes"
         :key="note.id"
-        class="card hover:shadow-lg transition-shadow flex flex-col"
+        class="card flex flex-col"
       >
         <div class="flex justify-between items-start mb-3">
-          <h3 class="text-lg font-semibold text-gray-800 dark:text-white flex-1 mr-2 break-words">{{ note.title }}</h3>
+          <h3 class="text-lg font-semibold text-[var(--text-primary)] flex-1 mr-2 break-words">{{ note.title }}</h3>
           <!-- Note Actions Menu -->
           <div class="relative flex-shrink-0">
-            <button @click="toggleNoteMenu(note.id)" class="text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 p-1">
+            <button @click="toggleNoteMenu(note.id)" class="text-[var(--text-secondary)] hover:text-[var(--text-primary)] p-1">
                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M10 6a2 2 0 110-4 2 2 0 010 4zm0 6a2 2 0 110-4 2 2 0 010 4zm0 6a2 2 0 110-4 2 2 0 010 4z" /></svg>
             </button>
-            <div v-if="activeMenu === note.id" @click.stop class="absolute right-0 mt-1 w-40 bg-white dark:bg-gray-700 rounded-md shadow-lg z-20 py-1 border dark:border-gray-600">
+            <div v-if="activeMenu === note.id" @click.stop class="absolute right-0 mt-1 w-40 bg-[var(--surface-elevated)] border-2 border-[var(--border-light)] z-20 py-1">
               <button @click="editNote(note)" class="context-menu-item">Edit Note</button>
-              <button @click="confirmDeleteNote(note)" class="context-menu-item text-red-600 dark:text-red-400">Delete Note</button>
+              <button @click="confirmDeleteNote(note)" class="context-menu-item text-[var(--danger)]">Delete Note</button>
             </div>
           </div>
         </div>
 
         <!-- Content Preview (rendered HTML) -->
-        <div class="prose prose-sm dark:prose-invert mb-4 flex-grow max-h-48 overflow-hidden relative">
+        <div class="prose prose-sm mb-4 flex-grow max-h-48 overflow-hidden relative">
           <div v-html="sanitizeHtml(note.content)"></div>
-           <div class="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-white dark:from-gray-800 to-transparent pointer-events-none"></div>
+           <div class="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-[var(--surface-elevated)] to-transparent pointer-events-none"></div>
         </div>
 
         <!-- Tags and Metadata -->
-         <div class="mt-auto pt-3 border-t border-gray-200 dark:border-gray-700">
+         <div class="mt-auto pt-3 border-t border-[var(--border-light)]">
             <div v-if="note.tags && note.tags.length > 0" class="flex flex-wrap gap-1 mb-2">
                  <span v-for="tag in note.tags" :key="tag" class="tag">{{ tag }}</span>
             </div>
-            <div class="text-xs text-gray-500 dark:text-gray-400">
+            <div class="text-xs text-[var(--text-secondary)]">
                  <span v-if="note.clientId">Client: {{ getClientName(note.clientId) }}</span>
                  <span v-if="note.clientId && note.projectId"> &bull; </span>
                  <span v-if="note.projectId">Project: {{ getProjectName(note.projectId) }}</span>
                  <span v-if="!note.clientId && !note.projectId">No associated client/project</span>
-                 <br> Created: {{ formatDate(note.createdAt) }}
+                 <br> Created: {{ formatDate(note.createdAt, { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }) }}
             </div>
          </div>
       </div>
@@ -170,7 +170,7 @@
     <!-- Delete Note Confirmation Modal -->
     <Modal v-model="showDeleteModal" title="Confirm Delete Note">
          <div v-if="noteToDelete" class="space-y-4">
-            <p class="text-gray-700 dark:text-gray-300">Are you sure you want to delete note "{{ noteToDelete.title }}"?</p>
+            <p class="text-[var(--text-primary)]">Are you sure you want to delete note "{{ noteToDelete.title }}"?</p>
             <div class="form-actions">
                 <button type="button" @click="closeDeleteModal" class="btn btn-outline">Cancel</button>
                 <button type="button" @click="deleteNote" class="btn btn-danger" :disabled="deleting">{{ deleting ? 'Deleting...' : 'Delete Note' }}</button>
@@ -188,6 +188,8 @@ import noteService from '../services/note.service';
 import { useClientStore } from '../stores/client';
 import { useProjectStore } from '../stores/project';
 import { useToast } from 'vue-toastification';
+import { formatDate } from '@/utils/dateFormatter';
+import { useEntityLookup } from '@/composables/useEntityLookup';
 import Modal from '../components/Modal.vue';
 import LoadingSpinner from '../components/LoadingSpinner.vue';
 import RichTextEditor from '../components/ui/RichTextEditor.vue';
@@ -199,6 +201,7 @@ const authStore = useAuthStore();
 const clientStore = useClientStore();
 const projectStore = useProjectStore();
 const toast = useToast();
+const { getClientName, getProjectName } = useEntityLookup();
 
 const loading = ref(false);
 const loadingClients = ref(false);
@@ -331,28 +334,6 @@ async function loadNotes() {
   } finally {
     loading.value = false;
   }
-}
-
-function formatDate(dateString) {
-  if (!dateString) return '';
-  const date = new Date(dateString);
-  return date.toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
-  });
-}
-
-function getClientName(clientId) {
-    const client = clients.value.find(c => c.id === clientId);
-    return client ? client.name : 'Unknown';
-}
-
-function getProjectName(projectId) {
-    const project = projects.value.find(p => p.id === projectId);
-    return project ? project.title : 'Unknown';
 }
 
 function clearFilters() {

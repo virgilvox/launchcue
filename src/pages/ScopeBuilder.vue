@@ -18,7 +18,7 @@
         <!-- Main content (2/3 width on lg) -->
         <div class="flex-1 lg:w-2/3 space-y-6">
           <!-- Basic Info Card -->
-          <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-5">
+          <div class="card p-5">
             <h3 class="heading-section mb-4">Details</h3>
             <div class="space-y-4">
               <div>
@@ -35,10 +35,13 @@
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label class="label">Client</label>
-                    <select v-model="formData.clientId" class="input">
-                      <option :value="null">— Select client —</option>
-                      <option v-for="c in clients" :key="c.id" :value="c.id">{{ c.name }}</option>
-                    </select>
+                    <div class="flex items-center gap-2">
+                      <ClientColorDot v-if="formData.clientId" :color="getClientColorId(formData.clientId)" />
+                      <select v-model="formData.clientId" class="input flex-1">
+                        <option :value="null">— Select client —</option>
+                        <option v-for="c in clients" :key="c.id" :value="c.id">{{ c.name }}</option>
+                      </select>
+                    </div>
                   </div>
                   <div>
                     <label class="label">Project</label>
@@ -76,13 +79,13 @@
           </div>
 
           <!-- Deliverables Section -->
-          <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-5">
+          <div class="card p-5">
             <div class="flex justify-between items-center mb-4">
               <h3 class="heading-section">Deliverables</h3>
               <button @click="addDeliverable" class="btn btn-sm btn-primary">+ Add Deliverable</button>
             </div>
 
-            <div v-if="formData.deliverables.length === 0" class="text-center py-8 text-gray-500 dark:text-gray-400">
+            <div v-if="formData.deliverables.length === 0" class="text-center py-8 text-[var(--text-secondary)]">
               <p>No deliverables yet. Click "Add Deliverable" to get started.</p>
             </div>
 
@@ -102,7 +105,7 @@
           </div>
 
           <!-- Terms Section -->
-          <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-5">
+          <div class="card p-5">
             <h3 class="heading-section mb-4">Terms & Conditions</h3>
             <ScopeTermsEditor v-model="formData.terms" />
           </div>
@@ -127,7 +130,7 @@
         :project-name="getProjectName(formData.projectId)"
         :is-template="isTemplate"
       />
-      <div class="flex justify-end gap-3 mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+      <div class="flex justify-end gap-3 mt-4 pt-4 border-t border-[var(--border-light)]">
         <button @click="printScope" class="btn btn-secondary">Print / PDF</button>
         <button @click="showPreview = false" class="btn btn-primary">Close</button>
       </div>
@@ -149,6 +152,8 @@ import ScopeSummaryCard from '@/components/scope/ScopeSummaryCard.vue';
 import ScopePreview from '@/components/scope/ScopePreview.vue';
 import PageContainer from '@/components/ui/PageContainer.vue';
 import Modal from '@/components/Modal.vue';
+import ClientColorDot from '@/components/ui/ClientColorDot.vue';
+import { useEntityLookup } from '@/composables/useEntityLookup';
 
 const toast = useToast();
 const route = useRoute();
@@ -156,6 +161,7 @@ const router = useRouter();
 const scopeStore = useScopeStore();
 const clientStore = useClientStore();
 const projectStore = useProjectStore();
+const { getClientName, getClientColorId, getProjectName } = useEntityLookup();
 
 // --- State ---
 
@@ -423,20 +429,6 @@ async function save() {
 function printScope() {
   window.print();
 }
-
-// --- Helpers ---
-
-const getClientName = (clientId) => {
-  if (!clientId) return null;
-  const client = clients.value.find(c => c.id === clientId);
-  return client ? client.name : null;
-};
-
-const getProjectName = (projectId) => {
-  if (!projectId) return null;
-  const project = projects.value.find(p => p.id === projectId);
-  return project ? project.title : null;
-};
 
 // --- Initialization ---
 

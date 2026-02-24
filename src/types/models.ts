@@ -85,6 +85,7 @@ export interface Client extends Timestamped, SoftDeletable {
   contactPhone?: string
   address?: string
   notes?: string
+  color?: string
   contacts: Contact[]
   teamId: string
   createdBy: string

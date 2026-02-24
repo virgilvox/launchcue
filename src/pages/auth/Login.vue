@@ -1,29 +1,29 @@
 <template>
-  <div class="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 via-white to-primary-50 dark:from-gray-900 dark:via-gray-900 dark:to-primary-950/30 px-4 sm:px-6 lg:px-8">
+  <div class="min-h-screen flex items-center justify-center bg-[var(--bg)] px-4 sm:px-6 lg:px-8">
     <div class="max-w-md w-full">
       <div class="text-center">
         <img src="/logo-placeholder.png" alt="LaunchCue" class="h-12 w-12 mx-auto mb-4">
-        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">{{ appName }}</h1>
-        <h2 class="mt-2 text-lg font-medium text-gray-600 dark:text-gray-400">Sign in to your account</h2>
+        <h1 class="text-2xl font-bold text-[var(--text-primary)]">{{ appName }}</h1>
+        <h2 class="mt-2 text-lg font-medium text-[var(--text-secondary)]">Sign in to your account</h2>
       </div>
-      
-      <div class="mt-8 bg-white dark:bg-gray-800 py-8 px-4 shadow-md sm:rounded-lg sm:px-10">
+
+      <div class="mt-8 bg-[var(--surface-elevated)] py-8 px-4 shadow-brutal-md sm:px-10">
         <form class="space-y-6" @submit.prevent="handleLogin">
-          <div v-if="error" class="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-900 rounded-md p-4 mb-4">
+          <div v-if="error" class="border-2 border-[var(--danger)] bg-[var(--surface)] p-4 mb-4">
             <div class="flex">
               <div class="flex-shrink-0">
-                <svg class="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                <svg class="h-5 w-5 text-[var(--danger)]" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                   <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clip-rule="evenodd" />
                 </svg>
               </div>
               <div class="ml-3">
-                <h3 class="text-sm font-medium text-red-800 dark:text-red-200">{{ error }}</h3>
+                <h3 class="text-sm font-medium text-[var(--danger)]">{{ error }}</h3>
               </div>
             </div>
           </div>
-          
+
           <div>
-            <label for="email" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Email</label>
+            <label for="email" class="block text-sm font-medium text-[var(--text-primary)]">Email</label>
             <div class="mt-1">
               <input 
                 id="email" 
@@ -38,7 +38,7 @@
           </div>
 
           <div>
-            <label for="password" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Password</label>
+            <label for="password" class="block text-sm font-medium text-[var(--text-primary)]">Password</label>
             <div class="mt-1">
               <input 
                 id="password" 
@@ -58,13 +58,13 @@
                 id="remember-me" 
                 v-model="rememberMe" 
                 type="checkbox" 
-                class="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded dark:border-gray-700 dark:bg-gray-900" 
+                class="h-4 w-4 text-[var(--accent-primary)] border-[var(--border)]"
               />
-              <label for="remember-me" class="ml-2 block text-sm text-gray-700 dark:text-gray-300">Remember me</label>
+              <label for="remember-me" class="ml-2 block text-sm text-[var(--text-primary)]">Remember me</label>
             </div>
 
             <div class="text-sm">
-              <router-link to="/forgot-password" class="font-medium text-primary-600 hover:text-primary-500 dark:text-primary-400 dark:hover:text-primary-300">Forgot password?</router-link>
+              <router-link to="/forgot-password" class="font-medium text-[var(--accent-primary)] hover:text-[var(--accent-primary-hover)]">Forgot password?</router-link>
             </div>
           </div>
 
@@ -82,8 +82,8 @@
 
         <div class="mt-6">
           <div class="text-sm text-center">
-            <span class="text-gray-500 dark:text-gray-400">Don't have an account?</span>
-            <router-link to="/register" class="ml-1 font-medium text-primary-600 hover:text-primary-500 dark:text-primary-400 dark:hover:text-primary-300">Sign up</router-link>
+            <span class="text-[var(--text-secondary)]">Don't have an account?</span>
+            <router-link to="/register" class="ml-1 font-medium text-[var(--accent-primary)] hover:text-[var(--accent-primary-hover)]">Sign up</router-link>
           </div>
         </div>
       </div>

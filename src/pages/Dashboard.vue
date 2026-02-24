@@ -201,6 +201,7 @@ import { useCalendarStore } from '../stores/calendar';
 import { useAuthStore } from '../stores/auth';
 import { format, isToday, isTomorrow, addDays, isWithinInterval } from 'date-fns';
 import { getStatusColor } from '@/utils/statusColors';
+import { useEntityLookup } from '@/composables/useEntityLookup';
 import {
   PlusIcon,
   CalendarIcon,
@@ -224,6 +225,7 @@ const taskStore = useTaskStore();
 const clientStore = useClientStore();
 const calendarStore = useCalendarStore();
 const authStore = useAuthStore();
+const { getProjectName } = useEntityLookup();
 
 // Invoice store loaded lazily in onMounted to avoid top-level await
 const invoiceStoreRef = ref(null);
@@ -277,11 +279,6 @@ const recentTasks = computed(() => {
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
     .slice(0, 5);
 });
-
-const getProjectName = (projectId) => {
-  const project = projectStore.projects.find(p => p.id === projectId);
-  return project ? project.title : '—';
-};
 
 const getTaskStatusClass = (status) => getStatusColor(status);
 

@@ -1,11 +1,11 @@
 <template>
   <PageContainer>
     <div v-if="loading" class="text-center py-10">
-      <p class="text-gray-500 dark:text-gray-400">Loading project details...</p>
+      <p class="text-[var(--text-secondary)]">Loading project details...</p>
     </div>
 
     <div v-else-if="!project" class="text-center py-10">
-      <p class="text-gray-500 dark:text-gray-400">Project not found</p>
+      <p class="text-[var(--text-secondary)]">Project not found</p>
       <router-link to="/projects" class="btn btn-primary mt-4">Back to Projects</router-link>
     </div>
 
@@ -16,14 +16,14 @@
         :title="projectTitle"
       >
         <template #actions>
-          <span :class="`px-2 py-1 rounded-full text-xs ${getStatusColor(project.status)}`">
+          <span :class="`px-2 py-1 text-xs ${getStatusColor(project.status)}`">
             {{ project.status }}
           </span>
-          <span v-if="project.client" class="text-gray-600 dark:text-gray-400">
+          <span v-if="project.client" class="text-[var(--text-secondary)]">
             Client:
             <router-link
               :to="`/clients/${project.clientId}`"
-              class="text-primary-600 dark:text-primary-400 hover:underline"
+              class="text-[var(--accent-primary)] hover:underline"
             >
               {{ project.client.name }}
             </router-link>
@@ -82,15 +82,15 @@
     </template>
 
     <!-- Add/Edit Task Modal -->
-    <div v-if="taskModal.isOpen.value" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-md">
-        <h3 class="text-xl font-semibold text-gray-800 dark:text-white mb-4">
+    <div v-if="taskModal.isOpen.value" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div class="bg-[var(--surface-elevated)] border-2 border-[var(--border-light)] p-6 w-full max-w-md">
+        <h3 class="text-xl font-semibold text-[var(--text-primary)] mb-4">
           {{ taskModal.editingItem.value ? 'Edit Task' : 'Add Task' }}
         </h3>
 
         <form @submit.prevent="saveTask">
           <div class="mb-4">
-            <label for="taskTitle" class="label">Title <span class="text-red-500">*</span></label>
+            <label for="taskTitle" class="label">Title <span class="text-[var(--danger)]">*</span></label>
             <input
               id="taskTitle"
               v-model="taskModal.formData.value.title"
@@ -173,13 +173,13 @@
     </div>
 
     <!-- Add Team Member Modal -->
-    <div v-if="teamMemberModal.isOpen.value" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-md">
-        <h3 class="text-xl font-semibold text-gray-800 dark:text-white mb-4">Add Team Member</h3>
+    <div v-if="teamMemberModal.isOpen.value" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div class="bg-[var(--surface-elevated)] border-2 border-[var(--border-light)] p-6 w-full max-w-md">
+        <h3 class="text-xl font-semibold text-[var(--text-primary)] mb-4">Add Team Member</h3>
 
         <form @submit.prevent="saveTeamMember">
           <div class="mb-4">
-            <label for="memberName" class="label">Name <span class="text-red-500">*</span></label>
+            <label for="memberName" class="label">Name <span class="text-[var(--danger)]">*</span></label>
             <input
               id="memberName"
               v-model="teamMemberModal.formData.value.name"
@@ -191,7 +191,7 @@
           </div>
 
           <div class="mb-4">
-            <label for="memberRole" class="label">Role <span class="text-red-500">*</span></label>
+            <label for="memberRole" class="label">Role <span class="text-[var(--danger)]">*</span></label>
             <input
               id="memberRole"
               v-model="teamMemberModal.formData.value.role"
@@ -234,10 +234,10 @@
     </div>
 
     <!-- Delete Project Confirmation Modal -->
-    <div v-if="deleteDialog.isOpen.value" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-md">
-        <h3 class="text-xl font-semibold text-gray-800 dark:text-white mb-4">Confirm Delete</h3>
-        <p class="text-gray-600 dark:text-gray-400 mb-6">
+    <div v-if="deleteDialog.isOpen.value" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div class="bg-[var(--surface-elevated)] border-2 border-[var(--border-light)] p-6 w-full max-w-md">
+        <h3 class="text-xl font-semibold text-[var(--text-primary)] mb-4">Confirm Delete</h3>
+        <p class="text-[var(--text-secondary)] mb-6">
           Are you sure you want to delete this project? This action cannot be undone and will also delete all tasks and team member associations.
         </p>
 
@@ -474,8 +474,6 @@ async function saveTask() {
       status: taskModal.formData.value.completed ? 'Done' : 'To Do',
       projectId: project.value.id,
     }
-
-    console.log('Saving task with data:', taskData)
 
     if (taskModal.editingItem.value) {
       const updatedTask = await taskService.updateTask(taskModal.editingItem.value.id, taskData)

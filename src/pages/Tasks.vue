@@ -40,7 +40,7 @@
           <PlusIcon class="h-5 w-5 mr-1" />
           Add Task
         </button>
-        <button @click="fetchTasks" class="btn-outline" title="Refresh Tasks">
+        <button @click="fetchTasks" class="btn btn-outline" title="Refresh Tasks">
           <ArrowPathIcon class="h-5 w-5" :class="{ 'animate-spin': isLoading }" />
         </button>
       </div>
@@ -103,23 +103,23 @@
      />
 
     <!-- Delete Confirmation Modal -->
-    <Modal v-model="showDeleteModal" title="Confirm Delete">
+    <Modal v-model="showDeleteModal" title="Confirm Delete" size="sm">
       <div v-if="taskToDelete" class="space-y-4">
-        <p class="text-gray-700 dark:text-gray-300">Are you sure you want to delete this task?</p>
-        <p class="font-medium text-gray-900 dark:text-gray-100">{{ taskToDelete.title }}</p>
-        <p class="text-sm text-red-600">This action cannot be undone.</p>
-        
-        <div class="form-actions">
-          <button type="button" @click="showDeleteModal = false" class="btn-outline">
-            Cancel
+        <p class="text-body">Are you sure you want to delete this task?</p>
+        <p class="font-medium text-[var(--text-primary)]">{{ taskToDelete.title }}</p>
+        <p class="text-body-sm text-[var(--danger)]">This action cannot be undone.</p>
+
+        <div class="flex justify-end gap-3 pt-4 border-t-2 border-[var(--border-light)]">
+          <button type="button" @click="showDeleteModal = false" class="btn btn-secondary">
+            CANCEL
           </button>
-          <button 
-            type="button" 
-            @click="handleDeleteTask" 
-            class="btn-danger" 
+          <button
+            type="button"
+            @click="handleDeleteTask"
+            class="btn btn-danger"
             :disabled="isDeletingTask"
            >
-            {{ isDeletingTask ? 'Deleting...' : 'Delete Task' }}
+            {{ isDeletingTask ? 'DELETING...' : 'DELETE TASK' }}
           </button>
         </div>
       </div>
@@ -425,18 +425,4 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.tasks-page {
-  /* Add page-specific layout styles if needed */
-}
-
-.page-header {
-  /* Styles for the header section */
-}
-
-.form-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.5rem;
-  margin-top: 1rem;
-}
-</style> 
+</style>

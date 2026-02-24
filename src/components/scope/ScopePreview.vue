@@ -1,23 +1,23 @@
 <template>
-  <div class="scope-preview bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 sm:p-8">
+  <div class="scope-preview bg-[var(--surface-elevated)] border-2 border-[var(--border-light)] p-6 sm:p-8">
     <!-- Header -->
     <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-6">
       <div>
-        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
+        <h1 class="text-2xl font-bold text-[var(--text-primary)]">
           {{ scope?.title || 'Untitled Scope' }}
         </h1>
         <div class="mt-1 space-y-0.5">
-          <p v-if="clientName" class="text-sm text-gray-600 dark:text-gray-300">
+          <p v-if="clientName" class="text-sm text-[var(--text-secondary)]">
             <span class="font-medium">Client:</span> {{ clientName }}
           </p>
-          <p v-if="projectName" class="text-sm text-gray-600 dark:text-gray-300">
+          <p v-if="projectName" class="text-sm text-[var(--text-secondary)]">
             <span class="font-medium">Project:</span> {{ projectName }}
           </p>
-          <p v-if="scope?.createdAt" class="text-sm text-gray-500 dark:text-gray-400">
-            Created: {{ formatDate(scope.createdAt) }}
+          <p v-if="scope?.createdAt" class="text-sm text-[var(--text-secondary)]">
+            Created: {{ formatDate(scope.createdAt, { month: 'long' }) }}
           </p>
-          <p v-if="scope?.updatedAt" class="text-sm text-gray-500 dark:text-gray-400">
-            Last updated: {{ formatDate(scope.updatedAt) }}
+          <p v-if="scope?.updatedAt" class="text-sm text-[var(--text-secondary)]">
+            Last updated: {{ formatDate(scope.updatedAt, { month: 'long' }) }}
           </p>
         </div>
       </div>
@@ -49,10 +49,10 @@
             </thead>
             <tbody>
               <tr v-for="(item, idx) in deliverables" :key="item.id || idx">
-                <td class="text-gray-500 dark:text-gray-400">{{ idx + 1 }}</td>
+                <td class="text-[var(--text-secondary)]">{{ idx + 1 }}</td>
                 <td>
-                  <div class="font-medium text-gray-900 dark:text-white">{{ item.title }}</div>
-                  <div v-if="item.description" class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                  <div class="font-medium text-[var(--text-primary)]">{{ item.title }}</div>
+                  <div v-if="item.description" class="text-xs text-[var(--text-secondary)] mt-0.5">
                     {{ item.description }}
                   </div>
                 </td>
@@ -65,21 +65,21 @@
                     {{ item.status || 'pending' }}
                   </span>
                 </td>
-                <td class="text-right font-medium text-gray-900 dark:text-white">
+                <td class="text-right font-medium text-[var(--text-primary)]">
                   {{ formatCurrency((item.quantity || 0) * (item.rate || 0)) }}
                 </td>
               </tr>
             </tbody>
             <tfoot>
-              <tr class="border-t-2 border-gray-300 dark:border-gray-600">
-                <td :colspan="hasStatuses ? 5 : 4" class="text-right font-semibold text-gray-700 dark:text-gray-200">
+              <tr class="border-t-2 border-[var(--border-light)]">
+                <td :colspan="hasStatuses ? 5 : 4" class="text-right font-semibold text-[var(--text-primary)]">
                   Totals
                 </td>
-                <td class="text-right font-semibold text-gray-900 dark:text-white">
+                <td class="text-right font-semibold text-[var(--text-primary)]">
                   {{ totalHours.toFixed(1) }}h
                 </td>
                 <td v-if="hasStatuses"></td>
-                <td class="text-right font-bold text-gray-900 dark:text-white">
+                <td class="text-right font-bold text-[var(--text-primary)]">
                   {{ formatCurrency(totalAmount) }}
                 </td>
               </tr>
@@ -90,15 +90,15 @@
     </div>
 
     <!-- No Deliverables -->
-    <div v-else class="mb-8 text-center py-8 text-gray-500 dark:text-gray-400">
+    <div v-else class="mb-8 text-center py-8 text-[var(--text-secondary)]">
       No deliverables added yet.
     </div>
 
     <!-- Total Amount (prominent) -->
     <div class="flex justify-end mb-8">
-      <div class="bg-gray-50 dark:bg-gray-700 rounded-lg px-6 py-4 text-right">
-        <p class="text-sm text-gray-500 dark:text-gray-400 mb-1">Total Amount</p>
-        <p class="text-2xl font-bold text-gray-900 dark:text-white">
+      <div class="bg-[var(--surface)] px-6 py-4 text-right">
+        <p class="text-sm text-[var(--text-secondary)] mb-1">Total Amount</p>
+        <p class="text-2xl font-bold text-[var(--text-primary)]">
           {{ formatCurrency(totalAmount) }}
         </p>
       </div>
@@ -108,7 +108,7 @@
     <div v-if="scope?.terms" class="scope-preview-terms">
       <h2 class="heading-section mb-3">Terms & Conditions</h2>
       <div
-        class="prose prose-sm dark:prose-invert max-w-none"
+        class="prose prose-sm max-w-none"
         v-html="scope.terms"
       ></div>
     </div>
@@ -118,6 +118,7 @@
 <script setup>
 import { computed } from 'vue'
 import { formatCurrency } from '@/utils/formatters'
+import { formatDate } from '@/utils/dateFormatter'
 import { getStatusColor } from '@/utils/statusColors'
 
 const props = defineProps({
@@ -157,15 +158,6 @@ const totalAmount = computed(() => {
 
 const statusColorClass = computed(() => getStatusColor(props.scope?.status || 'draft'))
 
-function formatDate(dateString) {
-  if (!dateString) return ''
-  const date = new Date(dateString)
-  return new Intl.DateTimeFormat('en-US', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  }).format(date)
-}
 </script>
 
 <style scoped>
@@ -207,22 +199,15 @@ function formatDate(dateString) {
     border-top: 2px solid #333;
   }
 
-  .scope-preview .bg-gray-50 {
-    background-color: #f9fafb !important;
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
-  }
-
-  /* Hide dark mode classes in print */
-  .scope-preview :deep(.dark\:bg-gray-700),
-  .scope-preview :deep(.dark\:bg-gray-800) {
+  /* Force print-safe colors (override CSS vars) */
+  .scope-preview,
+  .scope-preview :deep(*) {
+    color: black !important;
     background-color: white !important;
   }
 
-  .scope-preview :deep(.dark\:text-white),
-  .scope-preview :deep(.dark\:text-gray-200),
-  .scope-preview :deep(.dark\:text-gray-300) {
-    color: black !important;
+  .scope-preview :deep(thead) {
+    background-color: #f3f4f6 !important;
   }
 }
 </style>

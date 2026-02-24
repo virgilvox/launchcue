@@ -81,10 +81,9 @@ exports.handler = async function (event, context) {
   let authContext;
   try {
     authContext = await authenticate(event, {
-      // Search is a read-only operation; skip strict scope check since it spans
-      // multiple resource types. The individual collection queries are still
-      // scoped to the authenticated user's team.
-      skipScopeCheck: true,
+      // Search is read-only but spans multiple resource types.
+      // Require at least read:clients scope to ensure API keys have read access.
+      requiredScopes: ['read:clients'],
     });
   } catch (errorResponse) {
     logger.error('Search authentication failed:', errorResponse.body || errorResponse);

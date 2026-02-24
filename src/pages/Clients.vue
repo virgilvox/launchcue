@@ -41,10 +41,11 @@
     />
     
     <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      <div 
-        v-for="client in filteredClients" 
+      <div
+        v-for="client in filteredClients"
         :key="client.id"
-        class="card flex flex-col" 
+        class="card flex flex-col"
+        :style="{ borderLeftWidth: '4px', borderLeftColor: getClientColor(client.color) }"
       >
         <!-- Client Header -->
         <router-link :to="`/clients/${client.id}`" class="block pb-4 border-b-2 border-[var(--border-light)] flex-shrink-0 hover:opacity-80 transition-opacity">
@@ -135,7 +136,9 @@
           <label for="clientDescription" class="label">DESCRIPTION</label>
           <textarea id="clientDescription" v-model="clientForm.description" class="form-textarea" placeholder="Client description" rows="3"></textarea>
         </div>
-        
+
+        <ClientColorPicker v-model="clientForm.color" />
+
         <div class="flex justify-end gap-3 pt-4 border-t-2 border-[var(--border-light)]">
           <button type="button" @click="closeClientModal" class="btn btn-secondary">CANCEL</button>
           <button type="submit" class="btn btn-primary" :disabled="saving">
@@ -175,6 +178,8 @@ import Modal from '../components/Modal.vue';
 import PageHeader from '../components/ui/PageHeader.vue';
 import LoadingSpinner from '../components/LoadingSpinner.vue';
 import EmptyState from '../components/ui/EmptyState.vue';
+import ClientColorPicker from '../components/ui/ClientColorPicker.vue';
+import { getNextClientColor, getClientColor } from '@/constants/clientColors';
 
 const router = useRouter();
 const toast = useToast();
@@ -201,7 +206,8 @@ const clientForm = ref({
   name: '',
   industry: '',
   website: '',
-  description: ''
+  description: '',
+  color: 'slate'
 });
 
 async function loadClients() {
@@ -247,7 +253,7 @@ function toggleClientMenu(clientId) {
 
 function openAddClientModal() {
   editingClient.value = null;
-  clientForm.value = { name: '', industry: '', website: '', description: '' };
+  clientForm.value = { name: '', industry: '', website: '', description: '', color: getNextClientColor(clients.value) };
   showClientModal.value = true;
 }
 
@@ -257,7 +263,8 @@ function editClient(client) {
     name: client.name,
     industry: client.industry || '',
     website: client.website || '',
-    description: client.description || ''
+    description: client.description || '',
+    color: client.color || 'slate'
   };
   activeMenu.value = null;
   showClientModal.value = true;

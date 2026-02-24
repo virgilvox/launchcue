@@ -1,14 +1,14 @@
 <template>
   <div class="comment-thread">
-    <h4 class="text-base font-semibold text-gray-800 dark:text-gray-100 mb-4">Comments</h4>
+    <h4 class="text-base font-semibold text-[var(--text-primary)] mb-4">Comments</h4>
 
     <!-- Loading state -->
     <div v-if="isLoading" class="space-y-4">
       <div v-for="i in 3" :key="i" class="animate-pulse flex space-x-3">
-        <div class="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-700 flex-shrink-0"></div>
+        <div class="w-8 h-8 rounded-full bg-[var(--surface)] flex-shrink-0"></div>
         <div class="flex-1 space-y-2">
-          <div class="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/4"></div>
-          <div class="h-3 bg-gray-200 dark:bg-gray-700 rounded w-3/4"></div>
+          <div class="h-3 bg-[var(--surface)] rounded w-1/4"></div>
+          <div class="h-3 bg-[var(--surface)] rounded w-3/4"></div>
         </div>
       </div>
     </div>
@@ -31,15 +31,15 @@
         <!-- Comment body -->
         <div class="flex-1 min-w-0">
           <div class="flex items-center space-x-2">
-            <span class="text-sm font-medium text-gray-900 dark:text-gray-100">
+            <span class="text-sm font-medium text-[var(--text-primary)]">
               {{ comment.userName }}
             </span>
-            <span class="text-xs text-gray-500 dark:text-gray-400">
+            <span class="text-xs text-[var(--text-secondary)]">
               {{ formatTime(comment.createdAt) }}
             </span>
             <span
               v-if="comment.updatedAt && comment.updatedAt !== comment.createdAt"
-              class="text-xs text-gray-400 dark:text-gray-500"
+              class="text-xs text-[var(--text-secondary)]"
             >
               (edited)
             </span>
@@ -50,9 +50,9 @@
             <textarea
               v-model="editContent"
               rows="3"
-              class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md
-                     bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100
-                     focus:ring-2 focus:ring-[var(--accent-primary)] focus:border-[var(--accent-primary)] resize-none"
+              class="w-full px-3 py-2 text-sm border border-[var(--border-light)]
+                     bg-[var(--surface-elevated)] text-[var(--text-primary)]
+                     focus:border-[var(--accent-primary)] resize-none"
               @keydown.meta.enter="saveEdit(comment.id)"
               @keydown.ctrl.enter="saveEdit(comment.id)"
             ></textarea>
@@ -61,14 +61,14 @@
                 @click="saveEdit(comment.id)"
                 :disabled="isSaving || !editContent.trim()"
                 class="px-3 py-1 text-xs font-medium text-white bg-[var(--accent-primary)] hover:bg-[var(--accent-primary-hover)]
-                       rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
+                       disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {{ isSaving ? 'Saving...' : 'Save' }}
               </button>
               <button
                 @click="cancelEdit"
-                class="px-3 py-1 text-xs font-medium text-gray-600 dark:text-gray-400
-                       hover:text-gray-800 dark:hover:text-gray-200"
+                class="px-3 py-1 text-xs font-medium text-[var(--text-secondary)]
+                       hover:text-[var(--text-primary)]"
               >
                 Cancel
               </button>
@@ -77,7 +77,7 @@
 
           <!-- Display mode -->
           <div v-else>
-            <p class="text-sm text-gray-700 dark:text-gray-300 mt-1 whitespace-pre-wrap break-words">
+            <p class="text-sm text-[var(--text-primary)] mt-1 whitespace-pre-wrap break-words">
               {{ comment.content }}
             </p>
 
@@ -88,13 +88,13 @@
             >
               <button
                 @click="startEdit(comment)"
-                class="text-xs text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
+                class="text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
               >
                 Edit
               </button>
               <button
                 @click="deleteComment(comment.id)"
-                class="text-xs text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400"
+                class="text-xs text-[var(--text-secondary)] hover:text-[var(--danger)]"
               >
                 Delete
               </button>
@@ -106,11 +106,11 @@
 
     <!-- Empty state -->
     <div v-else class="text-center py-6 mb-4">
-      <p class="text-sm text-gray-500 dark:text-gray-400">No comments yet. Be the first to comment.</p>
+      <p class="text-sm text-[var(--text-secondary)]">No comments yet. Be the first to comment.</p>
     </div>
 
     <!-- New comment form -->
-    <div class="border-t border-gray-200 dark:border-gray-700 pt-4">
+    <div class="border-t border-[var(--border-light)] pt-4">
       <div class="flex space-x-3">
         <div
           class="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-sm font-semibold text-white bg-[var(--accent-primary)]"
@@ -122,22 +122,22 @@
             v-model="newComment"
             rows="3"
             placeholder="Add a comment..."
-            class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md
-                   bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100
-                   placeholder-gray-400 dark:placeholder-gray-500
-                   focus:ring-2 focus:ring-[var(--accent-primary)] focus:border-[var(--accent-primary)] resize-none"
+            class="w-full px-3 py-2 text-sm border border-[var(--border-light)]
+                   bg-[var(--surface-elevated)] text-[var(--text-primary)]
+                   placeholder-[var(--text-secondary)]
+                   focus:border-[var(--accent-primary)] resize-none"
             @keydown.meta.enter="submitComment"
             @keydown.ctrl.enter="submitComment"
           ></textarea>
           <div class="flex items-center justify-between mt-2">
-            <span class="text-xs text-gray-400 dark:text-gray-500">
+            <span class="text-xs text-[var(--text-secondary)]">
               Press Cmd+Enter to submit
             </span>
             <button
               @click="submitComment"
               :disabled="isSaving || !newComment.trim()"
               class="px-4 py-1.5 text-sm font-medium text-white bg-[var(--accent-primary)] hover:bg-[var(--accent-primary-hover)]
-                     rounded-md disabled:opacity-50 disabled:cursor-not-allowed
+                     disabled:opacity-50 disabled:cursor-not-allowed
                      transition-colors duration-150"
             >
               {{ isSaving ? 'Posting...' : 'Comment' }}

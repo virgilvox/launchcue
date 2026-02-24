@@ -1,6 +1,6 @@
 <template>
     <div class="space-y-4 mt-4">
-        <h3 class="text-sm font-semibold uppercase text-gray-500 dark:text-gray-400 tracking-wider">Timeline Steps</h3>
+        <h3 class="text-sm font-semibold uppercase text-[var(--text-secondary)] tracking-wider">Timeline Steps</h3>
         <!-- Step List -->
          <div v-if="localSteps.length > 0" class="space-y-4">
             <div 
@@ -9,26 +9,26 @@
                 class="relative pl-8 pb-1 group"
             >
                 <!-- Timeline Dot -->
-                <div class="absolute left-0 top-1 w-4 h-4 rounded-full bg-[var(--accent-primary)] border-2 border-white dark:border-gray-800"></div>
+                <div class="absolute left-0 top-1 w-4 h-4 rounded-full bg-[var(--accent-primary)] border-2 border-[var(--surface-elevated)]"></div>
                 <!-- Timeline Line -->
-                <div v-if="index < localSteps.length - 1" class="absolute left-[7px] top-5 w-0.5 h-full bg-gray-300 dark:bg-gray-600"></div>
+                <div v-if="index < localSteps.length - 1" class="absolute left-[7px] top-5 w-0.5 h-full bg-[var(--border-light)]"></div>
                 
                 <!-- Step Content (Editable) -->
-                <div class="flex items-start mb-1 bg-gray-50 dark:bg-gray-750 p-3 rounded-md shadow-sm">
+                <div class="flex items-start mb-1 bg-[var(--surface)] p-3">
                     <div class="flex-1">
                          <input 
                             type="text" 
                             v-model="step.title"
                             @change="emitUpdate"
                             placeholder="Step Title"
-                            class="text-base font-medium text-gray-900 dark:text-white bg-transparent border-none focus:ring-1 focus:ring-primary-500 p-0 mb-1 w-full"
+                            class="text-base font-medium text-[var(--text-primary)] bg-transparent border-none focus:border-[var(--accent-primary)] p-0 mb-1 w-full"
                           />
                          <textarea 
                             v-model="step.description"
                             @change="emitUpdate"
                             placeholder="Step description..."
                             rows="1"
-                            class="text-sm text-gray-600 dark:text-gray-300 bg-transparent border-none focus:ring-1 focus:ring-primary-500 p-0 w-full resize-none"
+                            class="text-sm text-[var(--text-secondary)] bg-transparent border-none focus:border-[var(--accent-primary)] p-0 w-full resize-none"
                          ></textarea>
                         
                          <div class="flex items-center mt-2 space-x-3">
@@ -53,13 +53,13 @@
                          </div>
                     </div>
                     <!-- Delete Button -->
-                    <button @click="removeStep(index)" class="btn-icon text-gray-400 hover:text-red-600 dark:hover:text-red-500 ml-2 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button @click="removeStep(index)" class="btn-icon text-[var(--text-secondary)] hover:text-[var(--danger)] ml-2 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
                         <TrashIcon class="h-4 w-4" />
                     </button>
                 </div>
             </div>
         </div>
-         <div v-else class="text-center text-gray-500 text-sm py-4">
+         <div v-else class="text-center text-[var(--text-secondary)] text-sm py-4">
              No timeline steps added yet.
          </div>
 

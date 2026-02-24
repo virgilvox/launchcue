@@ -1,12 +1,12 @@
 <template>
   <div>
     <div class="flex justify-between items-center mb-6">
-      <h2 class="text-2xl font-bold text-gray-800 dark:text-white">Campaigns</h2>
+      <h2 class="text-2xl font-bold text-[var(--text-primary)]">Campaigns</h2>
       <router-link to="/campaigns/new" class="btn btn-primary">New Campaign</router-link>
     </div>
 
     <!-- Filters -->
-    <div class="mb-6 bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm">
+    <div class="card mb-6">
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
            <div>
                 <label for="clientFilter" class="label text-xs">Filter by Client</label>
@@ -43,12 +43,12 @@
       <LoadingSpinner text="Loading campaigns..." />
     </div>
     <div v-else-if="error" class="text-center py-10">
-      <p class="text-red-500">{{ error }}</p>
+      <p class="text-[var(--danger)]">{{ error }}</p>
     </div>
-    <div v-else-if="filteredCampaigns.length === 0" class="text-center py-10 bg-gray-50 dark:bg-gray-800 rounded-lg">
-      <p class="text-gray-500 dark:text-gray-400">No campaigns found matching your criteria.</p>
+    <div v-else-if="filteredCampaigns.length === 0" class="text-center py-10 bg-[var(--surface)]">
+      <p class="text-[var(--text-secondary)]">No campaigns found matching your criteria.</p>
        <router-link to="/campaigns/new" v-if="!hasActiveFilters" class="btn btn-secondary mt-4">Create First Campaign</router-link>
-       <button @click="clearFilters" v-if="hasActiveFilters" class="text-primary-600 dark:text-primary-400 hover:underline mt-2">
+       <button @click="clearFilters" v-if="hasActiveFilters" class="text-[var(--accent-primary)] hover:underline mt-2">
           Clear Filters
       </button>
     </div>
@@ -59,23 +59,23 @@
             v-for="campaign in filteredCampaigns" 
             :key="campaign.id"
             :to="`/campaigns/${campaign.id}`" 
-            class="card hover:shadow-lg transition-shadow group"
+            class="card group"
          >
             <div class="flex justify-between items-start mb-2">
-                <h3 class="text-lg font-semibold text-gray-800 dark:text-white group-hover:text-primary-600 dark:group-hover:text-primary-400">{{ campaign.title }}</h3>
+                <h3 class="text-lg font-semibold text-[var(--text-primary)] group-hover:text-[var(--accent-primary)]">{{ campaign.title }}</h3>
                 <span :class="statusBadgeClass(campaign.status)">{{ campaign.status || 'draft' }}</span>
             </div>
-            <p class="text-sm text-gray-600 dark:text-gray-400 mb-3 line-clamp-2">{{ campaign.description }}</p>
-            <div class="text-xs text-gray-500 dark:text-gray-400">
-                 <span v-if="campaign.clientId">Client: {{ getClientName(campaign.clientId) }}</span>
+            <p class="text-sm text-[var(--text-secondary)] mb-3 line-clamp-2">{{ campaign.description }}</p>
+            <div class="text-xs text-[var(--text-secondary)]">
+                 <span v-if="campaign.clientId" class="inline-flex items-center gap-1"><ClientColorDot :color="getClientColorId(campaign.clientId)" /> Client: {{ getClientName(campaign.clientId) }}</span>
                  <span v-if="campaign.clientId && campaign.projectId"> • </span>
                  <span v-if="campaign.projectId">Project: {{ getProjectName(campaign.projectId) }}</span>
              </div>
-            <div v-if="campaign.budget != null" class="mt-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+            <div v-if="campaign.budget != null" class="mt-2 text-sm font-medium text-[var(--text-primary)]">
                 Budget: ${{ campaign.budget.toLocaleString() }}
             </div>
-            <div class="mt-3 pt-3 border-t dark:border-gray-700 text-xs text-gray-500 dark:text-gray-400">
-                Dates: {{ formatDate(campaign.startDate) || 'N/A' }} - {{ formatDate(campaign.endDate) || 'N/A' }}
+            <div class="mt-3 pt-3 border-t border-[var(--border-light)] text-xs text-[var(--text-secondary)]">
+                Dates: {{ formatShortDate(campaign.startDate) || 'N/A' }} - {{ formatShortDate(campaign.endDate) || 'N/A' }}
             </div>
              <div v-if="campaign.types && campaign.types.length > 0" class="mt-2 flex flex-wrap gap-1">
                  <span v-for="type in campaign.types" :key="type" class="tag">{{ type }}</span>
@@ -92,11 +92,15 @@ import campaignService from '../services/campaign.service';
 import { useClientStore } from '../stores/client';
 import { useProjectStore } from '../stores/project';
 import { useToast } from 'vue-toastification';
+import { formatShortDate } from '@/utils/dateFormatter';
+import { useEntityLookup } from '@/composables/useEntityLookup';
 import LoadingSpinner from '../components/LoadingSpinner.vue';
+import ClientColorDot from '../components/ui/ClientColorDot.vue';
 
 const clientStore = useClientStore();
 const projectStore = useProjectStore();
 const toast = useToast();
+const { getClientName, getProjectName, getClientColorId } = useEntityLookup();
 
 const campaigns = ref([]);
 const loading = ref(false);
@@ -175,30 +179,13 @@ function clearFilters() {
 }
 
 function statusBadgeClass(status) {
-    const base = 'inline-block px-2 py-0.5 rounded-full text-xs font-medium capitalize whitespace-nowrap';
+    const base = 'inline-block px-2 py-0.5 text-xs font-medium capitalize whitespace-nowrap border-2';
     switch (status) {
-        case 'active': return `${base} bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300`;
-        case 'paused': return `${base} bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300`;
-        case 'completed': return `${base} bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300`;
-        default: return `${base} bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300`;
+        case 'active': return `${base} bg-[var(--success)]/10 text-[var(--success)] border-[var(--success)]/20`;
+        case 'paused': return `${base} bg-[var(--warning)]/10 text-[var(--warning)] border-[var(--warning)]/20`;
+        case 'completed': return `${base} bg-[var(--accent-primary)]/10 text-[var(--accent-primary)] border-[var(--accent-primary)]/20`;
+        default: return `${base} bg-[var(--surface)] text-[var(--text-secondary)] border-[var(--border-light)]`;
     }
-}
-
-function getClientName(clientId) {
-    const client = clients.value.find(c => c.id === clientId);
-    return client ? client.name : 'Unknown';
-}
-
-function getProjectName(projectId) {
-    const project = projects.value.find(p => p.id === projectId);
-    return project ? project.title : 'Unknown';
-}
-
-function formatDate(dateString) {
-    if (!dateString) return null;
-    try {
-        return new Date(dateString).toLocaleDateString('en-US', { month: 'short', day: 'numeric'});
-    } catch { return null; }
 }
 
 onMounted(() => {
@@ -208,6 +195,11 @@ onMounted(() => {
 
 <style scoped>
 .tag {
-    @apply inline-block bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-2 py-0.5 rounded text-xs;
+    display: inline-block;
+    padding: 0.125rem 0.5rem;
+    border: 2px solid var(--border-light);
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    font-family: 'JetBrains Mono', monospace;
 }
 </style> 

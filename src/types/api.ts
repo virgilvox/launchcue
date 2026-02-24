@@ -107,6 +107,7 @@ export interface ClientCreateRequest {
   contactPhone?: string
   address?: string
   notes?: string
+  color?: string
 }
 
 export interface ClientUpdateRequest extends Partial<ClientCreateRequest> {

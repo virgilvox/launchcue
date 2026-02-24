@@ -1,7 +1,7 @@
 <template>
   <div>
     <!-- Back link -->
-    <router-link to="/portal" class="inline-flex items-center text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 mb-4">
+    <router-link to="/portal" class="inline-flex items-center text-sm text-[var(--text-secondary)] hover:text-[var(--accent-primary)] mb-4">
       <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
         <path fill-rule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clip-rule="evenodd" />
       </svg>
@@ -10,28 +10,28 @@
 
     <!-- Loading -->
     <div v-if="loading" class="text-center py-10">
-      <p class="text-gray-500 dark:text-gray-400">Loading onboarding...</p>
+      <p class="text-[var(--text-secondary)]">Loading onboarding...</p>
     </div>
 
     <!-- Not Found -->
     <div v-else-if="!checklist" class="text-center py-10">
-      <p class="text-gray-500 dark:text-gray-400">Onboarding checklist not found.</p>
+      <p class="text-[var(--text-secondary)]">Onboarding checklist not found.</p>
       <router-link to="/portal" class="btn btn-primary mt-4">Back to Portal</router-link>
     </div>
 
     <!-- Onboarding Content -->
     <div v-else class="space-y-6">
       <!-- Title & Overall Progress -->
-      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+      <div class="card p-6">
         <h1 class="heading-page">{{ checklist.title }}</h1>
         <div class="mt-3 flex items-center gap-4">
-          <div class="flex-1 bg-gray-200 dark:bg-gray-700 rounded-full h-2.5">
+          <div class="flex-1 bg-[var(--surface)] border border-[var(--border-light)] h-2.5">
             <div
-              class="bg-[var(--accent-primary)] h-2.5 rounded-full transition-all duration-300"
+              class="bg-[var(--accent-primary)] h-2.5 transition-all duration-300"
               :style="{ width: overallProgress + '%' }"
             ></div>
           </div>
-          <span class="text-sm font-medium text-gray-600 dark:text-gray-400 whitespace-nowrap">
+          <span class="text-sm font-medium text-[var(--text-secondary)] whitespace-nowrap">
             {{ completedCount }} / {{ checklist.steps.length }} steps
           </span>
         </div>
@@ -50,7 +50,7 @@
 
         <!-- Current Step Content -->
         <div class="flex-1 min-w-0">
-          <div v-if="currentStep" class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+          <div v-if="currentStep" class="card p-6">
             <!-- Step Header -->
             <div class="mb-6">
               <div class="flex items-center gap-2 mb-1">
@@ -59,7 +59,7 @@
                 </span>
                 <span
                   v-if="currentStep.completedAt"
-                  class="inline-flex items-center text-xs text-green-600 dark:text-green-400 font-medium"
+                  class="inline-flex items-center text-xs text-[var(--success)] font-medium"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 mr-0.5" viewBox="0 0 20 20" fill="currentColor">
                     <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
@@ -77,7 +77,7 @@
 
             <!-- Info Step -->
             <div v-if="currentStep.type === 'info'" class="space-y-4">
-              <div class="prose prose-sm dark:prose-invert max-w-none text-gray-700 dark:text-gray-300">
+              <div class="prose prose-sm max-w-none text-[var(--text-primary)]">
                 <p>{{ currentStep.description }}</p>
               </div>
               <button
@@ -110,7 +110,7 @@
 
             <!-- Approval Step -->
             <div v-else-if="currentStep.type === 'approval'" class="space-y-4">
-              <div class="prose prose-sm dark:prose-invert max-w-none text-gray-700 dark:text-gray-300">
+              <div class="prose prose-sm max-w-none text-[var(--text-primary)]">
                 <p>{{ currentStep.description }}</p>
               </div>
               <div v-if="!currentStep.completedAt" class="flex gap-3">
@@ -132,7 +132,7 @@
             </div>
 
             <!-- Navigation -->
-            <div class="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700 flex justify-between">
+            <div class="mt-8 pt-6 border-t border-[var(--border-light)] flex justify-between">
               <button
                 @click="previousStep"
                 :disabled="currentStepIndex === 0"

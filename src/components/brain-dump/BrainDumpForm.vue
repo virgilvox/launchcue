@@ -1,5 +1,5 @@
 <template>
-  <div class="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm mb-6">
+  <div class="card p-4 mb-6">
     <label for="brainDumpInput" class="label mb-2">Your Input</label>
 
     <!-- Template Chips -->
@@ -9,8 +9,8 @@
         :key="template.name"
         @click="applyTemplate(template)"
         class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium transition-colors
-               bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300
-               hover:bg-primary-100 dark:hover:bg-primary-900 hover:text-primary-700 dark:hover:text-primary-300"
+               bg-[var(--surface)] text-[var(--text-primary)] border border-[var(--border-light)]
+               hover:bg-[var(--accent-primary-wash)] hover:text-[var(--accent-primary)] hover:border-[var(--accent-primary)]"
       >
         {{ template.name }}
       </button>

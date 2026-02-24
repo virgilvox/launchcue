@@ -23,7 +23,7 @@
       </div>
       <div class="form-group">
          <label class="label">Content Preview</label>
-         <div class="p-2 border rounded dark:border-gray-600 max-h-40 overflow-y-auto text-sm bg-gray-50 dark:bg-gray-700">
+         <div class="p-2 border-2 border-[var(--border-light)] max-h-40 overflow-y-auto text-sm bg-[var(--surface)]">
              {{ content }} 
          </div>
       </div>

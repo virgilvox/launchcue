@@ -2,7 +2,7 @@
   <div>
     <label v-if="label" :for="inputId" class="label">
       {{ label }}
-      <span v-if="required" class="text-red-500">*</span>
+      <span v-if="required" class="text-[var(--danger)]">*</span>
     </label>
     <input
       :id="inputId"
@@ -15,8 +15,8 @@
       v-bind="$attrs"
       @input="$emit('update:modelValue', $event.target.value)"
     />
-    <p v-if="hint" class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ hint }}</p>
-    <p v-if="error" class="mt-1 text-xs text-red-600 dark:text-red-400">{{ error }}</p>
+    <p v-if="hint" class="mt-1 text-xs text-[var(--text-secondary)]">{{ hint }}</p>
+    <p v-if="error" class="mt-1 text-xs text-[var(--danger)]">{{ error }}</p>
   </div>
 </template>
 

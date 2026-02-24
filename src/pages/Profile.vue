@@ -1,20 +1,20 @@
 <template>
   <div>
     <div class="flex justify-between items-center mb-6">
-      <h2 class="text-2xl font-bold text-gray-800 dark:text-white">User Profile</h2>
+      <h2 class="text-2xl font-bold text-[var(--text-primary)]">User Profile</h2>
       <button @click="saveProfile" class="btn btn-primary" :disabled="saving">
         {{ saving ? 'Saving...' : 'Save Changes' }}
       </button>
     </div>
     
     <!-- Profile Form -->
-    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 mb-6">
+    <div class="card p-6 mb-6">
       <div v-if="loading" class="text-center py-4">
-        <p class="text-gray-500 dark:text-gray-400">Loading profile...</p>
+        <p class="text-[var(--text-secondary)]">Loading profile...</p>
       </div>
       
       <div v-else-if="error" class="text-center py-4">
-        <p class="text-red-500">{{ error }}</p>
+        <p class="text-[var(--danger)]">{{ error }}</p>
       </div>
       
       <div v-else>
@@ -42,7 +42,7 @@
                 placeholder="Your email address"
                 readonly
               />
-              <p class="text-xs text-gray-500 mt-1">Email address cannot be changed</p>
+              <p class="text-xs text-[var(--text-secondary)] mt-1">Email address cannot be changed</p>
             </div>
             
             <div class="mb-4">
@@ -61,7 +61,7 @@
             <div class="mb-4">
               <label class="label">Profile Picture</label>
               <div class="flex items-center space-x-4">
-                <div class="w-16 h-16 rounded-full bg-primary-100 flex items-center justify-center text-primary-600 text-xl font-bold overflow-hidden">
+                <div class="w-16 h-16 rounded-full bg-[var(--accent-primary-wash)] flex items-center justify-center text-[var(--accent-primary)] text-xl font-bold overflow-hidden">
                   <img v-if="profileForm.avatarUrl" :src="profileForm.avatarUrl" alt="Profile" class="w-full h-full object-cover" />
                   <span v-else>{{ getUserInitials(profileForm.name) }}</span>
                 </div>
@@ -85,8 +85,8 @@
     </div>
     
     <!-- Password Change -->
-    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
-      <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-4">Change Password</h3>
+    <div class="card p-6">
+      <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">Change Password</h3>
       
       <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>
@@ -135,8 +135,8 @@
         </div>
         
         <div class="self-start">
-          <p class="text-sm text-gray-600 dark:text-gray-400 mb-2">Password requirements:</p>
-          <ul class="text-xs text-gray-500 dark:text-gray-400 list-disc pl-5 space-y-1">
+          <p class="text-sm text-[var(--text-secondary)] mb-2">Password requirements:</p>
+          <ul class="text-xs text-[var(--text-secondary)] list-disc pl-5 space-y-1">
             <li>At least 8 characters long</li>
             <li>Contains at least one uppercase letter</li>
             <li>Contains at least one lowercase letter</li>

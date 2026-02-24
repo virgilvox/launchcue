@@ -1,13 +1,13 @@
 <template>
   <div class="relative">
     <Doughnut v-if="hasData" :data="chartData" :options="chartOptions" />
-    <div v-else class="flex items-center justify-center h-48 text-gray-500 dark:text-gray-400">
+    <div v-else class="flex items-center justify-center h-48 text-[var(--text-secondary)]">
       No task data available
     </div>
     <div v-if="hasData" class="absolute inset-0 flex items-center justify-center pointer-events-none">
       <div class="text-center">
-        <p class="text-3xl font-bold text-gray-800 dark:text-white">{{ totalTasks }}</p>
-        <p class="text-sm text-gray-500 dark:text-gray-400">Total</p>
+        <p class="text-3xl font-bold text-[var(--text-primary)]">{{ totalTasks }}</p>
+        <p class="text-sm text-[var(--text-secondary)]">Total</p>
       </div>
     </div>
   </div>

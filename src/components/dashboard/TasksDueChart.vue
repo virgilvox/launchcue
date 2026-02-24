@@ -1,7 +1,7 @@
 <template>
   <div>
     <Line v-if="hasData" :data="chartData" :options="chartOptions" />
-    <div v-else class="flex items-center justify-center h-48 text-gray-500 dark:text-gray-400">
+    <div v-else class="flex items-center justify-center h-48 text-[var(--text-secondary)]">
       No upcoming tasks with due dates
     </div>
   </div>

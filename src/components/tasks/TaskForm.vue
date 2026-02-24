@@ -118,7 +118,7 @@
         class="form-input"
         placeholder="Enter tags separated by commas"
       />
-      <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Separate multiple tags with commas</p>
+      <p class="text-xs text-[var(--text-secondary)] mt-1">Separate multiple tags with commas</p>
     </div>
 
     <div class="form-actions">

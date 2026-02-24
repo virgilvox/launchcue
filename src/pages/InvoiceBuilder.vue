@@ -25,7 +25,7 @@
       <!-- Main content -->
       <div class="flex-1 lg:w-2/3 space-y-6">
         <!-- Client/Project Section -->
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-5">
+        <div class="card p-5">
           <h3 class="heading-section mb-4">Details</h3>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
@@ -58,13 +58,13 @@
         </div>
 
         <!-- Line Items -->
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-5">
+        <div class="card p-5">
           <div class="flex justify-between items-center mb-4">
             <h3 class="heading-section">Line Items</h3>
             <button @click="addLineItem" class="btn btn-sm btn-primary">+ Add Item</button>
           </div>
 
-          <div v-if="formData.lineItems.length === 0" class="text-center py-8 text-gray-500">
+          <div v-if="formData.lineItems.length === 0" class="text-center py-8 text-[var(--text-secondary)]">
             <p>No line items. Add items or import from a scope.</p>
             <button v-if="availableScopes.length > 0" @click="showScopeImport = true" class="btn btn-sm btn-secondary mt-3">Import from Scope</button>
           </div>
@@ -82,7 +82,7 @@
         </div>
 
         <!-- Notes -->
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-5">
+        <div class="card p-5">
           <h3 class="heading-section mb-4">Notes</h3>
           <textarea v-model="formData.notes" class="input" rows="3" placeholder="Payment terms, additional notes..." />
         </div>
@@ -108,7 +108,7 @@
         :client-name="getClientName(formData.clientId)"
         :project-name="getProjectName(formData.projectId)"
       />
-      <div class="flex justify-end gap-3 mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+      <div class="flex justify-end gap-3 mt-4 pt-4 border-t border-[var(--border-light)]">
         <button @click="printInvoice" class="btn btn-secondary">Print / PDF</button>
         <button @click="showPreview = false" class="btn btn-primary">Close</button>
       </div>
@@ -118,12 +118,12 @@
     <Modal v-model="showScopeImport" title="Import from Scope">
       <div class="space-y-3">
         <div v-for="scope in availableScopes" :key="scope.id"
-             class="p-4 border border-gray-200 dark:border-gray-700 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50"
+             class="p-4 border-2 border-[var(--border-light)] cursor-pointer hover:bg-[var(--surface)]"
              @click="importFromScope(scope)">
-          <h4 class="font-medium text-gray-900 dark:text-white">{{ scope.title }}</h4>
+          <h4 class="font-medium text-[var(--text-primary)]">{{ scope.title }}</h4>
           <p class="text-caption">{{ scope.deliverables?.length || 0 }} deliverables &bull; {{ formatCurrency(scope.totalAmount) }}</p>
         </div>
-        <div v-if="availableScopes.length === 0" class="text-center py-6 text-gray-500 dark:text-gray-400">
+        <div v-if="availableScopes.length === 0" class="text-center py-6 text-[var(--text-secondary)]">
           <p>No scopes available for the selected project.</p>
         </div>
       </div>
@@ -141,6 +141,7 @@ import { useProjectStore } from '@/stores/project';
 import { useScopeStore } from '@/stores/scope';
 import invoiceService from '@/services/invoice.service';
 import { formatCurrency } from '@/utils/formatters';
+import { useEntityLookup } from '@/composables/useEntityLookup';
 import InvoiceStatusBadge from '@/components/invoice/InvoiceStatusBadge.vue';
 import InvoiceLineItemRow from '@/components/invoice/InvoiceLineItemRow.vue';
 import InvoiceSummary from '@/components/invoice/InvoiceSummary.vue';
@@ -155,6 +156,7 @@ const invoiceStore = useInvoiceStore();
 const clientStore = useClientStore();
 const projectStore = useProjectStore();
 const scopeStore = useScopeStore();
+const { getClientName, getProjectName } = useEntityLookup();
 
 // --- State ---
 
@@ -426,20 +428,6 @@ async function markAsPaid() {
 
 function printInvoice() {
   window.print();
-}
-
-// --- Helpers ---
-
-function getClientName(clientId) {
-  if (!clientId) return null;
-  const client = clients.value.find(c => c.id === clientId);
-  return client ? client.name : null;
-}
-
-function getProjectName(projectId) {
-  if (!projectId) return null;
-  const project = projects.value.find(p => p.id === projectId);
-  return project ? project.title : null;
 }
 
 // --- Initialization ---

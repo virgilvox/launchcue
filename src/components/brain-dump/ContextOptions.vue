@@ -1,6 +1,6 @@
 <template>
   <div class="space-y-3">
-    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Context Options:</label>
+    <label class="block text-sm font-medium text-[var(--text-primary)]">Context Options:</label>
     
     <div class="grid grid-cols-2 gap-x-4 gap-y-2">
       <div class="flex items-center">
@@ -33,7 +33,7 @@
       </div>
     </div>
     
-    <div v-if="isLoading" class="text-xs text-gray-500 dark:text-gray-400 pt-2">
+    <div v-if="isLoading" class="text-xs text-[var(--text-secondary)] pt-2">
       Loading context...
     </div>
   </div>

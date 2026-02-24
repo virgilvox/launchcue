@@ -116,19 +116,19 @@ function removeTag(tagToRemove) {
   <div v-if="show" class="fixed inset-0 flex items-center justify-center z-50">
     <!-- Backdrop -->
     <div
-      class="fixed inset-0 bg-black bg-opacity-50"
+      class="fixed inset-0 bg-black/50"
       @click="closeDialog"
     ></div>
 
     <!-- Dialog -->
-    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-lg z-10 relative max-h-[90vh] overflow-y-auto">
+    <div class="bg-[var(--surface-elevated)] border-2 border-[var(--border-light)] p-6 w-full max-w-lg z-10 relative max-h-[90vh] overflow-y-auto">
       <div class="flex items-center justify-between mb-6">
-        <h2 class="text-xl font-semibold text-gray-900 dark:text-gray-100">
+        <h2 class="text-xl font-semibold text-[var(--text-primary)]">
           {{ resource ? 'Edit Resource' : 'Add Resource' }}
         </h2>
         <button
           @click="closeDialog"
-          class="p-1 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+          class="p-1 text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface)] transition-colors"
         >
           <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 20 20" fill="currentColor">
             <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
@@ -210,13 +210,13 @@ function removeTag(tagToRemove) {
             <span
               v-for="tag in form.tags"
               :key="tag"
-              class="inline-flex items-center gap-1 px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300"
+              class="inline-flex items-center gap-1 px-2 py-1 text-xs badge badge-blue"
             >
               {{ tag }}
               <button
                 type="button"
                 @click="removeTag(tag)"
-                class="hover:text-blue-900 dark:hover:text-blue-100 transition-colors"
+                class="hover:opacity-80 transition-colors"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" viewBox="0 0 20 20" fill="currentColor">
                   <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
@@ -227,7 +227,7 @@ function removeTag(tagToRemove) {
         </div>
 
         <!-- Buttons -->
-        <div class="flex justify-end space-x-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+        <div class="flex justify-end space-x-3 pt-4 border-t border-[var(--border-light)]">
           <button
             type="button"
             class="btn btn-secondary"

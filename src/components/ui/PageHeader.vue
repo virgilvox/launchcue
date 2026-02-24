@@ -1,17 +1,17 @@
 <template>
   <div class="mb-6">
     <!-- Breadcrumbs -->
-    <nav v-if="breadcrumbs?.length" class="flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400 mb-2">
+    <nav v-if="breadcrumbs?.length" class="flex items-center gap-1 text-sm text-[var(--text-secondary)] mb-2">
       <template v-for="(crumb, i) in breadcrumbs" :key="i">
         <router-link
           v-if="crumb.to"
           :to="crumb.to"
-          class="hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
+          class="hover:text-[var(--accent-primary)] transition-colors"
         >
           {{ crumb.label }}
         </router-link>
         <span v-else>{{ crumb.label }}</span>
-        <span v-if="i < breadcrumbs.length - 1" class="text-gray-400 dark:text-gray-500">/</span>
+        <span v-if="i < breadcrumbs.length - 1" class="text-[var(--text-secondary)]">/</span>
       </template>
     </nav>
 
@@ -22,7 +22,7 @@
         <router-link
           v-if="backTo"
           :to="backTo"
-          class="btn-icon flex-shrink-0 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+          class="btn-icon flex-shrink-0 text-[var(--text-secondary)] hover:text-[var(--accent-primary)]"
           aria-label="Go back"
         >
           <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
@@ -30,6 +30,7 @@
           </svg>
         </router-link>
 
+        <slot name="title-prefix"></slot>
         <div class="min-w-0">
           <h1 class="heading-page truncate">{{ title }}</h1>
           <p v-if="subtitle" class="text-caption mt-1">{{ subtitle }}</p>

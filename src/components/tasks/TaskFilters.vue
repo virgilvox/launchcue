@@ -1,13 +1,13 @@
 <template>
-  <div class="filter-bar mb-4 flex flex-wrap gap-3 items-center justify-between p-4 bg-gray-50 dark:bg-gray-800 rounded-lg shadow-sm">
-    <div class="flex flex-wrap gap-4 items-center">
-      <div class="flex items-center gap-2">
-        <label for="status-filter" class="text-sm font-medium text-gray-700 dark:text-gray-300">Status:</label>
+  <div class="card mb-6">
+    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+      <div>
+        <label for="status-filter" class="label">STATUS</label>
         <select
           id="status-filter"
           :value="modelValue.status"
           @input="updateFilter('status', $event.target.value)"
-          class="form-select text-sm py-1 px-2 rounded"
+          class="input"
         >
           <option value="">All</option>
           <option value="To Do">To Do</option>
@@ -16,13 +16,28 @@
           <option value="Blocked">Blocked</option>
         </select>
       </div>
-      <div class="flex items-center gap-2">
-        <label for="type-filter" class="text-sm font-medium text-gray-700 dark:text-gray-300">Type:</label>
+      <div>
+        <label for="priority-filter" class="label">PRIORITY</label>
+        <select
+          id="priority-filter"
+          :value="modelValue.priority"
+          @input="updateFilter('priority', $event.target.value)"
+          class="input"
+        >
+          <option value="">All</option>
+          <option value="low">Low</option>
+          <option value="medium">Medium</option>
+          <option value="high">High</option>
+          <option value="urgent">Urgent</option>
+        </select>
+      </div>
+      <div>
+        <label for="type-filter" class="label">TYPE</label>
         <select
           id="type-filter"
           :value="modelValue.type"
           @input="updateFilter('type', $event.target.value)"
-          class="form-select text-sm py-1 px-2 rounded"
+          class="input"
         >
           <option value="">All</option>
           <option value="Design">Design</option>
@@ -33,28 +48,13 @@
           <option value="Other">Other</option>
         </select>
       </div>
-      <div class="flex items-center gap-2">
-        <label for="priority-filter" class="text-sm font-medium text-gray-700 dark:text-gray-300">Priority:</label>
-        <select
-          id="priority-filter"
-          :value="modelValue.priority"
-          @input="updateFilter('priority', $event.target.value)"
-          class="form-select text-sm py-1 px-2 rounded"
-        >
-          <option value="">All</option>
-          <option value="low">Low</option>
-          <option value="medium">Medium</option>
-          <option value="high">High</option>
-          <option value="urgent">Urgent</option>
-        </select>
-      </div>
-      <div class="flex items-center gap-2">
-        <label for="assignee-filter" class="text-sm font-medium text-gray-700 dark:text-gray-300">Assignee:</label>
+      <div>
+        <label for="assignee-filter" class="label">ASSIGNEE</label>
         <select
           id="assignee-filter"
           :value="modelValue.assigneeId"
           @input="updateFilter('assigneeId', $event.target.value || null)"
-          class="form-select text-sm py-1 px-2 rounded"
+          class="input"
         >
           <option value="">All</option>
           <option v-for="member in teamMembers" :key="member.id" :value="member.id">
@@ -62,13 +62,13 @@
           </option>
         </select>
       </div>
-      <div class="flex items-center gap-2">
-        <label for="client-filter" class="text-sm font-medium text-gray-700 dark:text-gray-300">Client:</label>
+      <div>
+        <label for="client-filter" class="label">CLIENT</label>
         <select
           id="client-filter"
           :value="modelValue.clientId"
-          @input="updateFilter('clientId', $event.target.value || null)" 
-          class="form-select text-sm py-1 px-2 rounded"
+          @input="updateFilter('clientId', $event.target.value || null)"
+          class="input"
         >
           <option value="">All Clients</option>
           <option v-for="client in clients" :key="client.id" :value="client.id">
@@ -76,13 +76,13 @@
           </option>
         </select>
       </div>
-      <div class="flex items-center gap-2">
-        <label for="project-filter" class="text-sm font-medium text-gray-700 dark:text-gray-300">Project:</label>
+      <div>
+        <label for="project-filter" class="label">PROJECT</label>
         <select
           id="project-filter"
           :value="modelValue.projectId"
-          @input="updateFilter('projectId', $event.target.value || null)" 
-          class="form-select text-sm py-1 px-2 rounded"
+          @input="updateFilter('projectId', $event.target.value || null)"
+          class="input"
         >
           <option value="">All Projects</option>
           <option v-for="project in filteredProjectsForClient" :key="project.id" :value="project.id">
@@ -90,22 +90,22 @@
           </option>
         </select>
       </div>
-    </div>
-    <div class="flex items-center gap-2">
-      <label for="sort-by" class="text-sm font-medium text-gray-700 dark:text-gray-300">Sort By:</label>
-      <select
-        id="sort-by"
-        :value="modelValue.sortBy"
-        @input="updateFilter('sortBy', $event.target.value)"
-        class="form-select text-sm py-1 px-2 rounded"
-      >
-        <option value="dueDate">Due Date</option>
-        <option value="createdAt">Created Date</option>
-        <option value="title">Title</option>
-        <option value="status">Status</option>
-        <option value="type">Type</option>
-        <option value="priority">Priority</option>
-      </select>
+      <div>
+        <label for="sort-by" class="label">SORT BY</label>
+        <select
+          id="sort-by"
+          :value="modelValue.sortBy"
+          @input="updateFilter('sortBy', $event.target.value)"
+          class="input"
+        >
+          <option value="dueDate">Due Date</option>
+          <option value="createdAt">Created Date</option>
+          <option value="title">Title</option>
+          <option value="status">Status</option>
+          <option value="type">Type</option>
+          <option value="priority">Priority</option>
+        </select>
+      </div>
     </div>
   </div>
 </template>
@@ -156,15 +156,4 @@ const updateFilter = (key, value) => {
   }
   emit('update:modelValue', newFilters);
 };
-
-// Fetch clients if not already loaded (can be done in parent Tasks.vue as well)
-// onMounted(() => {
-//   if (clients.value.length === 0) {
-//     clientStore.fetchClients();
-//   }
-// });
 </script>
-
-<style scoped>
-/* Add specific styles if needed */
-</style> 

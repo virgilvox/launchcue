@@ -1,12 +1,12 @@
 <template>
-  <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm mb-6 overflow-hidden">
+  <div class="bg-[var(--surface-elevated)] border-2 border-[var(--border-light)] mb-6 overflow-hidden">
     <!-- Day Header -->
-    <div class="py-3 px-4 border-b dark:border-gray-700 text-center">
-      <div class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">{{ dayViewHeader.dayName }}</div>
+    <div class="py-3 px-4 border-b border-[var(--border-light)] text-center">
+      <div class="text-xs font-medium text-[var(--text-secondary)] uppercase">{{ dayViewHeader.dayName }}</div>
       <div
         :class="[
           'text-2xl font-bold mt-0.5',
-          dayViewHeader.isToday ? 'text-[var(--accent-primary)]' : 'text-gray-800 dark:text-white'
+          dayViewHeader.isToday ? 'text-[var(--accent-primary)]' : 'text-[var(--text-primary)]'
         ]"
       >
         {{ dayViewHeader.dayNum }}
@@ -14,13 +14,13 @@
     </div>
 
     <!-- All-Day Events -->
-    <div v-if="dayAllDayEvents.length > 0" class="px-4 py-2 border-b dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
-      <div class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1 uppercase">All Day</div>
+    <div v-if="dayAllDayEvents.length > 0" class="px-4 py-2 border-b border-[var(--border-light)] bg-[var(--surface)]">
+      <div class="text-xs font-medium text-[var(--text-secondary)] mb-1 uppercase">All Day</div>
       <div class="flex flex-wrap gap-1">
         <div
           v-for="event in dayAllDayEvents"
           :key="event.id"
-          :class="`bg-${event.color}-500 text-white text-xs py-1 px-2 rounded cursor-pointer hover:opacity-80`"
+          :class="`bg-${event.color}-500 text-white text-xs py-1 px-2 cursor-pointer hover:opacity-80`"
           @click="$emit('select-event', event)"
         >
           {{ getEventTitle(event) }}
@@ -32,15 +32,15 @@
     <div class="overflow-y-auto max-h-[36rem]">
       <div class="grid grid-cols-[5rem_1fr]">
         <template v-for="hour in dayHours" :key="hour">
-          <div class="h-16 border-b border-r dark:border-gray-700 px-2 text-xs text-gray-500 dark:text-gray-400 text-right pr-3 pt-1">
+          <div class="h-16 border-b border-r border-[var(--border-light)] px-2 text-xs text-[var(--text-secondary)] text-right pr-3 pt-1">
             {{ formatHour(hour) }}
           </div>
-          <div class="h-16 border-b dark:border-gray-700 relative">
+          <div class="h-16 border-b border-[var(--border-light)] relative">
             <!-- Timed events -->
             <div
               v-for="event in getTimedEventsForDayViewHour(currentDate, hour)"
               :key="event.id"
-              :class="`absolute left-1 right-1 bg-${event.color}-500 text-white text-xs rounded cursor-pointer hover:opacity-80 z-10 overflow-hidden px-2 py-1`"
+              :class="`absolute left-1 right-1 bg-${event.color}-500 text-white text-xs cursor-pointer hover:opacity-80 z-10 overflow-hidden px-2 py-1`"
               :style="getDayEventStyle(event, hour)"
               @click="$emit('select-event', event)"
             >

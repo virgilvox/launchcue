@@ -1,7 +1,7 @@
 <template>
   <section id="webhooks" class="card">
     <h3 class="text-lg font-semibold mb-4">Webhooks</h3>
-    <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
+    <p class="text-sm text-[var(--text-secondary)] mb-4">
       Configure webhook endpoints to receive real-time notifications when events occur in your workspace.
     </p>
 
@@ -9,42 +9,42 @@
     <div v-if="loadingWebhooks" class="text-center py-4">
       <LoadingSpinner size="small" text="Loading webhooks..." />
     </div>
-    <div v-else-if="webhooks.length === 0" class="text-center py-6 border dark:border-gray-700 rounded-md">
-      <p class="text-gray-500 dark:text-gray-400">No webhooks configured yet.</p>
+    <div v-else-if="webhooks.length === 0" class="text-center py-6 border border-[var(--border-light)]">
+      <p class="text-[var(--text-secondary)]">No webhooks configured yet.</p>
     </div>
-    <ul v-else class="space-y-4 mb-6 border dark:border-gray-700 rounded-md p-4">
+    <ul v-else class="space-y-4 mb-6 border border-[var(--border-light)] p-4">
       <li v-for="webhook in webhooks" :key="webhook.id" class="flex items-start justify-between group">
         <div class="flex-1 mr-4">
           <div class="flex items-center gap-2 mb-1">
-            <p class="font-medium text-gray-800 dark:text-gray-200 font-mono text-sm break-all">{{ webhook.url }}</p>
+            <p class="font-medium text-[var(--text-primary)] font-mono text-sm break-all">{{ webhook.url }}</p>
             <span
-              :class="webhook.active ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300' : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400'"
-              class="text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0"
+              :class="webhook.active ? 'badge badge-green' : 'badge'"
+              class="text-xs font-medium flex-shrink-0"
             >
               {{ webhook.active ? 'Active' : 'Inactive' }}
             </span>
           </div>
-          <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+          <p class="text-xs text-[var(--text-secondary)] mt-1">
             Events: <span class="font-medium">{{ webhook.events.join(', ') }}</span>
           </p>
           <div class="flex items-center gap-2 mt-1">
-            <p class="text-xs text-gray-500 dark:text-gray-400">
+            <p class="text-xs text-[var(--text-secondary)]">
               Secret: <span class="font-mono">{{ webhook.secretMask || '********' }}</span>
             </p>
           </div>
-          <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Created: {{ formatDate(webhook.createdAt) }}</p>
+          <p class="text-xs text-[var(--text-secondary)] mt-1">Created: {{ formatDate(webhook.createdAt) || 'N/A' }}</p>
         </div>
         <div class="flex items-center gap-1 flex-shrink-0">
           <button
             @click="openEditModal(webhook)"
-            class="btn-icon text-gray-400 hover:text-primary-600 dark:hover:text-primary-400"
+            class="btn-icon text-[var(--text-secondary)] hover:text-[var(--accent-primary)]"
             title="Edit Webhook"
           >
             <PencilSquareIcon class="h-4 w-4" />
           </button>
           <button
             @click="confirmDeleteWebhook(webhook)"
-            class="btn-icon text-gray-400 hover:text-red-600 dark:hover:text-red-500"
+            class="btn-icon text-[var(--text-secondary)] hover:text-[var(--danger)]"
             title="Delete Webhook"
           >
             <TrashIcon class="h-4 w-4" />
@@ -54,8 +54,8 @@
     </ul>
 
     <!-- Create New Webhook -->
-    <div class="border-t dark:border-gray-700 pt-6 mt-6">
-      <h4 class="text-md font-semibold mb-3 text-gray-800 dark:text-gray-100">Add New Webhook</h4>
+    <div class="border-t border-[var(--border-light)] pt-6 mt-6">
+      <h4 class="text-md font-semibold mb-3 text-[var(--text-primary)]">Add New Webhook</h4>
 
       <div class="space-y-4">
         <!-- URL Input -->
@@ -86,7 +86,7 @@
               />
               <label
                 :for="`event-${evt}`"
-                class="ml-2 text-xs text-gray-700 dark:text-gray-300 cursor-pointer"
+                class="ml-2 text-xs text-[var(--text-primary)] cursor-pointer"
               >
                 {{ evt }}
               </label>
@@ -102,7 +102,7 @@
             v-model="newWebhook.active"
             class="form-checkbox"
           />
-          <label for="webhookActive" class="text-sm text-gray-700 dark:text-gray-300 cursor-pointer">Active</label>
+          <label for="webhookActive" class="text-sm text-[var(--text-primary)] cursor-pointer">Active</label>
         </div>
 
         <button
@@ -116,20 +116,20 @@
     </div>
 
     <!-- Display Newly Created Webhook Secret -->
-    <div v-if="newlyCreatedSecret" class="mt-6 p-4 border rounded-md bg-green-50 dark:bg-green-900 border-green-200 dark:border-green-700">
-      <p class="text-sm font-semibold text-green-800 dark:text-green-200 mb-2">Webhook Secret (Copy & Save Now!):</p>
-      <div class="flex items-center bg-white dark:bg-gray-800 p-2 rounded border dark:border-gray-600">
+    <div v-if="newlyCreatedSecret" class="mt-6 p-4 border-2 border-[var(--success)] bg-[var(--success)]/10">
+      <p class="text-sm font-semibold text-[var(--success)] mb-2">Webhook Secret (Copy & Save Now!):</p>
+      <div class="flex items-center bg-[var(--surface-elevated)] p-2 border border-[var(--border-light)]">
         <input
           type="text"
           :value="newlyCreatedSecret"
           readonly
-          class="input text-sm font-mono flex-grow break-all bg-transparent border-none p-0 focus:ring-0"
+          class="input text-sm font-mono flex-grow break-all bg-transparent border-none p-0"
         />
-        <button @click="copySecret" class="btn-icon text-gray-500 hover:text-primary-600 ml-2 flex-shrink-0" title="Copy Secret">
+        <button @click="copySecret" class="btn-icon text-[var(--text-secondary)] hover:text-[var(--accent-primary)] ml-2 flex-shrink-0" title="Copy Secret">
           <ClipboardDocumentIcon class="h-5 w-5" />
         </button>
       </div>
-      <p class="text-xs text-green-700 dark:text-green-300 mt-2">This secret will not be shown again. Use it to verify webhook signatures.</p>
+      <p class="text-xs text-[var(--success)] mt-2">This secret will not be shown again. Use it to verify webhook signatures.</p>
     </div>
 
     <!-- Edit Modal -->
@@ -159,7 +159,7 @@
               />
               <label
                 :for="`edit-event-${evt}`"
-                class="ml-2 text-xs text-gray-700 dark:text-gray-300 cursor-pointer"
+                class="ml-2 text-xs text-[var(--text-primary)] cursor-pointer"
               >
                 {{ evt }}
               </label>
@@ -174,7 +174,7 @@
             v-model="editingWebhook.active"
             class="form-checkbox"
           />
-          <label for="editWebhookActive" class="text-sm text-gray-700 dark:text-gray-300 cursor-pointer">Active</label>
+          <label for="editWebhookActive" class="text-sm text-[var(--text-primary)] cursor-pointer">Active</label>
         </div>
 
         <div class="form-actions">
@@ -194,9 +194,9 @@
     <!-- Delete Confirmation Modal -->
     <Modal v-model="showDeleteModal" title="Confirm Delete Webhook">
       <div v-if="webhookToDelete" class="space-y-4">
-        <p class="text-gray-700 dark:text-gray-300">Are you sure you want to delete the webhook for:</p>
-        <p class="font-mono text-sm text-gray-800 dark:text-gray-200 break-all">{{ webhookToDelete.url }}</p>
-        <p class="text-sm text-red-600">This action cannot be undone.</p>
+        <p class="text-[var(--text-primary)]">Are you sure you want to delete the webhook for:</p>
+        <p class="font-mono text-sm text-[var(--text-primary)] break-all">{{ webhookToDelete.url }}</p>
+        <p class="text-sm text-[var(--danger)]">This action cannot be undone.</p>
         <div class="form-actions">
           <button type="button" @click="showDeleteModal = false" class="btn-outline">Cancel</button>
           <button
@@ -217,6 +217,7 @@
 import { ref, onMounted } from 'vue';
 import webhookService from '../../services/webhook.service';
 import { useToast } from 'vue-toastification';
+import { formatDate } from '@/utils/dateFormatter';
 import Modal from '../Modal.vue';
 import LoadingSpinner from '../LoadingSpinner.vue';
 import { TrashIcon, PencilSquareIcon, ClipboardDocumentIcon } from '@heroicons/vue/24/outline';
@@ -347,11 +348,6 @@ async function deleteWebhook() {
   } finally {
     isDeleting.value = false;
   }
-}
-
-function formatDate(dateString) {
-  if (!dateString) return 'N/A';
-  return new Date(dateString).toLocaleDateString();
 }
 
 async function copySecret() {

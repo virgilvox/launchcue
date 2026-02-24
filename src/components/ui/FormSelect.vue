@@ -2,7 +2,7 @@
   <div>
     <label v-if="label" :for="selectId" class="label">
       {{ label }}
-      <span v-if="required" class="text-red-500">*</span>
+      <span v-if="required" class="text-[var(--danger)]">*</span>
     </label>
     <select
       :id="selectId"
@@ -22,8 +22,8 @@
         {{ option.label }}
       </option>
     </select>
-    <p v-if="hint" class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ hint }}</p>
-    <p v-if="error" class="mt-1 text-xs text-red-600 dark:text-red-400">{{ error }}</p>
+    <p v-if="hint" class="mt-1 text-xs text-[var(--text-secondary)]">{{ hint }}</p>
+    <p v-if="error" class="mt-1 text-xs text-[var(--danger)]">{{ error }}</p>
   </div>
 </template>
 

@@ -1,7 +1,7 @@
 <template>
-  <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+  <div class="bg-[var(--surface-elevated)] border-2 border-[var(--border-light)] p-6">
     <div class="flex justify-between items-center mb-4">
-      <h3 class="text-lg font-semibold text-gray-800 dark:text-white">Contacts</h3>
+      <h3 class="text-lg font-semibold text-[var(--text-primary)]">Contacts</h3>
       <button @click="$emit('add')" class="btn btn-primary btn-sm">
         Add Contact
       </button>
@@ -12,14 +12,14 @@
     </div>
 
     <div v-else-if="contacts.length === 0" class="text-center py-6">
-      <p class="text-sm text-gray-500 dark:text-gray-400">No contacts added yet.</p>
+      <p class="text-sm text-[var(--text-secondary)]">No contacts added yet.</p>
     </div>
 
     <div v-else class="space-y-4">
       <div
         v-for="contact in contacts"
         :key="contact.id"
-        class="flex items-center justify-between p-3 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 group"
+        class="flex items-center justify-between p-3 hover:bg-[var(--surface)] group"
       >
         <div class="flex items-center">
           <!-- Placeholder Avatar -->
@@ -27,12 +27,12 @@
             <span class="text-lg font-medium">{{ getInitials(contact.name) }}</span>
           </div>
           <div>
-            <p class="text-sm font-medium text-gray-900 dark:text-white">
+            <p class="text-sm font-medium text-[var(--text-primary)]">
               {{ contact.name }}
-              <span v-if="contact.isPrimary" class="text-xs font-bold text-primary-600 dark:text-primary-400">(Primary)</span>
+              <span v-if="contact.isPrimary" class="text-xs font-bold text-[var(--accent-primary)]">(Primary)</span>
             </p>
-            <p class="text-xs text-gray-500 dark:text-gray-400">{{ contact.role || 'No role specified' }}</p>
-            <p class="text-xs text-gray-500 dark:text-gray-400">
+            <p class="text-xs text-[var(--text-secondary)]">{{ contact.role || 'No role specified' }}</p>
+            <p class="text-xs text-[var(--text-secondary)]">
               {{ contact.email || 'No email' }}
               {{ contact.email && contact.phone ? '\u2022' : '' }}
               {{ contact.phone || '' }}
@@ -43,14 +43,14 @@
         <div class="flex items-center space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
           <button
             @click="$emit('edit', contact)"
-            class="btn-icon text-gray-400 hover:text-primary-600 dark:hover:text-primary-400"
+            class="btn-icon text-[var(--text-secondary)] hover:text-[var(--accent-primary)]"
             title="Edit Contact"
           >
             <PencilIcon class="h-4 w-4" />
           </button>
           <button
             @click="$emit('delete', contact)"
-            class="btn-icon text-gray-400 hover:text-red-600 dark:hover:text-red-500"
+            class="btn-icon text-[var(--text-secondary)] hover:text-[var(--danger)]"
             title="Delete Contact"
           >
             <TrashIcon class="h-4 w-4" />

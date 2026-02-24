@@ -3,6 +3,7 @@ import { ref } from 'vue'
 import { useAuthStore } from './auth'
 import { useToast } from 'vue-toastification'
 import clientService from '../services/client.service'
+import { getClientColor } from '../constants/clientColors'
 import type { Client, Contact, Project } from '../types/models'
 import type { ClientCreateRequest, ClientUpdateRequest } from '../types/api'
 
@@ -171,7 +172,6 @@ export const useClientStore = defineStore('client', () => {
       const response: unknown = await clientService.runContactMigration()
 
       toast.success('Contact migration completed successfully')
-      console.log('Migration result:', response)
 
       // Reload clients to get updated list
       await fetchClients()
@@ -188,6 +188,11 @@ export const useClientStore = defineStore('client', () => {
     }
   }
 
+  function getClientColorById(clientId: string): string {
+    const client = clients.value.find(c => c.id === clientId)
+    return getClientColor(client?.color)
+  }
+
   return {
     clients,
     loading,
@@ -199,6 +204,7 @@ export const useClientStore = defineStore('client', () => {
     deleteClient,
     getClientContacts,
     getClientProjects,
-    runContactMigration
+    runContactMigration,
+    getClientColorById
   }
 })

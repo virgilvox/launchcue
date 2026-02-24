@@ -118,19 +118,16 @@ const calendarService: CalendarServiceInterface = {
 
       // Handle different response types
       if (!response) {
-        console.warn('getTaskDeadlines: No response received');
         return [];
       }
 
       // Handle HTML response (error page) or string responses
       if (typeof response === 'string' || (response && response.toString && response.toString().includes('<!DOCTYPE html>'))) {
-        console.warn('getTaskDeadlines: Received HTML or string response instead of JSON array');
         return [];
       }
 
       // Handle non-array responses
       if (!Array.isArray(response)) {
-        console.warn('getTaskDeadlines: Expected array but got', typeof response);
         // If response is an object with data property that's an array, use that
         if (response && typeof response === 'object' && 'data' in response && Array.isArray(response.data)) {
           return response.data;

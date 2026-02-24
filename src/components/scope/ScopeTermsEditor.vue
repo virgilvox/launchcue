@@ -3,7 +3,7 @@
     <!-- Toolbar -->
     <div
       v-if="editor"
-      class="flex flex-wrap items-center gap-0.5 p-2 border border-b-0 border-gray-300 dark:border-gray-600 rounded-t-md bg-gray-50 dark:bg-gray-700"
+      class="flex flex-wrap items-center gap-0.5 p-2 border-2 border-b-0 border-[var(--border)] bg-[var(--surface)]"
     >
       <button
         type="button"
@@ -22,7 +22,7 @@
         <span class="italic">I</span>
       </button>
 
-      <div class="w-px h-6 bg-gray-300 dark:bg-gray-500 mx-1"></div>
+      <div class="w-px h-6 bg-[var(--border-light)] mx-1"></div>
 
       <button
         type="button"
@@ -33,7 +33,7 @@
         <span class="font-semibold">H3</span>
       </button>
 
-      <div class="w-px h-6 bg-gray-300 dark:bg-gray-500 mx-1"></div>
+      <div class="w-px h-6 bg-[var(--border-light)] mx-1"></div>
 
       <button
         type="button"
@@ -115,16 +115,21 @@ onBeforeUnmount(() => {
 <style>
 /* Editor content styles — unscoped so they apply to tiptap content */
 .scope-terms-content .tiptap {
-  @apply px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-b-md;
-  @apply bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50;
-  @apply focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 focus:border-primary-500;
-  @apply focus:ring-offset-gray-50 dark:focus:ring-offset-gray-900;
+  @apply px-3 py-2;
+  border: 2px solid var(--border-light);
+  background-color: var(--surface-elevated);
+  color: var(--text-primary);
   min-height: 150px;
-  transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+  transition: border-color 0.15s ease-in-out;
+}
+.scope-terms-content .tiptap:focus {
+  outline: none;
+  border-color: var(--accent-primary);
 }
 
 .scope-terms-content .tiptap h3 {
-  @apply text-lg font-semibold mb-2 text-gray-900 dark:text-gray-50;
+  @apply text-lg font-semibold mb-2;
+  color: var(--text-primary);
 }
 .scope-terms-content .tiptap p {
   @apply mb-2;

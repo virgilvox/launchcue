@@ -14,27 +14,27 @@
         v-model="filterText"
         type="text"
         placeholder="Search resources..."
-        class="w-full px-4 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-50 dark:placeholder-gray-400"
+        class="input"
       />
     </div>
 
     <!-- Category Filter Tabs -->
-    <div class="mb-6 flex flex-wrap gap-1 border-b border-gray-200 dark:border-gray-700">
+    <div class="mb-6 flex flex-wrap gap-1 border-b border-[var(--border-light)]">
       <button
         v-for="tab in categoryTabs"
         :key="tab.value"
         @click="activeCategory = tab.value"
         :class="[
-          'px-4 py-2 text-sm font-medium rounded-t-md transition-colors -mb-px',
+          'px-4 py-2 text-sm font-medium transition-colors -mb-px',
           activeCategory === tab.value
-            ? 'border-b-2 border-primary-500 text-primary-600 dark:text-primary-400 bg-white dark:bg-gray-800'
-            : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
+            ? 'border-b-2 border-[var(--accent-primary)] text-[var(--accent-primary)] bg-[var(--surface-elevated)]'
+            : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface)]'
         ]"
       >
         {{ tab.label }}
         <span
           v-if="getCategoryCount(tab.value) > 0"
-          class="ml-1.5 inline-flex items-center justify-center px-1.5 py-0.5 text-xs rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400"
+          class="ml-1.5 inline-flex items-center justify-center px-1.5 py-0.5 text-xs bg-[var(--surface)] text-[var(--text-secondary)]"
         >
           {{ getCategoryCount(tab.value) }}
         </span>
@@ -43,32 +43,32 @@
 
     <!-- Loading State -->
     <div v-if="resourceStore.isLoading" class="flex justify-center py-12">
-      <div class="w-16 h-16 border-t-4 border-b-4 border-blue-500 rounded-full animate-spin"></div>
+      <div class="w-16 h-16 border-t-4 border-b-4 border-[var(--accent-primary)] rounded-full animate-spin"></div>
     </div>
 
     <!-- Error State -->
-    <div v-else-if="resourceStore.error" class="p-6 text-center bg-red-100 dark:bg-red-900/30 rounded-md">
-      <p class="text-red-700 dark:text-red-300">{{ resourceStore.error }}</p>
+    <div v-else-if="resourceStore.error" class="p-6 text-center bg-[var(--danger)]/10">
+      <p class="text-[var(--danger)]">{{ resourceStore.error }}</p>
       <button class="btn btn-primary mt-4" @click="resourceStore.fetchResources()">
         Try Again
       </button>
     </div>
 
     <!-- Empty State -->
-    <div v-else-if="!resourceStore.resources.length" class="p-12 text-center bg-gray-100 dark:bg-gray-800 rounded-md">
-      <h3 class="mb-4 text-xl font-medium text-gray-800 dark:text-gray-200">No resources yet</h3>
-      <p class="mb-6 text-gray-600 dark:text-gray-400">Add resources like links, documents, or references for your team.</p>
+    <div v-else-if="!resourceStore.resources.length" class="p-12 text-center bg-[var(--surface)]">
+      <h3 class="mb-4 text-xl font-medium text-[var(--text-primary)]">No resources yet</h3>
+      <p class="mb-6 text-[var(--text-secondary)]">Add resources like links, documents, or references for your team.</p>
       <button class="btn btn-primary" @click="openResourceDialog()">
         Add Your First Resource
       </button>
     </div>
 
     <!-- No results for filter -->
-    <div v-else-if="sortedResources.length === 0" class="p-12 text-center bg-gray-50 dark:bg-gray-800 rounded-md">
-      <p class="text-gray-500 dark:text-gray-400">No resources match your search or filter criteria.</p>
+    <div v-else-if="sortedResources.length === 0" class="p-12 text-center bg-[var(--surface)]">
+      <p class="text-[var(--text-secondary)]">No resources match your search or filter criteria.</p>
       <button
         @click="filterText = ''; activeCategory = 'All'"
-        class="text-primary-600 dark:text-primary-400 hover:underline mt-2"
+        class="text-[var(--accent-primary)] hover:underline mt-2"
       >
         Clear Filters
       </button>
@@ -79,7 +79,7 @@
       <div
         v-for="resource in sortedResources"
         :key="resource.id"
-        class="p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm hover:shadow-md transition-shadow"
+        class="p-4 bg-[var(--surface-elevated)] border-2 border-[var(--border-light)]"
       >
         <div class="flex items-start justify-between gap-2">
           <div class="flex items-start gap-3 flex-1 min-w-0">
@@ -103,8 +103,8 @@
               </div>
             </div>
             <div class="min-w-0 flex-1">
-              <h3 class="text-base font-semibold text-gray-800 dark:text-gray-100 truncate">{{ resource.name }}</h3>
-              <p v-if="resource.description" class="mt-1 text-sm text-gray-500 dark:text-gray-400 line-clamp-2">
+              <h3 class="text-base font-semibold text-[var(--text-primary)] truncate">{{ resource.name }}</h3>
+              <p v-if="resource.description" class="mt-1 text-sm text-[var(--text-secondary)] line-clamp-2">
                 {{ resource.description }}
               </p>
             </div>
@@ -115,12 +115,12 @@
             <button
               @click="toggleFavorite(resource.id)"
               :title="isFavorite(resource.id) ? 'Remove from favorites' : 'Add to favorites'"
-              class="p-1 transition-colors rounded hover:bg-gray-100 dark:hover:bg-gray-700"
+              class="p-1 transition-colors hover:bg-[var(--surface)]"
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 class="w-5 h-5"
-                :class="isFavorite(resource.id) ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300 dark:text-gray-500'"
+                :class="isFavorite(resource.id) ? 'text-[var(--warning)] fill-[var(--warning)]' : 'text-[var(--text-secondary)]'"
                 :fill="isFavorite(resource.id) ? 'currentColor' : 'none'"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
@@ -132,7 +132,7 @@
             <!-- Edit -->
             <button
               @click="openResourceDialog(resource)"
-              class="p-1 text-gray-400 hover:text-blue-500 dark:text-gray-500 dark:hover:text-blue-400 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+              class="p-1 text-[var(--text-secondary)] hover:text-[var(--accent-primary)] hover:bg-[var(--surface)] transition-colors"
               title="Edit"
             >
               <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
@@ -142,7 +142,7 @@
             <!-- Delete -->
             <button
               @click="deleteResource(resource)"
-              class="p-1 text-gray-400 hover:text-red-500 dark:text-gray-500 dark:hover:text-red-400 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+              class="p-1 text-[var(--text-secondary)] hover:text-[var(--danger)] hover:bg-[var(--surface)] transition-colors"
               title="Delete"
             >
               <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
@@ -158,7 +158,7 @@
             :href="resource.url"
             target="_blank"
             rel="noopener noreferrer"
-            class="text-sm text-blue-600 dark:text-blue-400 hover:underline truncate max-w-full"
+            class="text-sm text-[var(--accent-primary)] hover:underline truncate max-w-full"
             :title="resource.url"
           >
             {{ truncateUrl(resource.url) }}
@@ -205,7 +205,7 @@ import PageHeader from '../components/ui/PageHeader.vue';
 const ResourceDialog = defineAsyncComponent({
   loader: () => import('@/components/resource/ResourceDialog.vue'),
   errorComponent: {
-    template: '<div class="p-4 bg-red-100 text-red-700 rounded-lg">Failed to load resource dialog component</div>'
+    template: '<div class="p-4 bg-[var(--surface)] text-[var(--danger)] border-2 border-[var(--danger)]">Failed to load resource dialog component</div>'
   },
   onError(error, retry, fail) {
     console.error('Error loading ResourceDialog component:', error);
@@ -367,11 +367,11 @@ function resourceTypeIcon(type) {
 function resourceTypeColor(type) {
   const cat = getResourceCategory(type);
   switch (cat) {
-    case 'Docs': return 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300';
-    case 'Tools': return 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300';
-    case 'Repos': return 'bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300';
-    case 'Designs': return 'bg-pink-100 text-pink-700 dark:bg-pink-900/50 dark:text-pink-300';
-    default: return 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300';
+    case 'Docs': return 'bg-[var(--accent-primary)]/10 text-[var(--accent-primary)]';
+    case 'Tools': return 'bg-[var(--success)]/10 text-[var(--success)]';
+    case 'Repos': return 'bg-[var(--accent-primary)]/10 text-[var(--accent-primary)]';
+    case 'Designs': return 'bg-[var(--accent-hot)]/10 text-[var(--accent-hot)]';
+    default: return 'bg-[var(--surface)] text-[var(--text-secondary)]';
   }
 }
 
@@ -381,7 +381,7 @@ function resourceTypeBadge(type) {
     case 'Docs': return 'badge-blue';
     case 'Tools': return 'badge-green';
     case 'Repos': return 'badge-purple';
-    case 'Designs': return 'bg-pink-100 text-pink-800 dark:bg-pink-900/50 dark:text-pink-300';
+    case 'Designs': return 'badge-red';
     default: return 'badge-gray';
   }
 }

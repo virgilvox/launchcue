@@ -1,7 +1,7 @@
 <template>
   <div>
     <!-- Back link -->
-    <router-link to="/portal" class="inline-flex items-center text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 mb-4">
+    <router-link to="/portal" class="inline-flex items-center text-sm text-[var(--text-secondary)] hover:text-[var(--accent-primary)] mb-4">
       <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
         <path fill-rule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clip-rule="evenodd" />
       </svg>
@@ -10,31 +10,31 @@
 
     <!-- Loading -->
     <div v-if="loading" class="text-center py-10">
-      <p class="text-gray-500 dark:text-gray-400">Loading project...</p>
+      <p class="text-[var(--text-secondary)]">Loading project...</p>
     </div>
 
     <!-- Not Found -->
     <div v-else-if="!project" class="text-center py-10">
-      <p class="text-gray-500 dark:text-gray-400">Project not found.</p>
+      <p class="text-[var(--text-secondary)]">Project not found.</p>
       <router-link to="/portal" class="btn btn-primary mt-4">Back to Portal</router-link>
     </div>
 
     <!-- Project Content -->
     <div v-else class="space-y-8">
       <!-- Project Header -->
-      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+      <div class="card p-6">
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
             <h1 class="heading-page">{{ project.title || project.name }}</h1>
             <p v-if="project.description" class="text-caption mt-2">{{ project.description }}</p>
           </div>
-          <span :class="getStatusColor(project.status)" class="self-start text-xs px-3 py-1 rounded-full font-medium">
+          <span :class="getStatusColor(project.status)" class="self-start text-xs px-3 py-1  font-medium">
             {{ project.status }}
           </span>
         </div>
 
         <!-- Project dates -->
-        <div v-if="project.startDate || project.endDate" class="flex flex-wrap gap-4 mt-4 text-sm text-gray-600 dark:text-gray-400">
+        <div v-if="project.startDate || project.endDate" class="flex flex-wrap gap-4 mt-4 text-sm text-[var(--text-secondary)]">
           <span v-if="project.startDate">
             Start: {{ formatDate(project.startDate) }}
           </span>
@@ -51,7 +51,7 @@
           <div
             v-for="scope in scopes"
             :key="scope.id"
-            class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6"
+            class="card p-6"
           >
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
               <div>
@@ -59,10 +59,10 @@
                 <p v-if="scope.description" class="text-caption mt-1">{{ scope.description }}</p>
               </div>
               <div class="flex items-center gap-3">
-                <span class="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                <span class="text-sm font-semibold text-[var(--text-primary)]">
                   {{ formatCurrency(scope.totalAmount) }}
                 </span>
-                <span :class="getStatusColor(scope.status)" class="text-xs px-2 py-0.5 rounded-full">
+                <span :class="getStatusColor(scope.status)" class="text-xs px-2 py-0.5 ">
                   {{ scope.status }}
                 </span>
               </div>
@@ -72,28 +72,28 @@
             <div v-if="scope.deliverables && scope.deliverables.length > 0" class="overflow-x-auto">
               <table class="w-full text-sm">
                 <thead>
-                  <tr class="border-b border-gray-200 dark:border-gray-700">
-                    <th class="text-left py-2 pr-4 font-medium text-gray-600 dark:text-gray-400">Deliverable</th>
-                    <th class="text-left py-2 pr-4 font-medium text-gray-600 dark:text-gray-400">Status</th>
-                    <th class="text-right py-2 font-medium text-gray-600 dark:text-gray-400">Amount</th>
+                  <tr class="border-b border-[var(--border-light)]">
+                    <th class="text-left py-2 pr-4 font-medium text-[var(--text-secondary)]">Deliverable</th>
+                    <th class="text-left py-2 pr-4 font-medium text-[var(--text-secondary)]">Status</th>
+                    <th class="text-right py-2 font-medium text-[var(--text-secondary)]">Amount</th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr
                     v-for="deliverable in scope.deliverables"
                     :key="deliverable.id"
-                    class="border-b border-gray-100 dark:border-gray-700/50"
+                    class="border-b border-[var(--border-light)]"
                   >
-                    <td class="py-2 pr-4 text-gray-800 dark:text-gray-200">
+                    <td class="py-2 pr-4 text-[var(--text-primary)]">
                       {{ deliverable.title }}
-                      <p v-if="deliverable.description" class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{{ deliverable.description }}</p>
+                      <p v-if="deliverable.description" class="text-xs text-[var(--text-secondary)] mt-0.5">{{ deliverable.description }}</p>
                     </td>
                     <td class="py-2 pr-4">
-                      <span :class="getStatusColor(deliverable.status)" class="text-xs px-2 py-0.5 rounded-full">
+                      <span :class="getStatusColor(deliverable.status)" class="text-xs px-2 py-0.5 ">
                         {{ deliverable.status }}
                       </span>
                     </td>
-                    <td class="py-2 text-right text-gray-700 dark:text-gray-300">
+                    <td class="py-2 text-right text-[var(--text-primary)]">
                       {{ formatCurrency(deliverable.amount || 0) }}
                     </td>
                   </tr>
@@ -102,7 +102,7 @@
             </div>
 
             <!-- Scope approval actions (for sent scopes) -->
-            <div v-if="scope.status === 'sent'" class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-3">
+            <div v-if="scope.status === 'sent'" class="mt-4 pt-4 border-t border-[var(--border-light)] flex justify-end gap-3">
               <button
                 @click="requestScopeChanges(scope)"
                 class="btn btn-secondary btn-sm"
@@ -123,7 +123,7 @@
       </div>
 
       <!-- Comments Section -->
-      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+      <div class="card p-6">
         <CommentThread resourceType="project" :resourceId="projectId" />
       </div>
     </div>

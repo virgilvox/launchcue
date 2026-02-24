@@ -1,22 +1,22 @@
 <template>
-  <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm mb-6 overflow-hidden">
+  <div class="bg-[var(--surface-elevated)] border-2 border-[var(--border-light)] mb-6 overflow-hidden">
     <!-- Week Day Headers -->
-    <div class="grid grid-cols-[4rem_repeat(7,1fr)] border-b dark:border-gray-700">
+    <div class="grid grid-cols-[4rem_repeat(7,1fr)] border-b border-[var(--border-light)]">
       <!-- Empty corner for time gutter -->
-      <div class="py-2 border-r dark:border-gray-700"></div>
+      <div class="py-2 border-r border-[var(--border-light)]"></div>
       <div
         v-for="day in weekDays"
         :key="day.dateStr"
         :class="[
-          'py-2 text-center border-r dark:border-gray-700 last:border-r-0',
+          'py-2 text-center border-r border-[var(--border-light)] last:border-r-0',
           day.isToday ? 'bg-[var(--accent-primary-wash)]' : ''
         ]"
       >
-        <div class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">{{ day.dayName }}</div>
+        <div class="text-xs font-medium text-[var(--text-secondary)] uppercase">{{ day.dayName }}</div>
         <div
           :class="[
             'text-lg font-semibold mt-0.5',
-            day.isToday ? 'text-[var(--accent-primary)]' : 'text-gray-800 dark:text-white'
+            day.isToday ? 'text-[var(--accent-primary)]' : 'text-[var(--text-primary)]'
           ]"
         >
           {{ day.dayNum }}
@@ -25,19 +25,19 @@
     </div>
 
     <!-- All-Day Events Row -->
-    <div v-if="hasAllDayEventsInWeek" class="grid grid-cols-[4rem_repeat(7,1fr)] border-b dark:border-gray-700">
-      <div class="px-1 py-1 text-xs text-gray-500 dark:text-gray-400 border-r dark:border-gray-700 flex items-center justify-center">
+    <div v-if="hasAllDayEventsInWeek" class="grid grid-cols-[4rem_repeat(7,1fr)] border-b border-[var(--border-light)]">
+      <div class="px-1 py-1 text-xs text-[var(--text-secondary)] border-r border-[var(--border-light)] flex items-center justify-center">
         All Day
       </div>
       <div
         v-for="day in weekDays"
         :key="'allday-' + day.dateStr"
-        class="px-1 py-1 border-r dark:border-gray-700 last:border-r-0 min-h-[2rem]"
+        class="px-1 py-1 border-r border-[var(--border-light)] last:border-r-0 min-h-[2rem]"
       >
         <div
           v-for="event in getAllDayEventsForDay(day.date)"
           :key="event.id"
-          :class="`bg-${event.color}-500 text-white text-xs py-0.5 px-1.5 rounded truncate cursor-pointer hover:opacity-80 mb-0.5`"
+          :class="`bg-${event.color}-500 text-white text-xs py-0.5 px-1.5 truncate cursor-pointer hover:opacity-80 mb-0.5`"
           @click="$emit('select-event', event)"
         >
           {{ getEventTitle(event) }}
@@ -50,14 +50,14 @@
       <div class="grid grid-cols-[4rem_repeat(7,1fr)]">
         <template v-for="hour in weekHours" :key="hour">
           <!-- Hour Row -->
-          <div class="h-14 border-b border-r dark:border-gray-700 px-1 text-xs text-gray-500 dark:text-gray-400 text-right pr-2 pt-0.5">
+          <div class="h-14 border-b border-r border-[var(--border-light)] px-1 text-xs text-[var(--text-secondary)] text-right pr-2 pt-0.5">
             {{ formatHour(hour) }}
           </div>
           <div
             v-for="day in weekDays"
             :key="day.dateStr + '-' + hour"
             :class="[
-              'h-14 border-b border-r dark:border-gray-700 last:border-r-0 relative',
+              'h-14 border-b border-r border-[var(--border-light)] last:border-r-0 relative',
               day.isToday ? 'bg-[var(--accent-primary-wash)]' : ''
             ]"
           >
@@ -65,7 +65,7 @@
             <div
               v-for="event in getTimedEventsForDayHour(day.date, hour)"
               :key="event.id"
-              :class="`absolute inset-x-0.5 bg-${event.color}-500 text-white text-xs py-0.5 px-1 rounded cursor-pointer hover:opacity-80 z-10 overflow-hidden`"
+              :class="`absolute inset-x-0.5 bg-${event.color}-500 text-white text-xs py-0.5 px-1 cursor-pointer hover:opacity-80 z-10 overflow-hidden`"
               :style="getWeekEventStyle(event, hour)"
               @click="$emit('select-event', event)"
             >

@@ -8,7 +8,7 @@
     </PageHeader>
 
     <!-- Tab Switcher -->
-    <div class="border-b border-gray-200 dark:border-gray-700 mb-6">
+    <div class="border-b border-[var(--border-light)] mb-6">
       <nav class="-mb-px flex space-x-8">
         <button
           @click="activeTab = 'scopes'"
@@ -16,7 +16,7 @@
             'py-3 px-1 text-sm font-medium border-b-2 transition-colors',
             activeTab === 'scopes'
               ? 'border-[var(--accent-primary)] text-[var(--accent-primary)]'
-              : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400'
+              : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
           ]"
         >
           Project Scopes
@@ -27,7 +27,7 @@
             'py-3 px-1 text-sm font-medium border-b-2 transition-colors',
             activeTab === 'templates'
               ? 'border-[var(--accent-primary)] text-[var(--accent-primary)]'
-              : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400'
+              : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
           ]"
         >
           Templates
@@ -38,7 +38,7 @@
     <!-- Project Scopes Tab -->
     <div v-if="activeTab === 'scopes'">
       <!-- Filters -->
-      <div class="mb-6 bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm">
+      <div class="card mb-6">
         <div class="flex flex-wrap gap-4">
           <div>
             <label for="statusFilter" class="label text-xs">Status</label>
@@ -73,7 +73,7 @@
       >
         <template #cell-status="{ value }">
           <span
-            class="inline-block px-2 py-0.5 rounded-full text-xs font-medium capitalize"
+            class="inline-block px-2 py-0.5 text-xs font-medium capitalize"
             :class="getStatusColor(value)"
           >
             {{ value }}
@@ -91,7 +91,7 @@
         <template #actions="{ row }">
           <button
             @click.stop="confirmDelete(row, 'scope')"
-            class="text-red-500 hover:text-red-700 text-sm"
+            class="text-[var(--danger)] hover:opacity-80 text-sm"
           >
             Delete
           </button>
@@ -116,7 +116,7 @@
           <span
             v-for="tag in (value || [])"
             :key="tag"
-            class="inline-block bg-gray-100 dark:bg-gray-700 text-xs px-2 py-0.5 rounded mr-1"
+            class="inline-block bg-[var(--surface)] text-xs px-2 py-0.5 border-2 border-[var(--border-light)] mr-1"
           >
             {{ tag }}
           </span>
@@ -130,7 +130,7 @@
           </button>
           <button
             @click.stop="confirmDelete(row, 'template')"
-            class="text-red-500 hover:text-red-700 text-sm"
+            class="text-[var(--danger)] hover:opacity-80 text-sm"
           >
             Delete
           </button>
@@ -140,7 +140,7 @@
 
     <!-- Delete Confirmation Modal -->
     <Modal v-model="showDeleteModal" title="Confirm Delete">
-      <p class="text-gray-600 dark:text-gray-400">
+      <p class="text-[var(--text-secondary)]">
         Are you sure you want to delete
         <span class="font-medium">{{ itemToDelete?.title }}</span>?
         This action cannot be undone.
@@ -173,6 +173,7 @@ import { useClientStore } from '@/stores/client';
 import { useProjectStore } from '@/stores/project';
 import { getStatusColor } from '@/utils/statusColors';
 import { formatCurrency } from '@/utils/formatters';
+import { useEntityLookup } from '@/composables/useEntityLookup';
 import PageContainer from '@/components/ui/PageContainer.vue';
 import PageHeader from '@/components/ui/PageHeader.vue';
 import DataTable from '@/components/ui/DataTable.vue';
@@ -183,6 +184,7 @@ const toast = useToast();
 const scopeStore = useScopeStore();
 const clientStore = useClientStore();
 const projectStore = useProjectStore();
+const { getClientName, getProjectName } = useEntityLookup();
 
 const breadcrumbs = [
   { label: 'Dashboard', to: '/' },
@@ -236,19 +238,6 @@ const filteredScopes = computed(() => {
     return true;
   });
 });
-
-// Helper functions
-function getClientName(clientId) {
-  if (!clientId) return '-';
-  const client = clients.value.find(c => c.id === clientId);
-  return client ? client.name : 'Unknown';
-}
-
-function getProjectName(projectId) {
-  if (!projectId) return '-';
-  const project = projects.value.find(p => p.id === projectId);
-  return project ? (project.title || project.name) : 'Unknown';
-}
 
 // Delete flow
 function confirmDelete(item, type) {

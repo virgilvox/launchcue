@@ -2,7 +2,7 @@
   <PageContainer>
     <div class="flex flex-col h-full">
       <header class="mb-6 flex justify-between items-center">
-        <h2 class="text-2xl font-bold text-gray-800 dark:text-white">Campaign Builder</h2>
+        <h2 class="text-2xl font-bold text-[var(--text-primary)]">Campaign Builder</h2>
         <button
           @click="saveCampaign"
           class="btn btn-primary"
@@ -57,9 +57,9 @@
 
       <!-- Generate Recap Modal -->
       <Modal v-model="showRecapModal" :title="`Recap: ${campaign.title || 'Campaign'}`">
-        <div class="prose prose-sm dark:prose-invert max-w-none mb-4">
+        <div class="prose prose-sm max-w-none mb-4">
           <p v-if="campaign.description">{{ campaign.description }}</p>
-          <p><strong>Timeline:</strong> {{ formatDate(campaign.startDate) || 'N/A' }} - {{ formatDate(campaign.endDate) || 'N/A' }}</p>
+          <p><strong>Timeline:</strong> {{ formatShortDate(campaign.startDate) || 'N/A' }} - {{ formatShortDate(campaign.endDate) || 'N/A' }}</p>
           <p v-if="campaignTypes.filter(t => t.active).length > 0">
             <strong>Types:</strong> {{ campaignTypes.filter(t => t.active).map(t => t.name).join(', ') }}
           </p>
@@ -76,9 +76,9 @@
           <h4 v-if="campaign.steps && campaign.steps.length > 0">Timeline Steps:</h4>
           <ul v-if="campaign.steps && campaign.steps.length > 0">
             <li v-for="step in sortedCampaignSteps" :key="step.id">
-              <strong>{{ formatSimpleDate(step.date) || 'Date TBD' }}:</strong> {{ step.title }}
+              <strong>{{ formatShortDate(step.date) || 'Date TBD' }}:</strong> {{ step.title }}
               <span v-if="step.assigneeId"> ({{ getAssigneeName(step.assigneeId) }})</span>
-              <p v-if="step.description" class="text-xs pl-4 text-gray-600 dark:text-gray-400">{{ step.description }}</p>
+              <p v-if="step.description" class="text-xs pl-4 text-[var(--text-secondary)]">{{ step.description }}</p>
             </li>
           </ul>
 
@@ -105,6 +105,8 @@ import teamService from '@/services/team.service';
 import { useClientStore } from '@/stores/client';
 import { useProjectStore } from '@/stores/project';
 import { useRoute, useRouter } from 'vue-router';
+import { formatShortDate } from '@/utils/dateFormatter';
+import { useEntityLookup } from '@/composables/useEntityLookup';
 import CampaignTimeline from '@/components/campaigns/CampaignTimeline.vue';
 import Modal from '@/components/Modal.vue';
 import PageContainer from '@/components/ui/PageContainer.vue';
@@ -117,6 +119,7 @@ const toast = useToast();
 const authStore = useAuthStore();
 const clientStore = useClientStore();
 const projectStore = useProjectStore();
+const { getClientName, getProjectName } = useEntityLookup();
 const route = useRoute();
 const router = useRouter();
 const loading = ref(false);
@@ -346,8 +349,6 @@ async function saveCampaign() {
       router.replace(`/campaigns/${savedCampaign.id}`);
     }
 
-    console.log("Saved Campaign:", savedCampaign);
-
   } catch (err) {
     console.error('Error saving campaign:', err);
     error.value = 'Failed to save campaign. Please try again.';
@@ -366,8 +367,6 @@ async function exportRecap() {
 
   try {
     const result = await campaignService.exportCampaign(campaign.value.id, 'markdown');
-    console.log('Export URL:', result.downloadUrl);
-
     if (result.downloadUrl) {
       window.open(result.downloadUrl, '_blank');
     }
@@ -381,32 +380,11 @@ async function exportRecap() {
 
 // --- Helpers for recap modal ---
 
-function formatDate(date) {
-  if (!date) return '';
-  date = new Date(date);
-  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  return `${months[date.getMonth()]} ${date.getDate()}`;
-}
-
-function formatSimpleDate(dateString) {
-  if (!dateString) return null;
-  const date = new Date(dateString);
-  return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' }).format(date);
-}
-
 const sortedCampaignSteps = computed(() => {
   if (!campaign.value?.steps) return [];
   return [...campaign.value.steps].sort((a, b) => new Date(a.date) - new Date(b.date));
 });
 
-const getClientName = (clientId) => {
-  const client = clients.value.find(c => c.id === clientId);
-  return client ? client.name : null;
-};
-const getProjectName = (projectId) => {
-  const project = projects.value.find(p => p.id === projectId);
-  return project ? project.title : null;
-};
 const getAssigneeName = (userId) => {
   const member = teamMembers.value.find(m => m.userId === userId);
   return member ? member.name : 'Unassigned';

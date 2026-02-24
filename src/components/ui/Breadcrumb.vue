@@ -4,18 +4,18 @@
       <li v-for="(item, index) in items" :key="index" class="flex items-center">
         <ChevronRightIcon
           v-if="index > 0"
-          class="h-4 w-4 flex-shrink-0 text-gray-400 dark:text-gray-500 mx-1"
+          class="h-4 w-4 flex-shrink-0 text-[var(--text-secondary)] mx-1"
         />
         <router-link
           v-if="item.to"
           :to="item.to"
-          class="text-gray-500 dark:text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
+          class="text-[var(--text-secondary)] hover:text-[var(--accent-primary)] transition-colors"
         >
           {{ item.label }}
         </router-link>
         <span
           v-else
-          class="text-gray-700 dark:text-gray-300 font-medium"
+          class="text-[var(--text-primary)] font-medium"
         >
           {{ item.label }}
         </span>

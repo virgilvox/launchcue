@@ -1,6 +1,6 @@
 <template>
   <Modal v-model="isOpen" :title="title" size="sm" :closeOnBackdrop="false">
-    <p class="text-sm text-gray-600 dark:text-gray-300">{{ message }}</p>
+    <p class="text-sm text-[var(--text-secondary)]">{{ message }}</p>
 
     <template #footer>
       <button class="btn btn-secondary" @click="cancel" :disabled="loading">Cancel</button>

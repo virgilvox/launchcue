@@ -422,13 +422,10 @@ async function sendInvite() {
   error.value = null;
   inviteError.value = null;
   
-  console.log(`Attempting to invite ${inviteEmail.value} to team ${authStore.currentTeam.id}`);
-  
   try {
     const result = await teamService.inviteUser(authStore.currentTeam.id, inviteEmail.value);
-    
+
     if (result.success) {
-      console.log('Invitation successful:', result);
       showInviteModal.value = false;
       inviteEmail.value = '';
       toast.success('Invitation sent successfully');

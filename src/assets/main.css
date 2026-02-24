@@ -18,7 +18,11 @@
   --accent-primary-wash: #EDE9FE;
   --accent-hot: #E8503A;
   --accent-hot-wash: #FDE8E4;
-  --sidebar-bg: #F0EDEA;
+  --sidebar-bg: #1E1B2E;
+  --sidebar-text: #C4BFD6;
+  --sidebar-text-active: #FFFFFF;
+  --sidebar-border: rgba(255,255,255,0.08);
+  --sidebar-hover: rgba(255,255,255,0.06);
   --danger: #DC2626;
   --warning: #F59E0B;
   --success: #0D9488;
@@ -38,7 +42,11 @@
   --accent-primary-wash: rgba(167, 139, 250, 0.15);
   --accent-hot: #F06B58;
   --accent-hot-wash: rgba(240, 107, 88, 0.15);
-  --sidebar-bg: #1A1816;
+  --sidebar-bg: #13111F;
+  --sidebar-text: #9A95AD;
+  --sidebar-text-active: #F0EBE5;
+  --sidebar-border: rgba(255,255,255,0.06);
+  --sidebar-hover: rgba(255,255,255,0.05);
   --danger: #EF4444;
   --warning: #FBBF24;
   --success: #14B8A6;

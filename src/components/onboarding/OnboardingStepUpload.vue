@@ -1,13 +1,13 @@
 <template>
   <div class="space-y-5">
     <!-- Step description -->
-    <p v-if="step.description" class="text-sm text-gray-600 dark:text-gray-400">
+    <p v-if="step.description" class="text-sm text-[var(--text-secondary)]">
       {{ step.description }}
     </p>
 
     <!-- Already completed -->
     <div v-if="disabled" class="pt-2">
-      <p class="text-sm text-green-600 dark:text-green-400 flex items-center gap-1">
+      <p class="text-sm text-[var(--success)] flex items-center gap-1">
         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
           <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
         </svg>
@@ -22,10 +22,10 @@
         @dragleave.prevent="onDragLeave"
         @drop.prevent="onDrop"
         :class="[
-          'border-2 border-dashed rounded-lg p-8 text-center transition-colors cursor-pointer',
+          'border-2 border-dashed p-8 text-center transition-colors cursor-pointer',
           isDragging
             ? 'border-[var(--accent-primary)] bg-[var(--accent-primary-wash)]'
-            : 'border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500',
+            : 'border-[var(--border-light)] hover:border-[var(--text-secondary)]',
         ]"
         @click="triggerFileInput"
       >
@@ -37,14 +37,14 @@
         />
 
         <div v-if="!selectedFile" class="space-y-3">
-          <svg xmlns="http://www.w3.org/2000/svg" class="mx-auto h-10 w-10 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+          <svg xmlns="http://www.w3.org/2000/svg" class="mx-auto h-10 w-10 text-[var(--text-secondary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
             <path stroke-linecap="round" stroke-linejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
           </svg>
           <div>
-            <p class="text-sm font-medium text-gray-700 dark:text-gray-300">
+            <p class="text-sm font-medium text-[var(--text-primary)]">
               Drop your file here, or <span class="text-[var(--accent-primary)]">browse</span>
             </p>
-            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+            <p class="text-xs text-[var(--text-secondary)] mt-1">
               Any file type accepted
             </p>
           </div>
@@ -56,17 +56,17 @@
             <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
           </svg>
           <div>
-            <p class="text-sm font-medium text-gray-800 dark:text-gray-200">
+            <p class="text-sm font-medium text-[var(--text-primary)]">
               {{ selectedFile.name }}
             </p>
-            <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+            <p class="text-xs text-[var(--text-secondary)] mt-0.5">
               {{ formatFileSize(selectedFile.size) }} &bull; {{ selectedFile.type || 'Unknown type' }}
             </p>
           </div>
           <button
             type="button"
             @click.stop="clearFile"
-            class="text-xs text-red-500 hover:text-red-700 dark:hover:text-red-400 font-medium"
+            class="text-xs text-[var(--danger)] hover:opacity-80 font-medium"
           >
             Remove file
           </button>

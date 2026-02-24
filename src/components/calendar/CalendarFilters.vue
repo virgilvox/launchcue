@@ -1,20 +1,20 @@
 <template>
   <div class="flex flex-wrap gap-4 mt-4">
     <div class="w-64">
-      <label class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 block">Client</label>
+      <label class="text-sm font-medium text-[var(--text-primary)] mb-1 block">Client</label>
       <select :value="clientId" @change="onClientChange" class="input select-bordered w-full">
         <option :value="null">All Clients</option>
-        <option v-for="client in clients" :key="client.id" :value="client.id" class="text-gray-800 dark:text-white">
+        <option v-for="client in clients" :key="client.id" :value="client.id" class="text-[var(--text-primary)]">
           {{ client.name }}
         </option>
       </select>
     </div>
 
     <div class="w-64">
-      <label class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 block">Project</label>
+      <label class="text-sm font-medium text-[var(--text-primary)] mb-1 block">Project</label>
       <select :value="projectId" @change="onProjectChange" class="input select-bordered w-full">
         <option :value="null">All Projects</option>
-        <option v-for="project in projects" :key="project.id" :value="project.id" class="text-gray-800 dark:text-white">
+        <option v-for="project in projects" :key="project.id" :value="project.id" class="text-[var(--text-primary)]">
           {{ project.name }}
         </option>
       </select>

@@ -3,7 +3,7 @@
     <h1 class="heading-page mb-6">Welcome{{ userName ? `, ${userName}` : '' }}</h1>
 
     <div v-if="loading" class="text-center py-10">
-      <p class="text-gray-500 dark:text-gray-400">Loading your dashboard...</p>
+      <p class="text-[var(--text-secondary)]">Loading your dashboard...</p>
     </div>
 
     <div v-else class="space-y-8">
@@ -15,13 +15,13 @@
             v-for="checklist in activeChecklists"
             :key="checklist.id"
             :to="`/portal/onboarding/${checklist.id}`"
-            class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-5 hover:shadow-lg transition-shadow"
+            class="card card-interactive p-5"
           >
             <h3 class="heading-card">{{ checklist.title }}</h3>
             <p class="text-caption mt-1">{{ completedStepCount(checklist) }} of {{ checklist.steps.length }} steps completed</p>
             <!-- Progress bar -->
-            <div class="mt-3 w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-              <div class="bg-[var(--accent-primary)] h-2 rounded-full transition-all" :style="{ width: progressPercent(checklist) + '%' }"></div>
+            <div class="mt-3 w-full bg-[var(--surface)] border border-[var(--border-light)] h-2">
+              <div class="bg-[var(--accent-primary)] h-2 transition-all" :style="{ width: progressPercent(checklist) + '%' }"></div>
             </div>
           </router-link>
         </div>
@@ -30,19 +30,19 @@
       <!-- Projects Section -->
       <div>
         <h2 class="heading-section mb-4">Your Projects</h2>
-        <div v-if="projects.length === 0" class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 text-center">
-          <p class="text-gray-500 dark:text-gray-400">No projects assigned yet.</p>
+        <div v-if="projects.length === 0" class="card p-6 text-center">
+          <p class="text-[var(--text-secondary)]">No projects assigned yet.</p>
         </div>
         <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <router-link
             v-for="project in projects"
             :key="project.id"
             :to="`/portal/projects/${project.id}`"
-            class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-5 hover:shadow-lg transition-shadow"
+            class="card card-interactive p-5"
           >
             <h3 class="heading-card">{{ project.title }}</h3>
             <p class="text-caption mt-1 line-clamp-2">{{ project.description }}</p>
-            <span :class="getStatusColor(project.status)" class="mt-3 inline-block text-xs px-2 py-0.5 rounded-full">
+            <span :class="getStatusColor(project.status)" class="mt-3 inline-block text-xs px-2 py-0.5 ">
               {{ project.status }}
             </span>
           </router-link>
@@ -53,7 +53,7 @@
       <div v-if="pendingScopes.length > 0">
         <h2 class="heading-section mb-4">Pending Approvals</h2>
         <div class="space-y-3">
-          <div v-for="scope in pendingScopes" :key="scope.id" class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-5 flex justify-between items-center">
+          <div v-for="scope in pendingScopes" :key="scope.id" class="card p-5 flex justify-between items-center">
             <div>
               <h3 class="heading-card">{{ scope.title }}</h3>
               <p class="text-caption">{{ scope.deliverables?.length || 0 }} deliverables &bull; {{ formatCurrency(scope.totalAmount) }}</p>

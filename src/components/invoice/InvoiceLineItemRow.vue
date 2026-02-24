@@ -1,9 +1,9 @@
 <template>
-  <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+  <div class="bg-[var(--surface-elevated)] border border-[var(--border-light)] p-4">
     <!-- Desktop grid layout -->
     <div class="grid grid-cols-1 md:grid-cols-12 gap-3 items-start">
       <!-- Row number (desktop only) -->
-      <div class="hidden md:flex items-center justify-center text-sm text-gray-400 dark:text-gray-500 md:col-span-1 pt-2">
+      <div class="hidden md:flex items-center justify-center text-sm text-[var(--text-secondary)] md:col-span-1 pt-2">
         {{ index + 1 }}
       </div>
 
@@ -49,7 +49,7 @@
       <div class="col-span-1 md:col-span-2">
         <label class="form-label md:hidden">Rate</label>
         <div class="relative">
-          <span class="absolute left-2.5 top-1/2 -translate-y-1/2 text-sm text-gray-400 dark:text-gray-500">$</span>
+          <span class="absolute left-2.5 top-1/2 -translate-y-1/2 text-sm text-[var(--text-secondary)]">$</span>
           <input
             type="number"
             :value="item.rate"
@@ -65,7 +65,7 @@
       <!-- Computed Amount (display only) -->
       <div class="col-span-1 md:col-span-1 flex items-center pt-1 md:pt-2">
         <label class="form-label md:hidden mr-2">Amount</label>
-        <span class="text-sm font-semibold text-gray-900 dark:text-white whitespace-nowrap">
+        <span class="text-sm font-semibold text-[var(--text-primary)] whitespace-nowrap">
           {{ formatCurrency(amount) }}
         </span>
       </div>
@@ -75,7 +75,7 @@
         <button
           type="button"
           @click="$emit('remove', item.id)"
-          class="btn-icon p-1 text-red-400 hover:text-red-500"
+          class="btn-icon p-1 text-[var(--danger)] hover:opacity-80"
           title="Remove line item"
         >
           <TrashIcon class="h-4 w-4" />

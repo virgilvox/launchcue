@@ -107,7 +107,6 @@ export const useProjectStore = defineStore('project', () => {
   // Useful when we've fetched a project from another component
   const addProject = (project: Project): Project | undefined => {
     if (!project || !project.id) {
-      console.warn('Cannot add invalid project to store')
       return
     }
 

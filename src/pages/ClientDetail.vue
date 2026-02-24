@@ -1,11 +1,11 @@
 <template>
   <PageContainer>
     <div v-if="loading" class="text-center py-10">
-      <p class="text-gray-500 dark:text-gray-400">Loading client details...</p>
+      <p class="text-[var(--text-secondary)]">Loading client details...</p>
     </div>
 
     <div v-else-if="!client" class="text-center py-10">
-      <p class="text-gray-500 dark:text-gray-400">Client not found</p>
+      <p class="text-[var(--text-secondary)]">Client not found</p>
       <router-link to="/clients" class="btn btn-primary mt-4">Back to Clients</router-link>
     </div>
 
@@ -16,6 +16,9 @@
         :title="client.name"
         :subtitle="client.industry"
       >
+        <template #title-prefix>
+          <ClientColorDot :color="client.color" variant="dot" class="w-4 h-4" />
+        </template>
         <template #actions>
           <router-link
             :to="`/clients/${client.id}/projects/new`"
@@ -64,9 +67,9 @@
     </template>
 
     <!-- Edit Client Modal -->
-    <div v-if="showClientModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-md">
-        <h3 class="text-xl font-semibold text-gray-800 dark:text-white mb-4">Edit Client</h3>
+    <div v-if="showClientModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div class="bg-[var(--surface-elevated)] border-2 border-[var(--border-light)] p-6 w-full max-w-md">
+        <h3 class="text-xl font-semibold text-[var(--text-primary)] mb-4">Edit Client</h3>
 
         <form @submit.prevent="saveClient">
           <div class="mb-4">
@@ -103,7 +106,7 @@
             />
           </div>
 
-          <div class="mb-6">
+          <div class="mb-4">
             <label for="clientDescription" class="label">Description</label>
             <textarea
               id="clientDescription"
@@ -112,6 +115,10 @@
               placeholder="Client description"
               rows="3"
             ></textarea>
+          </div>
+
+          <div class="mb-6">
+            <ClientColorPicker v-model="clientForm.color" />
           </div>
 
           <div class="flex justify-end space-x-3">
@@ -175,7 +182,7 @@
     <!-- Delete Contact Confirmation Modal -->
     <Modal v-model="showDeleteContactModal" title="Confirm Delete Contact">
       <div v-if="contactToDelete" class="space-y-4">
-        <p class="text-gray-700 dark:text-gray-300">
+        <p class="text-[var(--text-primary)]">
           Are you sure you want to delete contact "{{ contactToDelete.name }}"?
         </p>
         <div class="form-actions">
@@ -195,7 +202,7 @@
     <!-- Delete Project Confirmation Modal -->
     <Modal v-model="showDeleteModal" title="Confirm Delete">
       <div v-if="projectToDelete" class="space-y-4">
-        <p class="text-gray-600 dark:text-gray-400">
+        <p class="text-[var(--text-secondary)]">
           Are you sure you want to delete "{{ projectToDelete.name }}"? This action cannot be undone.
         </p>
         <div class="flex justify-end space-x-3">
@@ -228,6 +235,8 @@ import PageHeader from '@/components/ui/PageHeader.vue'
 import ClientInfoSection from '@/components/client/ClientInfoSection.vue'
 import ClientContactsSection from '@/components/client/ClientContactsSection.vue'
 import ClientProjectsTable from '@/components/client/ClientProjectsTable.vue'
+import ClientColorDot from '@/components/ui/ClientColorDot.vue'
+import ClientColorPicker from '@/components/ui/ClientColorPicker.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -259,7 +268,8 @@ const clientForm = ref({
   name: '',
   industry: '',
   website: '',
-  description: ''
+  description: '',
+  color: 'slate'
 })
 
 const contactForm = ref({
@@ -376,7 +386,8 @@ function editClient() {
     name: client.value.name,
     industry: client.value.industry || '',
     website: client.value.website || '',
-    description: client.value.description || ''
+    description: client.value.description || '',
+    color: client.value.color || 'slate'
   }
   showClientModal.value = true
 }
@@ -532,8 +543,6 @@ async function deleteContact() {
   deletingContact.value = true
 
   try {
-    console.log('Deleting contact', contactToDelete.value.id, 'from client', client.value.id)
-
     const clientToUpdate = { ...client.value }
     clientToUpdate.contacts = clientToUpdate.contacts.filter(
       c => c.id !== contactToDelete.value.id

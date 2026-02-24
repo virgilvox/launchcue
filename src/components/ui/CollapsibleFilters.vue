@@ -8,7 +8,7 @@
     >
       <span>
         Filters
-        <span v-if="activeCount > 0" class="ml-1.5 inline-flex items-center justify-center px-2 py-0.5 text-xs font-medium rounded-full bg-primary-100 text-primary-700 dark:bg-primary-900 dark:text-primary-300">
+        <span v-if="activeCount > 0" class="ml-1.5 inline-flex items-center justify-center px-2 py-0.5 text-xs font-medium bg-[var(--accent-primary-wash)] text-[var(--accent-primary)]">
           {{ activeCount }}
         </span>
       </span>

@@ -308,7 +308,7 @@ const typeIcons = {
 
 const typeIconStyle = {
   task: 'border-color: var(--border); background-color: var(--accent-primary-wash); color: var(--accent-primary);',
-  project: 'border-color: var(--border); background-color: #F3E8FF; color: #7C3AED;',
+  project: 'border-color: var(--border); background-color: var(--accent-primary-wash); color: var(--accent-primary);',
   client: 'border-color: var(--border); background-color: #D1FAE5; color: #059669;',
   note: 'border-color: var(--border); background-color: #FEF3C7; color: #D97706;',
   campaign: 'border-color: var(--border); background-color: #FFE4E6; color: #E11D48;',

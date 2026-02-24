@@ -8,7 +8,7 @@
 
     <div class="flex-1 flex flex-col overflow-hidden transition-all duration-300">
       <header class="border-b-2 border-[var(--border)]" style="background-color: var(--surface);">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="mx-auto px-4 sm:px-6 lg:px-8">
           <div class="relative flex justify-between items-center h-16">
             <!-- Left side: hamburger + search -->
             <div class="flex items-center gap-3">
@@ -167,11 +167,11 @@ const handleTeamSwitch = async (teamId) => {
     isSwitchingTeam.value = true;
     try {
         await authStore.switchTeam(teamId);
-        toast.success(`Switched to team successfully!`);
+        // Full reload ensures all components re-fetch with the new team token
+        window.location.reload();
     } catch (error) {
-        toast.error(`Failed to switch team: ${error.message || 'Unknown error'}`);
-    } finally {
         isSwitchingTeam.value = false;
+        toast.error(`Failed to switch team: ${error.message || 'Unknown error'}`);
     }
 }
 </script>

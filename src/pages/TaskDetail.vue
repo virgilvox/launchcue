@@ -1,7 +1,7 @@
 <template>
   <Breadcrumb v-if="!loading && task" :items="breadcrumbItems" class="px-6 pt-6" />
   <div v-if="loading" class="p-8 text-center">Loading task details...</div>
-  <div v-else-if="error" class="p-8 text-center text-red-500">Error loading task: {{ error }}</div>
+  <div v-else-if="error" class="p-8 text-center text-[var(--danger)]">Error loading task: {{ error }}</div>
   <div v-else-if="task" class="p-6">
     <h2 class="text-2xl font-bold mb-4">{{ task.title }}</h2>
     <p class="mb-2"><strong>Status:</strong> {{ task.status }}</p>
@@ -9,7 +9,7 @@
     <p v-if="task.projectId" class="mb-2"><strong>Project:</strong> {{ projectName }}</p>
     <p v-if="task.clientId" class="mb-4"><strong>Client:</strong> {{ clientName }}</p>
     
-    <div class="prose dark:prose-invert max-w-none mt-4" v-if="task.description">
+    <div class="prose max-w-none mt-4" v-if="task.description">
       <h3 class="text-lg font-semibold mb-2">Description</h3>
       <p>{{ task.description }}</p>
     </div>
@@ -18,7 +18,7 @@
       <h3 class="text-lg font-semibold mb-2">Checklist</h3>
       <ul>
         <li v-for="item in task.checklist" :key="item.id || item.title"
-            :class="{ 'line-through text-gray-500': item.completed }">
+            :class="{ 'line-through text-[var(--text-secondary)]': item.completed }">
           <input type="checkbox" :checked="item.completed" disabled class="mr-2"> 
           {{ item.title }}
         </li>
@@ -26,7 +26,7 @@
     </div>
 
     <div class="mt-6">
-        <router-link :to="{ name: 'tasks' }" class="text-blue-500 hover:underline">
+        <router-link :to="{ name: 'tasks' }" class="text-[var(--accent-primary)] hover:underline">
           &larr; Back to Tasks
         </router-link>
     </div>

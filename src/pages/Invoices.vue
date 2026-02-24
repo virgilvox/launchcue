@@ -8,17 +8,17 @@
 
     <!-- Summary cards row -->
     <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-      <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
+      <div class="card">
         <p class="text-caption">Outstanding</p>
-        <p class="text-xl font-bold text-gray-900 dark:text-white">{{ formatCurrency(outstandingTotal) }}</p>
+        <p class="text-xl font-bold text-[var(--text-primary)]">{{ formatCurrency(outstandingTotal) }}</p>
       </div>
-      <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
+      <div class="card">
         <p class="text-caption">Overdue</p>
-        <p class="text-xl font-bold text-red-600">{{ overdueCount }} invoices</p>
+        <p class="text-xl font-bold text-[var(--danger)]">{{ overdueCount }} invoices</p>
       </div>
-      <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
+      <div class="card">
         <p class="text-caption">Paid This Month</p>
-        <p class="text-xl font-bold text-green-600">{{ formatCurrency(paidThisMonth) }}</p>
+        <p class="text-xl font-bold text-[var(--success)]">{{ formatCurrency(paidThisMonth) }}</p>
       </div>
     </div>
 
@@ -52,7 +52,10 @@
         <InvoiceStatusBadge :status="value" />
       </template>
       <template #cell-clientId="{ row }">
-        {{ getClientName(row.clientId) }}
+        <span class="flex items-center gap-2">
+          <ClientColorDot :color="getClientColorId(row.clientId)" />
+          {{ getClientName(row.clientId) }}
+        </span>
       </template>
       <template #cell-total="{ value }">
         {{ formatCurrency(value) }}
@@ -61,13 +64,13 @@
         {{ value ? formatDate(value) : '—' }}
       </template>
       <template #actions="{ row }">
-        <button @click.stop="confirmDelete(row)" class="text-red-500 hover:text-red-700 text-sm">Delete</button>
+        <button @click.stop="confirmDelete(row)" class="text-[var(--danger)] hover:opacity-80 text-sm">Delete</button>
       </template>
     </DataTable>
 
     <!-- Delete modal -->
     <Modal v-model="showDeleteModal" title="Delete Invoice">
-      <p class="text-gray-600 dark:text-gray-400 mb-4">
+      <p class="text-[var(--text-secondary)] mb-4">
         Are you sure you want to delete invoice {{ deleteTarget?.invoiceNumber }}?
       </p>
       <div class="flex justify-end gap-3">
@@ -88,16 +91,19 @@ import { useInvoiceStore } from '@/stores/invoice';
 import { useClientStore } from '@/stores/client';
 import { formatCurrency } from '@/utils/formatters';
 import { formatDate } from '@/utils/dateFormatter';
+import { useEntityLookup } from '@/composables/useEntityLookup';
 import InvoiceStatusBadge from '@/components/invoice/InvoiceStatusBadge.vue';
 import DataTable from '@/components/ui/DataTable.vue';
 import PageContainer from '@/components/ui/PageContainer.vue';
 import PageHeader from '@/components/ui/PageHeader.vue';
 import Modal from '@/components/Modal.vue';
+import ClientColorDot from '@/components/ui/ClientColorDot.vue';
 
 const router = useRouter();
 const toast = useToast();
 const invoiceStore = useInvoiceStore();
 const clientStore = useClientStore();
+const { getClientName, getClientColorId } = useEntityLookup();
 
 // --- State ---
 
@@ -159,14 +165,6 @@ const filteredInvoices = computed(() => {
 
   return result;
 });
-
-// --- Helpers ---
-
-function getClientName(clientId) {
-  if (!clientId) return '—';
-  const client = clients.value.find(c => c.id === clientId);
-  return client ? client.name : '—';
-}
 
 // --- Delete Flow ---
 

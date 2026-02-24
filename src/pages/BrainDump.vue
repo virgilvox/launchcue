@@ -38,37 +38,37 @@
     <!-- History Tab -->
     <div v-if="activeTab === 'history'">
       <div v-if="historyLoading" class="text-center py-10">
-        <div class="animate-spin inline-block h-6 w-6 border-t-2 border-r-2 border-primary-600 rounded-full"></div>
-        <p class="text-gray-500 dark:text-gray-400 mt-2 text-sm">Loading history...</p>
+        <div class="animate-spin inline-block h-6 w-6 border-t-2 border-r-2 border-[var(--accent-primary)] rounded-full"></div>
+        <p class="text-[var(--text-secondary)] mt-2 text-sm">Loading history...</p>
       </div>
-      <div v-else-if="historyItems.length === 0" class="text-center py-10 bg-gray-50 dark:bg-gray-800 rounded-lg">
-        <p class="text-gray-500 dark:text-gray-400">No brain dumps yet. Start by creating one!</p>
-        <button @click="activeTab = 'new'" class="text-primary-600 dark:text-primary-400 hover:underline mt-2 text-sm">Go to New</button>
+      <div v-else-if="historyItems.length === 0" class="text-center py-10 bg-[var(--surface)]">
+        <p class="text-[var(--text-secondary)]">No brain dumps yet. Start by creating one!</p>
+        <button @click="activeTab = 'new'" class="text-[var(--accent-primary)] hover:underline mt-2 text-sm">Go to New</button>
       </div>
       <div v-else class="space-y-4">
         <div
           v-for="item in historyItems"
           :key="item.id"
-          class="bg-white dark:bg-gray-800 rounded-lg shadow-sm overflow-hidden"
+          class="bg-[var(--surface-elevated)] border-2 border-[var(--border-light)] overflow-hidden"
         >
           <div class="p-4">
             <div class="flex justify-between items-start">
               <div class="flex-1 min-w-0">
-                <h3 class="text-base font-semibold text-gray-800 dark:text-white truncate">{{ item.title }}</h3>
-                <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                <h3 class="text-base font-semibold text-[var(--text-primary)] truncate">{{ item.title }}</h3>
+                <p class="text-xs text-[var(--text-secondary)] mt-0.5">
                   {{ formatHistoryDate(item.createdAt) }}
                 </p>
               </div>
               <div class="flex items-center space-x-2 ml-3">
                 <button
                   @click="toggleExpandItem(item.id)"
-                  class="text-gray-500 dark:text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 text-sm"
+                  class="text-[var(--text-secondary)] hover:text-[var(--accent-primary)] text-sm"
                 >
                   {{ expandedItems.has(item.id) ? 'Collapse' : 'View' }}
                 </button>
                 <button
                   @click="deleteHistoryItem(item.id)"
-                  class="text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+                  class="text-[var(--text-secondary)] hover:text-[var(--danger)] transition-colors"
                   title="Delete"
                 >
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -82,20 +82,20 @@
               <span
                 v-for="tag in item.tags"
                 :key="tag"
-                class="inline-block bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-2 py-0.5 rounded text-xs"
+                class="inline-block bg-[var(--surface)] text-[var(--text-secondary)] px-2 py-0.5 text-xs border-2 border-[var(--border-light)]"
               >
                 {{ tag }}
               </span>
             </div>
             <!-- Truncated Content -->
-            <p v-if="!expandedItems.has(item.id)" class="text-sm text-gray-600 dark:text-gray-400 mt-2 line-clamp-2">
+            <p v-if="!expandedItems.has(item.id)" class="text-sm text-[var(--text-secondary)] mt-2 line-clamp-2">
               {{ item.content }}
             </p>
           </div>
           <!-- Expanded Full Content -->
           <div v-if="expandedItems.has(item.id)" class="px-4 pb-4">
-            <div class="bg-gray-50 dark:bg-gray-900 rounded-lg p-4 mt-1">
-              <pre class="whitespace-pre-wrap text-sm text-gray-700 dark:text-gray-300 font-sans">{{ item.content }}</pre>
+            <div class="bg-[var(--surface)] p-4 mt-1">
+              <pre class="whitespace-pre-wrap text-sm text-[var(--text-primary)] font-sans">{{ item.content }}</pre>
             </div>
           </div>
         </div>
@@ -108,8 +108,8 @@
       <!-- Left Column: Input, Links, Context -->
       <div> 
           <!-- Link To Section -->
-          <div class="mb-4 bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm">
-              <h3 class="text-sm font-medium text-gray-600 dark:text-gray-400 mb-3">Link to (Optional)</h3>
+          <div class="mb-4 bg-[var(--surface-elevated)] p-4 border-2 border-[var(--border-light)]">
+              <h3 class="text-sm font-medium text-[var(--text-secondary)] mb-3">Link to (Optional)</h3>
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                    <div>
                       <label for="linkClient" class="label text-xs">Client</label>
@@ -149,8 +149,8 @@
           />
         
           <!-- Context Options -->
-           <div class="mt-6 bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm">
-               <h3 class="text-sm font-medium text-gray-600 dark:text-gray-400 mb-3">Include Context (Optional)</h3>
+           <div class="mt-6 bg-[var(--surface-elevated)] p-4 border-2 border-[var(--border-light)]">
+               <h3 class="text-sm font-medium text-[var(--text-secondary)] mb-3">Include Context (Optional)</h3>
                 <ContextOptions
                     :context-options="contextOptions"
                     :is-loading="isLoadingContext"
@@ -163,17 +163,17 @@
       <div>
         <!-- Processing Card (Moved Here) -->
         <div class="card mb-6">
-            <h3 class="text-sm font-medium text-gray-600 dark:text-gray-400 mb-3">Processing Type</h3>
+            <h3 class="text-sm font-medium text-[var(--text-secondary)] mb-3">Processing Type</h3>
             <div class="flex flex-wrap gap-2 mb-4">
                 <button 
                     v-for="option in processingOptions" 
                     :key="option.value"
                     @click="selectedProcessingType = option.value"
                     :class="[
-                        'px-3 py-1 rounded-full text-xs font-medium transition-colors',
-                        selectedProcessingType === option.value 
-                            ? 'bg-primary-600 text-white' 
-                            : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
+                        'px-3 py-1 text-xs font-medium transition-colors border-2',
+                        selectedProcessingType === option.value
+                            ? 'bg-[var(--accent-primary)] text-white border-[var(--accent-primary)]'
+                            : 'bg-[var(--surface)] text-[var(--text-secondary)] border-[var(--border-light)] hover:bg-[var(--surface-elevated)]'
                     ]"
                 >
                     {{ option.label }}
@@ -372,16 +372,10 @@ async function processWithAI() {
     const requiresContextFetch = Object.entries(contextOptions).some(([key, value]) => value === true);
     
     if (requiresContextFetch && (selectedClient.value || selectedProject.value)) {
-      console.log("Fetching context data...");
       await fetchContextData(); // Fetches based on reactive contextOptions
       if (contextData.value) {
         formattedContext = formatContextDataForPrompt(); // Format it for the prompt
-        console.log("Formatted Context:", formattedContext.substring(0, 200) + "...");
-      } else {
-        console.log("No context data returned from fetch.");
       }
-    } else {
-      console.log("Skipping context fetch.");
     }
     
     // 2. Call the AI processing service
@@ -530,11 +524,10 @@ function onCopy() {
   toast.info('Copied to clipboard');
 }
 
-function handleSaveNote() { 
-  // This is now handled by the SaveNoteModal via brainDumpService.createNote 
+function handleSaveNote() {
+  // This is now handled by the SaveNoteModal via brainDumpService.createNote
   // which uses noteService. We don't need direct action here anymore.
   // The modal emits 'saved', which could trigger UI updates if needed.
-  console.log("Save note initiated via modal.");
 }
 
 </script>

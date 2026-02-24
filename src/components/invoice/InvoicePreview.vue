@@ -1,20 +1,20 @@
 <template>
-  <div class="invoice-preview bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 sm:p-8">
+  <div class="invoice-preview bg-[var(--surface-elevated)] border-2 border-[var(--border-light)] p-6 sm:p-8">
     <!-- Header -->
     <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-8">
       <div>
-        <h1 class="text-3xl font-bold tracking-tight text-gray-900 dark:text-white uppercase">
+        <h1 class="text-3xl font-bold tracking-tight text-[var(--text-primary)] uppercase">
           Invoice
         </h1>
         <div class="mt-2 space-y-0.5">
-          <p v-if="invoice?.invoiceNumber" class="text-sm text-gray-600 dark:text-gray-300">
+          <p v-if="invoice?.invoiceNumber" class="text-sm text-[var(--text-secondary)]">
             <span class="font-medium">Invoice #:</span> {{ invoice.invoiceNumber }}
           </p>
-          <p v-if="invoice?.date" class="text-sm text-gray-600 dark:text-gray-300">
-            <span class="font-medium">Date:</span> {{ formatDate(invoice.date) }}
+          <p v-if="invoice?.date" class="text-sm text-[var(--text-secondary)]">
+            <span class="font-medium">Date:</span> {{ formatDate(invoice.date, { month: 'long' }) }}
           </p>
-          <p v-if="invoice?.dueDate" class="text-sm text-gray-600 dark:text-gray-300">
-            <span class="font-medium">Due Date:</span> {{ formatDate(invoice.dueDate) }}
+          <p v-if="invoice?.dueDate" class="text-sm text-[var(--text-secondary)]">
+            <span class="font-medium">Due Date:</span> {{ formatDate(invoice.dueDate, { month: 'long' }) }}
           </p>
         </div>
       </div>
@@ -24,29 +24,29 @@
     <!-- From / To section -->
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-8">
       <div>
-        <h3 class="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">From</h3>
-        <p class="text-sm font-medium text-gray-900 dark:text-white">
+        <h3 class="text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)] mb-1">From</h3>
+        <p class="text-sm font-medium text-[var(--text-primary)]">
           {{ invoice?.teamName || 'Your Team' }}
         </p>
-        <p v-if="invoice?.teamEmail" class="text-sm text-gray-600 dark:text-gray-300">
+        <p v-if="invoice?.teamEmail" class="text-sm text-[var(--text-secondary)]">
           {{ invoice.teamEmail }}
         </p>
-        <p v-if="invoice?.teamAddress" class="text-sm text-gray-600 dark:text-gray-300 whitespace-pre-line">
+        <p v-if="invoice?.teamAddress" class="text-sm text-[var(--text-secondary)] whitespace-pre-line">
           {{ invoice.teamAddress }}
         </p>
       </div>
       <div>
-        <h3 class="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">To</h3>
-        <p class="text-sm font-medium text-gray-900 dark:text-white">
+        <h3 class="text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)] mb-1">To</h3>
+        <p class="text-sm font-medium text-[var(--text-primary)]">
           {{ clientName || 'Client' }}
         </p>
-        <p v-if="projectName" class="text-sm text-gray-600 dark:text-gray-300">
+        <p v-if="projectName" class="text-sm text-[var(--text-secondary)]">
           Project: {{ projectName }}
         </p>
-        <p v-if="invoice?.clientEmail" class="text-sm text-gray-600 dark:text-gray-300">
+        <p v-if="invoice?.clientEmail" class="text-sm text-[var(--text-secondary)]">
           {{ invoice.clientEmail }}
         </p>
-        <p v-if="invoice?.clientAddress" class="text-sm text-gray-600 dark:text-gray-300 whitespace-pre-line">
+        <p v-if="invoice?.clientAddress" class="text-sm text-[var(--text-secondary)] whitespace-pre-line">
           {{ invoice.clientAddress }}
         </p>
       </div>
@@ -59,44 +59,44 @@
           <table class="min-w-full">
             <thead>
               <tr>
-                <th class="text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 pb-3 border-b-2 border-gray-200 dark:border-gray-600">
+                <th class="text-left text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)] pb-3 border-b-2 border-[var(--border-light)]">
                   #
                 </th>
-                <th class="text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 pb-3 border-b-2 border-gray-200 dark:border-gray-600">
+                <th class="text-left text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)] pb-3 border-b-2 border-[var(--border-light)]">
                   Description
                 </th>
-                <th class="text-right text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 pb-3 border-b-2 border-gray-200 dark:border-gray-600">
+                <th class="text-right text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)] pb-3 border-b-2 border-[var(--border-light)]">
                   Qty
                 </th>
-                <th class="text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 pb-3 border-b-2 border-gray-200 dark:border-gray-600">
+                <th class="text-left text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)] pb-3 border-b-2 border-[var(--border-light)]">
                   Unit
                 </th>
-                <th class="text-right text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 pb-3 border-b-2 border-gray-200 dark:border-gray-600">
+                <th class="text-right text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)] pb-3 border-b-2 border-[var(--border-light)]">
                   Rate
                 </th>
-                <th class="text-right text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 pb-3 border-b-2 border-gray-200 dark:border-gray-600">
+                <th class="text-right text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)] pb-3 border-b-2 border-[var(--border-light)]">
                   Amount
                 </th>
               </tr>
             </thead>
-            <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
+            <tbody class="divide-y divide-[var(--border-light)]">
               <tr v-for="(item, idx) in lineItems" :key="item.id || idx">
-                <td class="py-3 text-sm text-gray-500 dark:text-gray-400">
+                <td class="py-3 text-sm text-[var(--text-secondary)]">
                   {{ idx + 1 }}
                 </td>
-                <td class="py-3 text-sm font-medium text-gray-900 dark:text-white">
+                <td class="py-3 text-sm font-medium text-[var(--text-primary)]">
                   {{ item.description || '-' }}
                 </td>
-                <td class="py-3 text-sm text-right text-gray-700 dark:text-gray-300">
+                <td class="py-3 text-sm text-right text-[var(--text-primary)]">
                   {{ item.quantity || 0 }}
                 </td>
-                <td class="py-3 text-sm text-gray-700 dark:text-gray-300">
+                <td class="py-3 text-sm text-[var(--text-primary)]">
                   {{ item.unit || '-' }}
                 </td>
-                <td class="py-3 text-sm text-right text-gray-700 dark:text-gray-300">
+                <td class="py-3 text-sm text-right text-[var(--text-primary)]">
                   {{ formatCurrency(item.rate || 0, invoice?.currency) }}
                 </td>
-                <td class="py-3 text-sm text-right font-medium text-gray-900 dark:text-white">
+                <td class="py-3 text-sm text-right font-medium text-[var(--text-primary)]">
                   {{ formatCurrency((item.quantity || 0) * (item.rate || 0), invoice?.currency) }}
                 </td>
               </tr>
@@ -107,7 +107,7 @@
     </div>
 
     <!-- No line items -->
-    <div v-else class="mb-8 text-center py-8 text-gray-500 dark:text-gray-400">
+    <div v-else class="mb-8 text-center py-8 text-[var(--text-secondary)]">
       No line items added yet.
     </div>
 
@@ -116,29 +116,29 @@
       <div class="w-full max-w-xs space-y-2">
         <!-- Subtotal -->
         <div class="flex justify-between items-center">
-          <span class="text-sm text-gray-600 dark:text-gray-300">Subtotal</span>
-          <span class="text-sm font-medium text-gray-900 dark:text-white">
+          <span class="text-sm text-[var(--text-secondary)]">Subtotal</span>
+          <span class="text-sm font-medium text-[var(--text-primary)]">
             {{ formatCurrency(subtotal, invoice?.currency) }}
           </span>
         </div>
 
         <!-- Tax -->
         <div v-if="taxAmount > 0" class="flex justify-between items-center">
-          <span class="text-sm text-gray-600 dark:text-gray-300">
+          <span class="text-sm text-[var(--text-secondary)]">
             Tax
-            <span v-if="invoice?.taxRate" class="text-gray-400 dark:text-gray-500">
+            <span v-if="invoice?.taxRate" class="text-[var(--text-secondary)]">
               ({{ invoice.taxRate }}%)
             </span>
           </span>
-          <span class="text-sm font-medium text-gray-900 dark:text-white">
+          <span class="text-sm font-medium text-[var(--text-primary)]">
             {{ formatCurrency(taxAmount, invoice?.currency) }}
           </span>
         </div>
 
         <!-- Total -->
-        <div class="flex justify-between items-center pt-2 border-t-2 border-gray-300 dark:border-gray-600">
-          <span class="text-base font-bold text-gray-900 dark:text-white">Total</span>
-          <span class="text-xl font-bold text-gray-900 dark:text-white">
+        <div class="flex justify-between items-center pt-2 border-t-2 border-[var(--border-light)]">
+          <span class="text-base font-bold text-[var(--text-primary)]">Total</span>
+          <span class="text-xl font-bold text-[var(--text-primary)]">
             {{ formatCurrency(total, invoice?.currency) }}
           </span>
         </div>
@@ -146,14 +146,14 @@
         <!-- Payment status -->
         <div v-if="invoice?.paidAmount != null && invoice.paidAmount > 0" class="pt-2 space-y-1">
           <div class="flex justify-between items-center">
-            <span class="text-sm text-green-600 dark:text-green-400">Paid</span>
-            <span class="text-sm font-medium text-green-600 dark:text-green-400">
+            <span class="text-sm text-[var(--success)]">Paid</span>
+            <span class="text-sm font-medium text-[var(--success)]">
               {{ formatCurrency(invoice.paidAmount, invoice?.currency) }}
             </span>
           </div>
           <div v-if="balanceDue > 0" class="flex justify-between items-center">
-            <span class="text-sm font-semibold text-gray-900 dark:text-white">Balance Due</span>
-            <span class="text-sm font-bold text-gray-900 dark:text-white">
+            <span class="text-sm font-semibold text-[var(--text-primary)]">Balance Due</span>
+            <span class="text-sm font-bold text-[var(--text-primary)]">
               {{ formatCurrency(balanceDue, invoice?.currency) }}
             </span>
           </div>
@@ -162,10 +162,10 @@
     </div>
 
     <!-- Notes -->
-    <div v-if="invoice?.notes" class="invoice-preview-notes border-t border-gray-200 dark:border-gray-700 pt-6">
-      <h3 class="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">Notes</h3>
+    <div v-if="invoice?.notes" class="invoice-preview-notes border-t border-[var(--border-light)] pt-6">
+      <h3 class="text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)] mb-2">Notes</h3>
       <div
-        class="prose prose-sm dark:prose-invert max-w-none text-gray-600 dark:text-gray-300"
+        class="prose prose-sm max-w-none text-[var(--text-secondary)]"
         v-html="invoice.notes"
       ></div>
     </div>
@@ -175,6 +175,7 @@
 <script setup>
 import { computed } from 'vue'
 import { formatCurrency } from '@/utils/formatters'
+import { formatDate } from '@/utils/dateFormatter'
 import InvoiceStatusBadge from './InvoiceStatusBadge.vue'
 
 const props = defineProps({
@@ -214,15 +215,6 @@ const balanceDue = computed(() => {
   return total.value - (props.invoice?.paidAmount || 0)
 })
 
-function formatDate(dateString) {
-  if (!dateString) return ''
-  const date = new Date(dateString)
-  return new Intl.DateTimeFormat('en-US', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  }).format(date)
-}
 </script>
 
 <style scoped>
@@ -255,22 +247,11 @@ function formatDate(dateString) {
     border-bottom-color: #999;
   }
 
-  /* Force print-safe backgrounds */
-  .invoice-preview .bg-white,
-  .invoice-preview :deep(.dark\:bg-gray-800) {
-    background-color: white !important;
-  }
-
-  /* Force print-safe text colors */
-  .invoice-preview :deep(.dark\:text-white),
-  .invoice-preview :deep(.dark\:text-gray-200),
-  .invoice-preview :deep(.dark\:text-gray-300) {
+  /* Force print-safe colors (override CSS vars) */
+  .invoice-preview,
+  .invoice-preview :deep(*) {
     color: black !important;
-  }
-
-  .invoice-preview :deep(.dark\:text-gray-400),
-  .invoice-preview :deep(.dark\:text-gray-500) {
-    color: #666 !important;
+    background-color: white !important;
   }
 
   /* Hide interactive / UI-only elements */

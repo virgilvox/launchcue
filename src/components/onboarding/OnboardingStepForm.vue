@@ -5,7 +5,7 @@
       <template v-if="field.type === 'text'">
         <label :for="`field-${field.id}`" class="label">
           {{ field.label }}
-          <span v-if="field.required" class="text-red-500">*</span>
+          <span v-if="field.required" class="text-[var(--danger)]">*</span>
         </label>
         <input
           :id="`field-${field.id}`"
@@ -22,7 +22,7 @@
       <template v-else-if="field.type === 'textarea'">
         <label :for="`field-${field.id}`" class="label">
           {{ field.label }}
-          <span v-if="field.required" class="text-red-500">*</span>
+          <span v-if="field.required" class="text-[var(--danger)]">*</span>
         </label>
         <textarea
           :id="`field-${field.id}`"
@@ -39,7 +39,7 @@
       <template v-else-if="field.type === 'select'">
         <label :for="`field-${field.id}`" class="label">
           {{ field.label }}
-          <span v-if="field.required" class="text-red-500">*</span>
+          <span v-if="field.required" class="text-[var(--danger)]">*</span>
         </label>
         <select
           :id="`field-${field.id}`"
@@ -62,12 +62,12 @@
             :id="`field-${field.id}`"
             v-model="formData[field.id]"
             type="checkbox"
-            class="h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-[var(--accent-primary)] focus:ring-[var(--accent-primary)] dark:bg-gray-700"
+            class="h-4 w-4 border-[var(--border-light)] text-[var(--accent-primary)]"
             :disabled="disabled"
           />
-          <label :for="`field-${field.id}`" class="text-sm text-gray-700 dark:text-gray-300">
+          <label :for="`field-${field.id}`" class="text-sm text-[var(--text-primary)]">
             {{ field.label }}
-            <span v-if="field.required" class="text-red-500">*</span>
+            <span v-if="field.required" class="text-[var(--danger)]">*</span>
           </label>
         </div>
       </template>
@@ -76,23 +76,22 @@
       <template v-else-if="field.type === 'file'">
         <label :for="`field-${field.id}`" class="label">
           {{ field.label }}
-          <span v-if="field.required" class="text-red-500">*</span>
+          <span v-if="field.required" class="text-[var(--danger)]">*</span>
         </label>
         <input
           :id="`field-${field.id}`"
           type="file"
-          class="block w-full text-sm text-gray-500 dark:text-gray-400
-                 file:mr-3 file:py-2 file:px-4 file:rounded-md file:border-0
+          class="block w-full text-sm text-[var(--text-secondary)]
+                 file:mr-3 file:py-2 file:px-4 file:border-0
                  file:text-sm file:font-medium
                  file:bg-[var(--accent-primary-wash)] file:text-[var(--accent-primary)]
-                 dark:file:bg-[var(--accent-primary-wash)] dark:file:text-[var(--accent-primary)]
                  hover:file:bg-[var(--accent-primary-wash)]
                  file:cursor-pointer file:transition-colors"
           :required="field.required"
           :disabled="disabled"
           @change="handleFileSelect(field.id, $event)"
         />
-        <p v-if="formData[field.id]" class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+        <p v-if="formData[field.id]" class="text-xs text-[var(--text-secondary)] mt-1">
           Selected: {{ formData[field.id] }}
         </p>
       </template>
@@ -107,7 +106,7 @@
 
     <!-- Already completed message -->
     <div v-else class="pt-2">
-      <p class="text-sm text-green-600 dark:text-green-400 flex items-center gap-1">
+      <p class="text-sm text-[var(--success)] flex items-center gap-1">
         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
           <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
         </svg>

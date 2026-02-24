@@ -62,11 +62,13 @@ interface AiProcessRequest {
 class ApiService {
   private _token: string | null;
   private _onUnauthorized: (() => void) | null;
+  private _logoutTriggered: boolean;
   readonly axiosInstance: AxiosInstance;
 
   constructor() {
     this._token = sessionStorage.getItem('token') || null;
     this._onUnauthorized = null;
+    this._logoutTriggered = false;
 
     this.axiosInstance = axios.create({
       timeout: 15000,
@@ -86,14 +88,13 @@ class ApiService {
       response => response.data,
       async (error: AxiosError) => {
         if (error.response && error.response.status === 401) {
-          const isAuthEndpoint = error.config?.url?.includes('/auth-') ||
-                                error.config?.url?.includes('/user-profile');
-
-          if (isAuthEndpoint && this._onUnauthorized) {
+          // Any 401 means the token is invalid/revoked — trigger logout once
+          if (this._onUnauthorized && !this._logoutTriggered) {
+            this._logoutTriggered = true;
             this._onUnauthorized();
-          } else if (!isAuthEndpoint) {
-            console.warn('Non-auth endpoint returned 401:', error.config?.url);
           }
+          // Don't retry 401s — reject immediately
+          return Promise.reject(error);
         }
 
         // Retry on transient server errors and rate limiting
@@ -136,6 +137,7 @@ class ApiService {
     this._token = token || null;
     if (token) {
       sessionStorage.setItem('token', token);
+      this._logoutTriggered = false; // Reset on new valid token
     } else {
       sessionStorage.removeItem('token');
     }

@@ -2,12 +2,12 @@
   <div>
     <!-- Campaign Details -->
     <div class="mb-6">
-      <h3 class="uppercase text-xs font-semibold text-gray-500 dark:text-gray-400 tracking-wider mb-3">Campaign Details</h3>
-      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 space-y-4">
+      <h3 class="uppercase text-xs font-semibold text-[var(--text-secondary)] tracking-wider mb-3">Campaign Details</h3>
+      <div class="card p-4 space-y-4">
         <input
           :value="campaign.title"
           @input="emitTitle"
-          class="w-full bg-transparent text-xl font-semibold text-gray-900 dark:text-white border-none focus:ring-0 p-1"
+          class="w-full bg-transparent text-xl font-semibold text-[var(--text-primary)] border-none p-1"
           placeholder="Campaign Title"
           required
         />
@@ -72,8 +72,8 @@
           />
         </div>
         <!-- Metrics Fields (visible when active or completed) -->
-        <div v-if="campaign.status === 'active' || campaign.status === 'completed'" class="space-y-3 pt-2 border-t dark:border-gray-700">
-          <h4 class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Metrics</h4>
+        <div v-if="campaign.status === 'active' || campaign.status === 'completed'" class="space-y-3 pt-2 border-t border-[var(--border-light)]">
+          <h4 class="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider">Metrics</h4>
           <div class="grid grid-cols-3 gap-3">
             <div>
               <label for="metricReach" class="label text-xs">Reach</label>
@@ -122,10 +122,10 @@
         v-for="type in campaignTypes"
         :key="type.name"
         :class="[
-          'px-4 py-2 rounded-lg text-sm font-medium transition-colors',
+          'px-4 py-2 text-sm font-medium transition-colors border-2',
           type.active
-            ? `bg-${type.color}-600 text-white`
-            : 'bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-500'
+            ? `bg-${type.color}-600 text-white border-${type.color}-600`
+            : 'bg-[var(--surface)] text-[var(--text-primary)] border-[var(--border)] hover:border-[var(--accent-primary)]'
         ]"
         @click="emit('toggle-type', type)"
       >
@@ -135,12 +135,12 @@
 
     <!-- Campaign Description -->
     <div class="mb-6">
-      <h3 class="uppercase text-xs font-semibold text-gray-500 dark:text-gray-400 tracking-wider mb-3">Timeline</h3>
-      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 mb-6">
+      <h3 class="uppercase text-xs font-semibold text-[var(--text-secondary)] tracking-wider mb-3">Timeline</h3>
+      <div class="card p-4 mb-6">
         <textarea
           :value="campaign.description"
           @input="emitDescription"
-          class="w-full bg-transparent text-gray-800 dark:text-gray-200 border-none focus:ring-0 resize-none"
+          class="w-full bg-transparent text-[var(--text-primary)] border-none resize-none"
           rows="2"
           placeholder="Enter campaign description..."
         ></textarea>

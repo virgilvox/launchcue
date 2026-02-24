@@ -1,7 +1,7 @@
 <template>
   <section id="audit-log" class="card">
     <h3 class="text-lg font-semibold mb-4">Audit Log</h3>
-    <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
+    <p class="text-sm text-[var(--text-secondary)] mb-4">
       View recent activity and changes made across your team workspace.
     </p>
 
@@ -29,42 +29,42 @@
     </div>
 
     <!-- Empty State -->
-    <div v-else-if="logs.length === 0" class="text-center py-6 border dark:border-gray-700 rounded-md">
-      <p class="text-gray-500 dark:text-gray-400">No audit log entries found.</p>
+    <div v-else-if="logs.length === 0" class="text-center py-6 border border-[var(--border-light)]">
+      <p class="text-[var(--text-secondary)]">No audit log entries found.</p>
     </div>
 
     <!-- Audit Log Table -->
-    <div v-else class="overflow-x-auto border dark:border-gray-700 rounded-md">
+    <div v-else class="overflow-x-auto border border-[var(--border-light)]">
       <table class="w-full text-sm">
-        <thead class="bg-gray-50 dark:bg-gray-700">
+        <thead class="bg-[var(--surface)]">
           <tr>
-            <th class="text-left px-4 py-3 font-medium text-gray-600 dark:text-gray-300">Timestamp</th>
-            <th class="text-left px-4 py-3 font-medium text-gray-600 dark:text-gray-300">Action</th>
-            <th class="text-left px-4 py-3 font-medium text-gray-600 dark:text-gray-300">Resource</th>
-            <th class="text-left px-4 py-3 font-medium text-gray-600 dark:text-gray-300">Resource ID</th>
-            <th class="text-left px-4 py-3 font-medium text-gray-600 dark:text-gray-300">Changes</th>
+            <th class="text-left px-4 py-3 font-medium text-[var(--text-secondary)]">Timestamp</th>
+            <th class="text-left px-4 py-3 font-medium text-[var(--text-secondary)]">Action</th>
+            <th class="text-left px-4 py-3 font-medium text-[var(--text-secondary)]">Resource</th>
+            <th class="text-left px-4 py-3 font-medium text-[var(--text-secondary)]">Resource ID</th>
+            <th class="text-left px-4 py-3 font-medium text-[var(--text-secondary)]">Changes</th>
           </tr>
         </thead>
-        <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
-          <tr v-for="log in logs" :key="log.id" class="hover:bg-gray-50 dark:hover:bg-gray-750">
-            <td class="px-4 py-3 text-gray-700 dark:text-gray-300 whitespace-nowrap">
+        <tbody class="divide-y divide-[var(--border-light)]">
+          <tr v-for="log in logs" :key="log.id" class="hover:bg-[var(--surface)]">
+            <td class="px-4 py-3 text-[var(--text-primary)] whitespace-nowrap">
               {{ formatTimestamp(log.timestamp) }}
             </td>
             <td class="px-4 py-3">
               <span
                 :class="actionBadgeClass(log.action)"
-                class="text-xs px-2 py-0.5 rounded-full font-medium"
+                class="text-xs px-2 py-0.5 font-medium"
               >
                 {{ log.action }}
               </span>
             </td>
-            <td class="px-4 py-3 text-gray-700 dark:text-gray-300 capitalize">
+            <td class="px-4 py-3 text-[var(--text-primary)] capitalize">
               {{ log.resourceType }}
             </td>
-            <td class="px-4 py-3 text-gray-500 dark:text-gray-400 font-mono text-xs">
+            <td class="px-4 py-3 text-[var(--text-secondary)] font-mono text-xs">
               {{ log.resourceId ? truncateId(log.resourceId) : '-' }}
             </td>
-            <td class="px-4 py-3 text-gray-500 dark:text-gray-400 text-xs max-w-xs truncate">
+            <td class="px-4 py-3 text-[var(--text-secondary)] text-xs max-w-xs truncate">
               {{ formatChanges(log.changes) }}
             </td>
           </tr>
@@ -74,7 +74,7 @@
 
     <!-- Pagination -->
     <div v-if="pagination && pagination.totalPages > 1" class="flex items-center justify-between mt-4">
-      <p class="text-xs text-gray-500 dark:text-gray-400">
+      <p class="text-xs text-[var(--text-secondary)]">
         Page {{ pagination.page }} of {{ pagination.totalPages }} ({{ pagination.total }} entries)
       </p>
       <div class="flex gap-2">
@@ -147,13 +147,13 @@ function formatTimestamp(ts) {
 function actionBadgeClass(action) {
   switch (action) {
     case 'create':
-      return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300';
+      return 'bg-[var(--surface)] text-[var(--success)] border border-[var(--success)]';
     case 'update':
-      return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300';
+      return 'bg-[var(--accent-primary-wash)] text-[var(--accent-primary)] border border-[var(--accent-primary)]';
     case 'delete':
-      return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300';
+      return 'bg-[var(--surface)] text-[var(--danger)] border border-[var(--danger)]';
     default:
-      return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
+      return 'bg-[var(--surface)] text-[var(--text-secondary)] border border-[var(--border-light)]';
   }
 }
 
