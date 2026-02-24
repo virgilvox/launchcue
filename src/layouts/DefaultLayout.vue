@@ -27,7 +27,7 @@
               <!-- Search trigger -->
               <button
                 @click="$refs.globalSearch?.open()"
-                class="flex items-center gap-2 px-4 py-2 text-body-sm border-2 border-[var(--border)] hover:shadow-brutal-sm transition-shadow min-w-[200px]"
+                class="flex items-center gap-2 px-3 sm:px-4 py-2 text-body-sm border-2 border-[var(--border)] hover:shadow-brutal-sm transition-shadow sm:min-w-[200px]"
                 style="background-color: var(--bg); color: var(--text-secondary);"
               >
                 <MagnifyingGlassIcon class="h-4 w-4 shrink-0" />
@@ -75,7 +75,7 @@
       </header>
 
       <main class="flex-1 overflow-x-hidden overflow-y-auto" style="background-color: var(--bg);">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6">
           <router-view />
         </div>
       </main>

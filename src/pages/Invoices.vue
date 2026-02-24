@@ -196,10 +196,15 @@ async function performDelete() {
 
 onMounted(async () => {
   try {
-    await Promise.all([
+    const results = await Promise.allSettled([
       invoiceStore.fetchInvoices(),
       clientStore.fetchClients(),
     ]);
+    results.forEach((result, i) => {
+      if (result.status === 'rejected') {
+        console.error(`Fetch #${i} failed:`, result.reason);
+      }
+    });
   } catch (err) {
     console.error('Error loading invoice data:', err);
     toast.error('Failed to load invoices');

@@ -166,8 +166,8 @@ import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
 import { useClientStore } from '../stores/client';
+import { useProjectStore } from '../stores/project';
 import clientService from '@/services/client.service';
-import projectService from '@/services/project.service';
 import { useToast } from 'vue-toastification';
 import { getStatusColor } from '@/utils/statusColors';
 import { PlusIcon, UsersIcon, EllipsisVerticalIcon, XMarkIcon } from '@heroicons/vue/24/outline';
@@ -180,6 +180,7 @@ const router = useRouter();
 const toast = useToast();
 const authStore = useAuthStore();
 const clientStore = useClientStore();
+const projectStore = useProjectStore();
 
 const loading = ref(false);
 const error = ref(null);
@@ -206,17 +207,33 @@ const clientForm = ref({
 async function loadClients() {
   loading.value = true;
   error.value = null;
-  
+
   try {
-    const response = await clientStore.fetchClients();
-    clients.value = response;
-    await loadClientProjects();
+    // Fetch clients and projects in parallel (single request each)
+    const [clientResponse] = await Promise.allSettled([
+      clientStore.fetchClients(),
+      projectStore.fetchProjects(),
+    ]);
+
+    // Safely extract clients array
+    const result = clientResponse.status === 'fulfilled' ? clientResponse.value : [];
+    clients.value = Array.isArray(result) ? result : [];
+
+    // Attach projects from the store (no extra API calls)
+    attachProjectsFromStore();
   } catch (err) {
     console.error('Error loading clients:', err);
     error.value = 'Failed to load clients. Please try again.';
     toast.error('Failed to load clients');
   } finally {
     loading.value = false;
+  }
+}
+
+function attachProjectsFromStore() {
+  const allProjects = Array.isArray(projectStore.projects) ? projectStore.projects : [];
+  for (const client of clients.value) {
+    client.projects = allProjects.filter(p => p.clientId === client.id);
   }
 }
 
@@ -357,25 +374,4 @@ const filteredClients = computed(() => {
   );
 });
 
-async function loadClientProjects() {
-  try {
-    for (const client of clients.value) {
-      if (!client.projects || !Array.isArray(client.projects) || client.projects.length === 0) {
-        try {
-          const projectsResponse = await clientService.getClientProjects(client.id);
-          if (Array.isArray(projectsResponse)) {
-            client.projects = projectsResponse;
-          } else {
-            client.projects = [];
-          }
-        } catch (error) {
-          console.error(`Error fetching projects for client ${client.id}:`, error);
-          client.projects = [];
-        }
-      }
-    }
-  } catch (error) {
-    console.error('Error loading client projects:', error);
-  }
-}
 </script>

@@ -1,11 +1,11 @@
 <template>
   <div class="tasks-page">
-    <div class="page-header flex justify-between items-center mb-6">
+    <div class="page-header flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
       <div>
         <h1 class="heading-page">Tasks</h1>
         <p class="text-caption mt-1">Manage your tasks and track their progress</p>
       </div>
-      <div class="flex items-center gap-2">
+      <div class="flex items-center gap-2 flex-shrink-0">
         <!-- View Toggle -->
         <div class="inline-flex border-2 border-[var(--border)]">
           <button
@@ -281,18 +281,17 @@ const fetchTasks = async () => {
 
 const fetchSupportData = async () => {
   // Fetch projects, clients, and team members needed for filtering
-  try {
-    // Use Promise.all for concurrent fetching
-    await Promise.all([
-        projectStore.fetchProjects(),
-        clientStore.fetchClients(),
-        teamStore.fetchTeamMembers()
-    ]);
-  } catch (error) {
-    console.error('Failed to fetch support data (projects/clients/team members):', error)
-    // Decide if toasts are needed here
-    // toast.error('Failed to load project/client list for filtering.');
-  }
+  // Use allSettled so one failing call doesn't block the others
+  const results = await Promise.allSettled([
+      projectStore.fetchProjects(),
+      clientStore.fetchClients(),
+      teamStore.fetchTeamMembers()
+  ]);
+  results.forEach((result, i) => {
+    if (result.status === 'rejected') {
+      console.error(`Support data fetch #${i} failed:`, result.reason)
+    }
+  });
 }
 
 // Modal Open Handlers

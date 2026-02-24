@@ -879,11 +879,16 @@ onMounted(async () => {
       await clientStore.fetchClients();
     }
 
-    await Promise.all([
+    const results = await Promise.allSettled([
       taskStore.fetchTasks(),
       loadEventsForCurrentView(),
       fetchTasks()
     ]);
+    results.forEach((result, i) => {
+      if (result.status === 'rejected') {
+        console.error(`Fetch #${i} failed:`, result.reason);
+      }
+    });
   } catch (err) {
     console.error('Error initializing calendar:', err);
   } finally {

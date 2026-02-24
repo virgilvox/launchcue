@@ -201,10 +201,15 @@ watch(() => formData.value.clientId, () => {
 
 async function loadClientsAndProjects() {
   try {
-    await Promise.all([
+    const results = await Promise.allSettled([
       clientStore.fetchClients(),
       projectStore.fetchProjects(),
     ]);
+    results.forEach((result, i) => {
+      if (result.status === 'rejected') {
+        console.error(`Fetch #${i} failed:`, result.reason);
+      }
+    });
   } catch (err) {
     console.error('Error loading clients/projects:', err);
   }

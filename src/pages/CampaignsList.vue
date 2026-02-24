@@ -126,11 +126,16 @@ async function loadInitialData() {
     loading.value = true;
     error.value = null;
     try {
-        await Promise.all([
+        const results = await Promise.allSettled([
             clientStore.fetchClients(),
             projectStore.fetchProjects(),
-            fetchCampaigns() // Initial fetch without filters
+            fetchCampaigns()
         ]);
+        results.forEach((result, i) => {
+            if (result.status === 'rejected') {
+                console.error(`Fetch #${i} failed:`, result.reason);
+            }
+        });
     } catch (err) {
         console.error("Error loading initial data for campaigns list:", err);
         error.value = "Failed to load necessary data.";

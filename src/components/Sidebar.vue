@@ -13,7 +13,7 @@
     <div
       v-show="!isMobile || isOpen"
       :class="[
-        'flex flex-col h-full bg-[var(--surface)] border-r-2 border-[var(--border)] transition-all duration-300 ease-in-out shrink-0',
+        'flex flex-col h-full bg-[var(--sidebar-bg)] border-r-2 border-[var(--border)] transition-all duration-300 ease-in-out shrink-0',
         isMobile ? 'fixed inset-y-0 left-0 z-40 w-64' : (isCollapsed ? 'w-16' : 'w-64')
       ]"
     >

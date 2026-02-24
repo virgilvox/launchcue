@@ -69,7 +69,7 @@ class ApiService {
     this._onUnauthorized = null;
 
     this.axiosInstance = axios.create({
-      timeout: 30000,
+      timeout: 15000,
       headers: { 'Content-Type': 'application/json' }
     });
 
@@ -103,7 +103,7 @@ class ApiService {
           const config = error.config as InternalAxiosRequestConfig & { _retryCount?: number };
           config._retryCount = config._retryCount || 0;
 
-          if (config._retryCount < 3) {
+          if (config._retryCount < 2) {
             config._retryCount++;
 
             // Respect Retry-After header on 429

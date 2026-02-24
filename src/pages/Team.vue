@@ -180,7 +180,7 @@
           />
         </div>
 
-        <div v-if="inviteError" class="mb-4 p-3" style="background-color: var(--accent-primary-wash); border: 2px solid var(--danger); color: var(--danger);">
+        <div v-if="inviteError" class="mb-4 p-3 badge-red" style="border: 2px solid var(--danger); color: var(--danger);">
           {{ inviteError }}
         </div>
 

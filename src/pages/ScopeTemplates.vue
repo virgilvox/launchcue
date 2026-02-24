@@ -296,12 +296,17 @@ async function createFromTemplate(template) {
 // Load data on mount
 onMounted(async () => {
   try {
-    await Promise.all([
+    const results = await Promise.allSettled([
       scopeStore.fetchScopes(),
       scopeStore.fetchTemplates(),
       clientStore.fetchClients(),
       projectStore.fetchProjects()
     ]);
+    results.forEach((result, i) => {
+      if (result.status === 'rejected') {
+        console.error(`Fetch #${i} failed:`, result.reason);
+      }
+    });
   } catch (err) {
     console.error('Error loading scope data:', err);
     toast.error('Failed to load data. Please try again.');

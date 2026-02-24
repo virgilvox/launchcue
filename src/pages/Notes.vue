@@ -299,10 +299,16 @@ async function loadDependencies() {
     loadingClients.value = true;
     loadingProjects.value = true;
     try {
-        await Promise.all([
+        // Use allSettled so one failing call doesn't block the other
+        const results = await Promise.allSettled([
             clientStore.fetchClients(),
             projectStore.fetchProjects()
         ]);
+        results.forEach((result, i) => {
+          if (result.status === 'rejected') {
+            console.error(`Notes dependency fetch #${i} failed:`, result.reason);
+          }
+        });
     } catch (err) {
         console.error("Failed to load clients/projects for filtering", err);
         toast.error("Could not load filter options.");

@@ -22,10 +22,8 @@ const calendarService: CalendarServiceInterface = {
   async getEvents(startDate: string, endDate: string): Promise<CalendarEvent[]> {
     try {
       const response = await api.get<CalendarEvent[]>(CALENDAR_EVENT_ENDPOINT, {
-        params: {
-          startDate,
-          endDate
-        }
+        startDate,
+        endDate
       });
 
       return response;
@@ -79,9 +77,7 @@ const calendarService: CalendarServiceInterface = {
   async getEventsByProject(projectId: string): Promise<CalendarEvent[]> {
     try {
       const response = await api.get<CalendarEvent[]>(CALENDAR_EVENT_ENDPOINT, {
-        params: {
-          projectId
-        }
+        projectId
       });
 
       return response;
@@ -97,9 +93,7 @@ const calendarService: CalendarServiceInterface = {
   async getEventsByTask(taskId: string): Promise<CalendarEvent[]> {
     try {
       const response = await api.get<CalendarEvent[]>(CALENDAR_EVENT_ENDPOINT, {
-        params: {
-          taskId
-        }
+        taskId
       });
 
       return response;
@@ -120,7 +114,7 @@ const calendarService: CalendarServiceInterface = {
       };
 
       // Use TASK_ENDPOINT constant for consistency
-      const response = await api.get<Task[] | { data: Task[] } | string>(TASK_ENDPOINT, { params });
+      const response = await api.get<Task[] | { data: Task[] } | string>(TASK_ENDPOINT, params);
 
       // Handle different response types
       if (!response) {

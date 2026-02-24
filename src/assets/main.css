@@ -18,6 +18,7 @@
   --accent-primary-wash: #EDE9FE;
   --accent-hot: #E8503A;
   --accent-hot-wash: #FDE8E4;
+  --sidebar-bg: #F0EDEA;
   --danger: #DC2626;
   --warning: #F59E0B;
   --success: #0D9488;
@@ -37,6 +38,7 @@
   --accent-primary-wash: rgba(167, 139, 250, 0.15);
   --accent-hot: #F06B58;
   --accent-hot-wash: rgba(240, 107, 88, 0.15);
+  --sidebar-bg: #1A1816;
   --danger: #EF4444;
   --warning: #FBBF24;
   --success: #14B8A6;
@@ -62,10 +64,16 @@ body {
    ═══════════════════════════════════════════ */
 .heading-page {
   font-family: 'Space Grotesk', ui-sans-serif, system-ui, sans-serif;
-  font-size: 1.75rem;
+  font-size: 1.375rem;
   font-weight: 700;
   line-height: 1.2;
   color: var(--text-primary);
+}
+
+@media (min-width: 640px) {
+  .heading-page {
+    font-size: 1.75rem;
+  }
 }
 
 .heading-section {

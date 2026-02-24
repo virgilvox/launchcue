@@ -27,7 +27,7 @@
     <div v-else>
       <!-- Filters -->
       <div class="mb-6 card">
-        <div class="flex flex-wrap gap-4">
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div>
             <label for="statusFilter" class="label">STATUS</label>
             <select id="statusFilter" v-model="filters.status" class="input">
@@ -323,8 +323,16 @@ const filteredProjects = computed(() => {
 
 onMounted(async () => {
   loading.value = true;
-  await projectStore.fetchProjects();
-  await clientStore.fetchClients();
+  // Fetch in parallel; allSettled ensures one failure doesn't block the other
+  const results = await Promise.allSettled([
+    projectStore.fetchProjects(),
+    clientStore.fetchClients(),
+  ]);
+  results.forEach((result, i) => {
+    if (result.status === 'rejected') {
+      console.error(`Projects dependency fetch #${i} failed:`, result.reason);
+    }
+  });
   loading.value = false;
   document.addEventListener('click', handleOutsideClick);
 });

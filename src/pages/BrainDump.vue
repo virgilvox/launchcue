@@ -335,10 +335,16 @@ onMounted(async () => {
   isLoadingClients.value = true;
   isLoadingProjects.value = true;
   try {
-    await Promise.all([
+    // Use allSettled so one failing call doesn't block the other
+    const results = await Promise.allSettled([
       clientStore.fetchClients(),
       projectStore.fetchProjects()
     ]);
+    results.forEach((result, i) => {
+      if (result.status === 'rejected') {
+        console.error(`BrainDump dependency fetch #${i} failed:`, result.reason);
+      }
+    });
   } catch(err) {
     console.error("Error loading initial client/project data", err);
     toast.error("Failed to load client/project list");

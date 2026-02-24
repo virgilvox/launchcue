@@ -292,10 +292,15 @@ async function loadClientsAndProjects() {
   loadingClients.value = true;
   loadingProjects.value = true;
   try {
-    await Promise.all([
+    const results = await Promise.allSettled([
       clientStore.fetchClients(),
       projectStore.fetchProjects()
     ]);
+    results.forEach((result, i) => {
+      if (result.status === 'rejected') {
+        console.error(`Fetch #${i} failed:`, result.reason);
+      }
+    });
   } catch (err) {
     console.error("Error loading clients/projects for campaign builder", err);
   } finally {
@@ -414,10 +419,15 @@ onMounted(async () => {
   loading.value = true;
 
   try {
-    await Promise.all([
+    const initResults = await Promise.allSettled([
       loadTeamMembers(),
       loadClientsAndProjects()
     ]);
+    initResults.forEach((result, i) => {
+      if (result.status === 'rejected') {
+        console.error(`Fetch #${i} failed:`, result.reason);
+      }
+    });
 
     if (campaignId) {
       await loadCampaign(campaignId);

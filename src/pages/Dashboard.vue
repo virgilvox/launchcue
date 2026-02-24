@@ -2,12 +2,12 @@
   <div>
     <!-- Greeting + Date -->
     <div class="mb-6">
-      <h2 class="font-display text-display">{{ greeting }}, {{ userName }}</h2>
+      <h2 class="font-display text-h1 sm:text-display">{{ greeting }}, {{ userName }}</h2>
       <p class="mono text-caption mt-1">{{ formattedDate }}</p>
     </div>
 
     <!-- Quick Actions Bar -->
-    <div class="flex flex-wrap gap-3 mb-8">
+    <div class="flex flex-wrap gap-2 sm:gap-3 mb-6 sm:mb-8">
       <router-link to="/tasks" class="btn btn-sm btn-outline">
         <PlusIcon class="h-4 w-4 mr-1" /> TASK
       </router-link>
@@ -60,7 +60,8 @@
           <div v-else-if="recentTasks.length === 0" class="text-center py-6">
             <p class="text-caption">No recent tasks found.</p>
           </div>
-          <table v-else class="w-full">
+          <div v-else class="overflow-x-auto -mx-4 sm:mx-0">
+          <table class="w-full min-w-[480px]">
             <thead>
               <tr>
                 <th>TASK</th>
@@ -85,6 +86,7 @@
               </tr>
             </tbody>
           </table>
+          </div>
         </div>
 
         <!-- Activity Feed -->
@@ -216,23 +218,16 @@ import GettingStarted from '../components/dashboard/GettingStarted.vue';
 import ClientHealthWidget from '../components/dashboard/ClientHealthWidget.vue';
 import OutstandingInvoices from '../components/dashboard/OutstandingInvoices.vue';
 
-// Try to import invoice store, fallback gracefully
-let useInvoiceStore;
-try {
-  useInvoiceStore = (await import('../stores/invoice')).useInvoiceStore;
-} catch {
-  useInvoiceStore = null;
-}
-
 const router = useRouter();
 const projectStore = useProjectStore();
 const taskStore = useTaskStore();
 const clientStore = useClientStore();
 const calendarStore = useCalendarStore();
 const authStore = useAuthStore();
-const invoiceStore = useInvoiceStore ? useInvoiceStore() : null;
 
-const invoices = computed(() => invoiceStore?.invoices || []);
+// Invoice store loaded lazily in onMounted to avoid top-level await
+const invoiceStoreRef = ref(null);
+const invoices = computed(() => invoiceStoreRef.value?.invoices || []);
 
 const userName = computed(() => {
   const name = authStore.user?.name || 'there';
@@ -352,6 +347,15 @@ function getItemLink(item) {
 onMounted(async () => {
   tasksLoading.value = true;
   isLoadingUpcoming.value = true;
+
+  // Lazily load invoice store
+  try {
+    const { useInvoiceStore } = await import('../stores/invoice');
+    invoiceStoreRef.value = useInvoiceStore();
+  } catch {
+    // Invoice store not available, that's fine
+  }
+
   try {
     const fetches = [
       projectStore.fetchProjects(),
@@ -359,10 +363,16 @@ onMounted(async () => {
       clientStore.fetchClients(),
       loadUpcomingItems(),
     ];
-    if (invoiceStore?.fetchInvoices) {
-      fetches.push(invoiceStore.fetchInvoices());
+    if (invoiceStoreRef.value?.fetchInvoices) {
+      fetches.push(invoiceStoreRef.value.fetchInvoices());
     }
-    await Promise.all(fetches);
+    // Use allSettled so one failing call doesn't block the rest
+    const results = await Promise.allSettled(fetches);
+    results.forEach((result, i) => {
+      if (result.status === 'rejected') {
+        console.error(`Dashboard fetch #${i} failed:`, result.reason);
+      }
+    });
   } catch (error) {
     console.error("Error loading dashboard data:", error);
   } finally {
