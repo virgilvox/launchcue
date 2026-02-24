@@ -8,6 +8,7 @@
         </div>
         <div class="flex gap-3">
           <button @click="showPreview = true" class="btn btn-ghost">Preview</button>
+          <button @click="printScope" class="btn btn-secondary">Print / PDF</button>
           <button @click="save" class="btn btn-primary" :disabled="saving">
             {{ saving ? 'Saving...' : (formData.id ? 'Save Changes' : (isTemplate ? 'Save Template' : 'Save Scope')) }}
           </button>
@@ -427,7 +428,9 @@ async function save() {
 // --- Preview ---
 
 function printScope() {
-  window.print();
+  showPreview.value = true;
+  // Wait for modal to render before triggering print
+  setTimeout(() => window.print(), 300);
 }
 
 // --- Initialization ---

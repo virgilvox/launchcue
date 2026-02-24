@@ -9,6 +9,7 @@
       </div>
       <div class="flex gap-3">
         <button @click="showPreview = true" class="btn btn-ghost">Preview</button>
+        <button @click="printInvoice" class="btn btn-secondary">Print / PDF</button>
         <button v-if="formData.status === 'draft'" @click="save" class="btn btn-primary" :disabled="saving">
           {{ saving ? 'Saving...' : (formData.id ? 'Save Changes' : 'Create Invoice') }}
         </button>
@@ -427,7 +428,9 @@ async function markAsPaid() {
 // --- Preview ---
 
 function printInvoice() {
-  window.print();
+  showPreview.value = true;
+  // Wait for modal to render before triggering print
+  setTimeout(() => window.print(), 300);
 }
 
 // --- Initialization ---

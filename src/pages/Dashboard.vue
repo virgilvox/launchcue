@@ -2,7 +2,7 @@
   <div>
     <!-- Greeting + Date -->
     <div class="mb-6">
-      <h2 class="font-display text-h1 sm:text-display">{{ greeting }}, {{ userName }}</h2>
+      <h2 class="font-display text-h1 sm:text-display text-[var(--text-primary)]">{{ greeting }}, {{ userName }}</h2>
       <p class="mono text-caption mt-1">{{ formattedDate }}</p>
     </div>
 

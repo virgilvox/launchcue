@@ -646,3 +646,78 @@ td {
   color: var(--text-primary);
   max-width: 250px;
 }
+
+/* ═══════════════════════════════════════════
+   PRINT STYLES
+   ═══════════════════════════════════════════ */
+@media print {
+  /* Hide the main app shell (sidebar, header, page content) */
+  #app {
+    display: none !important;
+  }
+
+  /* Show the modal (teleported to body) as a static document */
+  .modal-overlay {
+    position: static !important;
+    background: none !important;
+    padding: 0 !important;
+    display: block !important;
+  }
+
+  .modal-container {
+    border: none !important;
+    box-shadow: none !important;
+    max-height: none !important;
+    height: auto !important;
+    background: white !important;
+  }
+
+  /* Hide modal chrome (header, close button, action buttons) */
+  .modal-header,
+  .modal-footer,
+  .modal-close-btn,
+  .btn {
+    display: none !important;
+  }
+
+  .modal-body {
+    padding: 0 !important;
+  }
+
+  /* Preview containers print clean */
+  .invoice-preview,
+  .scope-preview {
+    border: none !important;
+    box-shadow: none !important;
+    padding: 1rem !important;
+    margin: 0 !important;
+    background: white !important;
+    color: black !important;
+  }
+
+  .invoice-preview *,
+  .scope-preview * {
+    color: black !important;
+    background-color: transparent !important;
+  }
+
+  .invoice-preview table,
+  .scope-preview table {
+    background-color: white !important;
+  }
+
+  .invoice-preview thead,
+  .scope-preview thead {
+    background-color: #f3f4f6 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .invoice-preview th,
+  .invoice-preview td,
+  .scope-preview th,
+  .scope-preview td {
+    border-bottom: 1px solid #ddd !important;
+    padding: 0.5rem 0.75rem !important;
+  }
+}

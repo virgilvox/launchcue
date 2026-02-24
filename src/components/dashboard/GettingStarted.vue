@@ -40,7 +40,7 @@
           <CheckIcon v-if="step.completed" class="h-4 w-4 text-white" />
         </div>
         <div class="flex-1">
-          <p :class="['text-body-sm font-medium', step.completed ? 'line-through text-[var(--text-secondary)]' : '']">
+          <p :class="['text-body-sm font-medium', step.completed ? 'line-through text-[var(--text-secondary)]' : 'text-[var(--text-primary)]']">
             {{ step.label }}
           </p>
         </div>
