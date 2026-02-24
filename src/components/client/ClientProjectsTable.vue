@@ -1,7 +1,7 @@
 <template>
   <div>
     <div class="flex justify-between items-center mb-6">
-      <h3 class="text-xl font-semibold text-[var(--text-primary)]">Projects</h3>
+      <h3 class="heading-section">Projects</h3>
       <div class="flex gap-2">
         <div class="relative">
           <input

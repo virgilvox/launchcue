@@ -25,6 +25,11 @@ exports.handler = async function(event, context) {
   }
   const { teamId } = authResult;
 
+  // RBAC: Only owner/admin can view audit logs
+  if (!authResult.role || !['owner', 'admin'].includes(authResult.role)) {
+    return createErrorResponse(403, 'Forbidden: insufficient permissions');
+  }
+
   try {
     const { db } = await connectToDb();
     const collection = db.collection('auditLogs');

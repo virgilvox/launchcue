@@ -12,7 +12,6 @@ class SettingsService {
       // Usually GET fetches settings for the current user/team context
       return await apiService.get<Settings>(ENDPOINT);
     } catch (error) {
-      console.error('Error fetching settings:', error);
       throw error;
     }
   }
@@ -22,7 +21,6 @@ class SettingsService {
       // Usually PUT or POST updates settings
       return await apiService.put<Settings>(ENDPOINT, data);
     } catch (error) {
-      console.error('Error updating settings:', error);
       throw error;
     }
   }

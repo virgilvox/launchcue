@@ -28,7 +28,6 @@ export const useInvoiceStore = defineStore('invoice', () => {
       invoices.value = Array.isArray(response) ? response : []
       return invoices.value
     } catch (error) {
-      console.error('Error fetching invoices:', error)
       invoices.value = []
       throw error
     } finally {
@@ -44,7 +43,6 @@ export const useInvoiceStore = defineStore('invoice', () => {
       }
       return created
     } catch (error) {
-      console.error('Error creating invoice:', error)
       throw error
     }
   }
@@ -57,7 +55,6 @@ export const useInvoiceStore = defineStore('invoice', () => {
       }
       return created
     } catch (error) {
-      console.error('Error creating invoice from scope:', error)
       throw error
     }
   }
@@ -75,7 +72,6 @@ export const useInvoiceStore = defineStore('invoice', () => {
       }
       return updated
     } catch (error) {
-      console.error('Error updating invoice:', error)
       throw error
     } finally {
       isLoading.value = false
@@ -91,7 +87,6 @@ export const useInvoiceStore = defineStore('invoice', () => {
       await invoiceService.deleteInvoice(id)
       invoices.value = invoices.value.filter(inv => inv.id !== id)
     } catch (error) {
-      console.error('Error deleting invoice:', error)
       throw error
     } finally {
       isLoading.value = false

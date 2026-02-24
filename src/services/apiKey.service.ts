@@ -7,7 +7,6 @@ class ApiKeyService {
     try {
       return await apiService.get<ApiKey[]>(API_KEY_ENDPOINT);
     } catch (error) {
-      console.error('Error fetching API keys:', error);
       throw error;
     }
   }
@@ -17,7 +16,6 @@ class ApiKeyService {
       // The backend should return { name, prefix, apiKey (full key, one time) }
       return await apiService.post<ApiKeyCreateResponse>(API_KEY_ENDPOINT, data);
     } catch (error) {
-      console.error('Error creating API key:', error);
       throw error;
     }
   }
@@ -27,7 +25,6 @@ class ApiKeyService {
       // Use prefix in the URL for deletion
       return await apiService.delete(`${API_KEY_ENDPOINT}/${keyPrefix}`);
     } catch (error) {
-      console.error(`Error deleting API key with prefix ${keyPrefix}:`, error);
       throw error;
     }
   }

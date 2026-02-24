@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <PageContainer>
     <!-- Greeting + Date -->
     <div class="mb-6">
       <h2 class="font-display text-h1 sm:text-display text-[var(--text-primary)]">{{ greeting }}, {{ userName }}</h2>
@@ -76,7 +76,7 @@
                 class="hover:bg-[var(--surface)] cursor-pointer"
                 @click="$router.push(`/tasks/${task.id}`)"
               >
-                <td class="font-medium">{{ task.title }}</td>
+                <td class="font-medium text-[var(--text-primary)]">{{ task.title }}</td>
                 <td class="text-[var(--text-secondary)]">{{ getProjectName(task.projectId) }}</td>
                 <td>
                   <span :class="['badge', getTaskStatusClass(task.status)]">
@@ -121,7 +121,7 @@
             >
               <div class="mt-1 w-2.5 h-2.5 flex-shrink-0" :class="getColorClass(item.color || item.type)"></div>
               <div class="flex-1 min-w-0">
-                <p class="text-body-sm font-medium">{{ item.title }}</p>
+                <p class="text-body-sm font-medium text-[var(--text-primary)]">{{ item.title }}</p>
                 <p class="mono text-caption mt-0.5">
                   {{ formatUpcomingDate(item.date) }}
                 </p>
@@ -152,7 +152,7 @@
                 <div class="w-24 progress-brutal">
                   <div class="progress-brutal-fill" :style="{ width: completionRate + '%' }"></div>
                 </div>
-                <span class="mono text-body-sm font-bold">{{ completionRate }}%</span>
+                <span class="mono text-body-sm font-bold text-[var(--text-primary)]">{{ completionRate }}%</span>
               </div>
             </div>
             <div class="flex items-center justify-between py-2 border-b border-[var(--border-light)]">
@@ -165,7 +165,7 @@
             </div>
             <div class="flex items-center justify-between py-2">
               <span class="overline">ACTIVE PROJECTS</span>
-              <span class="mono text-body-sm font-bold">{{ projectStats.active }}</span>
+              <span class="mono text-body-sm font-bold text-[var(--text-primary)]">{{ projectStats.active }}</span>
             </div>
           </div>
         </div>
@@ -188,18 +188,19 @@
         <ProjectCompletionChart v-else :projects="projectStore.projects" />
       </Card>
     </div>
-  </div>
+  </PageContainer>
 </template>
 
 <script setup>
 import { ref, computed, onMounted } from 'vue';
-import { useRouter } from 'vue-router';
+import { useToast } from 'vue-toastification';
+import PageContainer from '@/components/ui/PageContainer.vue';
 import { useProjectStore } from '../stores/project';
 import { useTaskStore } from '../stores/task';
 import { useClientStore } from '../stores/client';
 import { useCalendarStore } from '../stores/calendar';
 import { useAuthStore } from '../stores/auth';
-import { format, isToday, isTomorrow, addDays, isWithinInterval } from 'date-fns';
+import { format, isToday, isTomorrow } from 'date-fns';
 import { getStatusColor } from '@/utils/statusColors';
 import { useEntityLookup } from '@/composables/useEntityLookup';
 import {
@@ -219,12 +220,12 @@ import GettingStarted from '../components/dashboard/GettingStarted.vue';
 import ClientHealthWidget from '../components/dashboard/ClientHealthWidget.vue';
 import OutstandingInvoices from '../components/dashboard/OutstandingInvoices.vue';
 
-const router = useRouter();
 const projectStore = useProjectStore();
 const taskStore = useTaskStore();
 const clientStore = useClientStore();
 const calendarStore = useCalendarStore();
 const authStore = useAuthStore();
+const toast = useToast();
 const { getProjectName } = useEntityLookup();
 
 // Invoice store loaded lazily in onMounted to avoid top-level await
@@ -291,7 +292,8 @@ async function loadUpcomingItems() {
       upcomingItems.value = result.items;
     }
   } catch (error) {
-    console.error('Error loading upcoming items:', error);
+    // silently handled
+    toast.error('Failed to load upcoming items');
   } finally {
     isLoadingUpcoming.value = false;
   }
@@ -307,14 +309,14 @@ function formatUpcomingDate(date) {
 
 function getColorClass(typeOrColor) {
   const colorMap = {
-    'task': 'bg-[#2563EB]',
+    'task': 'bg-[var(--accent-primary)]',
     'project': 'bg-[var(--warning)]',
     'event': 'bg-[var(--success)]',
-    'blue': 'bg-[#2563EB]',
+    'blue': 'bg-[var(--accent-primary)]',
     'orange': 'bg-[var(--warning)]',
     'green': 'bg-[var(--success)]',
     'red': 'bg-[var(--danger)]',
-    'purple': 'bg-[#7C3AED]'
+    'purple': 'bg-[var(--accent-primary)]'
   };
   return colorMap[typeOrColor] || 'bg-[var(--text-secondary)]';
 }
@@ -367,11 +369,11 @@ onMounted(async () => {
     const results = await Promise.allSettled(fetches);
     results.forEach((result, i) => {
       if (result.status === 'rejected') {
-        console.error(`Dashboard fetch #${i} failed:`, result.reason);
+        // silently handled
       }
     });
   } catch (error) {
-    console.error("Error loading dashboard data:", error);
+    // silently handled
   } finally {
     tasksLoading.value = false;
   }

@@ -108,7 +108,8 @@ exports.handler = async function(event, context) {
       if (projectId) {
         const project = await projectsCollection.findOne({
           _id: new ObjectId(projectId),
-          teamId: teamId
+          teamId: teamId,
+          ...notDeleted
         });
 
         if (!project) {

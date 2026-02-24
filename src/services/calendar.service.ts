@@ -28,7 +28,6 @@ const calendarService: CalendarServiceInterface = {
 
       return response;
     } catch (error) {
-      console.error('Error fetching calendar events:', error);
       throw error;
     }
   },
@@ -41,7 +40,6 @@ const calendarService: CalendarServiceInterface = {
       const response = await api.post<CalendarEvent>(CALENDAR_EVENT_ENDPOINT, eventData);
       return response;
     } catch (error) {
-      console.error('Error creating calendar event:', error);
       throw error;
     }
   },
@@ -54,7 +52,6 @@ const calendarService: CalendarServiceInterface = {
       const response = await api.put<CalendarEvent>(`${CALENDAR_EVENT_ENDPOINT}?id=${id}`, eventData);
       return response;
     } catch (error) {
-      console.error('Error updating calendar event:', error);
       throw error;
     }
   },
@@ -66,7 +63,6 @@ const calendarService: CalendarServiceInterface = {
     try {
       await api.delete(`${CALENDAR_EVENT_ENDPOINT}?id=${id}`);
     } catch (error) {
-      console.error('Error deleting calendar event:', error);
       throw error;
     }
   },
@@ -82,7 +78,6 @@ const calendarService: CalendarServiceInterface = {
 
       return response;
     } catch (error) {
-      console.error('Error fetching project calendar events:', error);
       throw error;
     }
   },
@@ -98,7 +93,6 @@ const calendarService: CalendarServiceInterface = {
 
       return response;
     } catch (error) {
-      console.error('Error fetching task calendar events:', error);
       throw error;
     }
   },
@@ -138,7 +132,6 @@ const calendarService: CalendarServiceInterface = {
 
       return response;
     } catch (error) {
-      console.error('Error fetching task deadlines:', error);
       // Return empty array instead of throwing to prevent app crashes
       return [];
     }

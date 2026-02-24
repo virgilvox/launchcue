@@ -237,6 +237,7 @@ const isLoading = ref(false)
 const hasSearched = ref(false)
 const focusedIndex = ref(-1)
 const searchInput = ref(null)
+const previousActiveElement = ref(null)
 
 let debounceTimer = null
 
@@ -309,9 +310,9 @@ const typeIcons = {
 const typeIconStyle = {
   task: 'border-color: var(--border); background-color: var(--accent-primary-wash); color: var(--accent-primary);',
   project: 'border-color: var(--border); background-color: var(--accent-primary-wash); color: var(--accent-primary);',
-  client: 'border-color: var(--border); background-color: #D1FAE5; color: #059669;',
-  note: 'border-color: var(--border); background-color: #FEF3C7; color: #D97706;',
-  campaign: 'border-color: var(--border); background-color: #FFE4E6; color: #E11D48;',
+  client: 'border-color: var(--border); background-color: var(--accent-primary-wash); color: var(--success);',
+  note: 'border-color: var(--border); background-color: var(--accent-hot-wash); color: var(--warning);',
+  campaign: 'border-color: var(--border); background-color: var(--accent-hot-wash); color: var(--accent-hot);',
 }
 
 const typeLabels = {
@@ -394,7 +395,7 @@ async function performSearch(query) {
     results.value = response.results || []
     hasSearched.value = true
   } catch (error) {
-    console.error('Search failed:', error)
+    // silently handled
     results.value = []
     hasSearched.value = true
   } finally {
@@ -446,6 +447,7 @@ function selectFocused() {
 
 // Open/close
 function open() {
+  previousActiveElement.value = document.activeElement
   isOpen.value = true
   searchQuery.value = ''
   results.value = []
@@ -461,6 +463,12 @@ function close() {
   searchQuery.value = ''
   results.value = []
   hasSearched.value = false
+  if (previousActiveElement.value && typeof previousActiveElement.value.focus === 'function') {
+    nextTick(() => {
+      previousActiveElement.value.focus()
+      previousActiveElement.value = null
+    })
+  }
 }
 
 // Utility

@@ -82,7 +82,7 @@ exports.handler = async function(event, context) {
         // GET: List or single item
         if (event.httpMethod === 'GET') {
             if (campaignId) {
-                const campaign = await collection.findOne({ _id: new ObjectId(campaignId), teamId });
+                const campaign = await collection.findOne({ _id: new ObjectId(campaignId), teamId, ...notDeleted });
                 if (!campaign) {
                     return createErrorResponse(404, 'Campaign not found');
                 }

@@ -14,7 +14,6 @@ class CampaignService {
     try {
       return await apiService.get<Campaign[]>(CAMPAIGN_ENDPOINT, params as Record<string, unknown>);
     } catch (error) {
-      console.error('Error fetching campaigns:', error);
       throw error;
     }
   }
@@ -23,7 +22,6 @@ class CampaignService {
     try {
       return await apiService.get<Campaign>(`${CAMPAIGN_ENDPOINT}/${id}`);
     } catch (error) {
-      console.error(`Error fetching campaign ${id}:`, error);
       throw error;
     }
   }
@@ -32,7 +30,6 @@ class CampaignService {
     try {
       return await apiService.post<Campaign>(CAMPAIGN_ENDPOINT, data);
     } catch (error) {
-      console.error('Error creating campaign:', error);
       throw error;
     }
   }
@@ -41,7 +38,6 @@ class CampaignService {
     try {
       return await apiService.put<Campaign>(`${CAMPAIGN_ENDPOINT}/${id}`, data);
     } catch (error) {
-      console.error(`Error updating campaign ${id}:`, error);
       throw error;
     }
   }
@@ -50,7 +46,6 @@ class CampaignService {
     try {
       return await apiService.delete(`${CAMPAIGN_ENDPOINT}/${id}`);
     } catch (error) {
-      console.error(`Error deleting campaign ${id}:`, error);
       throw error;
     }
   }
@@ -61,7 +56,6 @@ class CampaignService {
       // Assuming an endpoint structure like /campaigns/{id}/steps
       return await apiService.get<CampaignStep[]>(`${CAMPAIGN_ENDPOINT}/${campaignId}/steps`);
     } catch (error) {
-      console.error(`Error fetching steps for campaign ${campaignId}:`, error);
       throw error;
     }
   }
@@ -72,7 +66,6 @@ class CampaignService {
        // Assuming an endpoint structure like /campaigns/{id}/export?format=markdown
        return await apiService.get(`${CAMPAIGN_ENDPOINT}/${campaignId}/export`, { format });
      } catch (error) {
-       console.error(`Error exporting campaign ${campaignId}:`, error);
        throw error;
      }
   }

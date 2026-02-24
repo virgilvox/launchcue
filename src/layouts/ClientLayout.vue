@@ -19,7 +19,7 @@ const handleLogout = async () => {
         <div class="flex justify-between items-center h-16">
           <div class="flex items-center gap-3">
             <img class="h-8 w-auto" src="/logo-placeholder.png" alt="LaunchCue">
-            <span class="text-xl font-semibold text-[var(--text-primary)]">LaunchCue</span>
+            <span class="heading-section">LaunchCue</span>
             <span class="text-sm text-[var(--text-secondary)] hidden sm:inline">Client Portal</span>
           </div>
           <nav class="flex items-center gap-4">

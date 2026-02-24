@@ -14,7 +14,6 @@ class UserService {
     try {
       return await apiService.get<User>(USER_PROFILE_ENDPOINT);
     } catch (error) {
-      console.error('Error fetching current user:', error);
       throw error;
     }
   }
@@ -41,7 +40,6 @@ class UserService {
     try {
       return await apiService.get<User>(USER_PROFILE_ENDPOINT);
     } catch (error) {
-      console.error('Error fetching user profile:', error);
       throw error;
     }
   }
@@ -53,7 +51,6 @@ class UserService {
     try {
       return await apiService.put<User>(USER_PROFILE_ENDPOINT, profileData);
     } catch (error) {
-      console.error('Error updating user profile:', error);
       throw error;
     }
   }
@@ -65,7 +62,6 @@ class UserService {
     try {
       return await apiService.post(AUTH_CHANGE_PASSWORD_ENDPOINT, passwordData);
     } catch (error) {
-      console.error('Error updating password:', error);
       throw error;
     }
   }

@@ -42,7 +42,7 @@
 </template>
 
 <script setup>
-import { computed, ref, nextTick } from 'vue'
+import { computed, ref, watch, nextTick } from 'vue'
 import { XMarkIcon } from '@heroicons/vue/24/outline'
 
 const props = defineProps({
@@ -72,6 +72,13 @@ const previousActiveElement = ref(null)
 
 const titleId = computed(() => `modal-title-${Math.random().toString(36).slice(2, 9)}`)
 
+// Save the triggering element before the transition starts (not after it ends)
+watch(() => props.modelValue, (newVal) => {
+  if (newVal) {
+    previousActiveElement.value = document.activeElement
+  }
+})
+
 const sizeClass = computed(() => ({
   'sm:max-w-sm': props.size === 'sm',
   'sm:max-w-lg': props.size === 'md',
@@ -84,9 +91,15 @@ const close = () => {
 }
 
 const onAfterEnter = () => {
-  previousActiveElement.value = document.activeElement
   nextTick(() => {
-    modalRef.value?.focus()
+    const firstFocusable = modalRef.value?.querySelector(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    )
+    if (firstFocusable) {
+      firstFocusable.focus()
+    } else {
+      modalRef.value?.focus()
+    }
   })
 }
 

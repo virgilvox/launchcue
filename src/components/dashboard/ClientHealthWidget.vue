@@ -22,7 +22,7 @@
           ></div>
           <router-link
             :to="`/clients/${client.id}`"
-            class="text-body-sm font-medium truncate hover:text-[var(--accent-primary)]"
+            class="text-body-sm font-medium truncate text-[var(--text-primary)] hover:text-[var(--accent-primary)]"
           >
             {{ client.name }}
           </router-link>

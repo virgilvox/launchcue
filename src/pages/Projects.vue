@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <PageContainer>
     <PageHeader title="Projects">
       <template #actions>
         <button @click="openAddProjectModal" class="btn btn-primary">
@@ -237,7 +237,7 @@
     <Modal v-model="showDeleteModal" title="Confirm Delete" size="sm">
       <div class="space-y-4">
         <p>Are you sure you want to delete <strong>{{ projectToDelete?.title }}</strong>? This action cannot be undone.</p>
-        
+
         <div class="flex justify-end gap-3 pt-4 border-t-2 border-[var(--border-light)]">
           <button @click="closeDeleteModal" class="btn btn-secondary">
             CANCEL
@@ -248,11 +248,12 @@
         </div>
       </div>
     </Modal>
-  </div>
+  </PageContainer>
 </template>
 
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue';
+import { useToast } from 'vue-toastification';
 import { useProjectStore } from '../stores/project';
 import { useClientStore } from '../stores/client';
 import { getStatusColor } from '@/utils/statusColors';
@@ -260,6 +261,7 @@ import { formatDate } from '@/utils/dateFormatter';
 import { useEntityLookup } from '@/composables/useEntityLookup';
 import { PlusIcon, BriefcaseIcon, EllipsisVerticalIcon } from '@heroicons/vue/24/outline';
 import Modal from '../components/Modal.vue';
+import PageContainer from '@/components/ui/PageContainer.vue';
 import PageHeader from '../components/ui/PageHeader.vue';
 import LoadingSpinner from '../components/LoadingSpinner.vue';
 import EmptyState from '../components/ui/EmptyState.vue';
@@ -267,6 +269,7 @@ import ClientColorDot from '../components/ui/ClientColorDot.vue';
 
 const projectStore = useProjectStore();
 const clientStore = useClientStore();
+const toast = useToast();
 const { getClientName, getClientColorId } = useEntityLookup();
 
 const loading = ref(false);
@@ -335,7 +338,7 @@ onMounted(async () => {
   ]);
   results.forEach((result, i) => {
     if (result.status === 'rejected') {
-      console.error(`Projects dependency fetch #${i} failed:`, result.reason);
+      // silently handled
     }
   });
   loading.value = false;
@@ -443,7 +446,8 @@ async function saveProject() {
     
     closeModal();
   } catch (error) {
-    console.error('Error saving project:', error);
+    // silently handled
+    toast.error('Failed to save project');
   } finally {
     saving.value = false;
   }
@@ -469,7 +473,8 @@ async function deleteProject() {
     await projectStore.deleteProject(projectToDelete.value.id);
     closeDeleteModal();
   } catch (error) {
-    console.error('Error deleting project:', error);
+    // silently handled
+    toast.error('Failed to delete project');
   } finally {
     deleting.value = false;
   }

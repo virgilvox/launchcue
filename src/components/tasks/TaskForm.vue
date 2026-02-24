@@ -122,10 +122,10 @@
     </div>
 
     <div class="form-actions">
-      <button type="button" @click="cancel" class="btn-outline">
+      <button type="button" @click="cancel" class="btn btn-outline">
         Cancel
       </button>
-      <button type="submit" class="btn-primary" :disabled="isSaving">
+      <button type="submit" class="btn btn-primary" :disabled="isSaving">
         {{ isSaving ? 'Saving...' : (isEditing ? 'Update' : 'Create') + ' Task' }}
       </button>
     </div>

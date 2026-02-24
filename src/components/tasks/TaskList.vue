@@ -9,6 +9,7 @@
           <th>ASSIGNEE</th>
           <th>DUE DATE</th>
           <th>PROJECT</th>
+          <th>CLIENT</th>
           <th class="text-center">CHECKLIST</th>
           <th class="text-right">ACTIONS</th>
         </tr>
@@ -56,6 +57,13 @@
             <span class="mono text-body-sm">{{ formatDate(task.dueDate) || '-' }}</span>
           </td>
           <td class="text-body-sm text-[var(--text-secondary)]">{{ getProjectName(task.projectId) }}</td>
+          <td>
+            <div v-if="getClientIdForTask(task)" class="flex items-center gap-1.5">
+              <ClientColorDot :color="getClientColorId(getClientIdForTask(task))" />
+              <span class="text-body-sm text-[var(--text-primary)]">{{ getClientName(getClientIdForTask(task)) }}</span>
+            </div>
+            <span v-else class="text-caption">—</span>
+          </td>
           <td class="text-center">
             <button
               @click.stop="emit('openChecklist', task)"
@@ -93,8 +101,10 @@
 <script setup>
 import { computed } from 'vue';
 import { useTeamStore } from '../../stores/team';
+import { useProjectStore } from '../../stores/project';
 import { formatDate } from '@/utils/dateFormatter';
 import { useEntityLookup } from '@/composables/useEntityLookup';
+import ClientColorDot from '@/components/ui/ClientColorDot.vue';
 import {
   PencilIcon,
   TrashIcon,
@@ -110,8 +120,15 @@ const props = defineProps({
 
 const emit = defineEmits(['edit', 'delete', 'updateStatus', 'openChecklist']);
 
-const { getProjectName } = useEntityLookup();
+const { getProjectName, getClientName, getClientColorId } = useEntityLookup();
 const teamStore = useTeamStore();
+const projectStore = useProjectStore();
+
+const getClientIdForTask = (task) => {
+  if (!task.projectId) return null;
+  const project = projectStore.projects.find(p => p.id === task.projectId);
+  return project?.clientId || null;
+};
 const teamMembers = computed(() => teamStore.validTeamMembers);
 
 const getPriorityClass = (priority) => {

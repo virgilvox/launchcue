@@ -7,6 +7,7 @@ const logger = require('./utils/logger');
 const { getPaginationParams, createPaginatedResponse } = require('./utils/pagination');
 const { createAuditLog } = require('./utils/auditLog');
 const { rateLimitCheck } = require('./utils/rateLimit');
+const { notDeleted, softDelete } = require('./utils/softDelete');
 
 // Deliverable schema
 const DeliverableSchema = z.object({
@@ -80,7 +81,8 @@ exports.handler = async (event, context) => {
         try {
           const template = await scopeTemplatesCollection.findOne({
             _id: new ObjectId(specificTemplateId),
-            teamId: teamId
+            teamId: teamId,
+            ...notDeleted
           });
 
           if (!template) {
@@ -103,7 +105,7 @@ exports.handler = async (event, context) => {
       // Otherwise, fetch all scope templates for the authenticated team
       else {
         const qp = event.queryStringParameters || {};
-        const query = { teamId };
+        const query = { teamId, ...notDeleted };
         const formatResource = r => { r.id = r._id.toString(); delete r._id; return r; };
 
         if (qp.page) {
@@ -197,7 +199,8 @@ exports.handler = async (event, context) => {
       // Find the template to check if it exists and belongs to the user's team
       const templateExists = await scopeTemplatesCollection.findOne({
         _id: new ObjectId(specificTemplateId),
-        teamId: teamId
+        teamId: teamId,
+        ...notDeleted
       });
 
       if (!templateExists) {
@@ -221,9 +224,13 @@ exports.handler = async (event, context) => {
       };
 
       // Remove fields that should not be updated
+      delete updateData._id;
+      delete updateData.id;
       delete updateData.teamId;
       delete updateData.createdBy;
       delete updateData.createdAt;
+      delete updateData.deletedAt;
+      delete updateData.deletedBy;
 
       // Update the template
       const result = await scopeTemplatesCollection.updateOne(
@@ -232,7 +239,7 @@ exports.handler = async (event, context) => {
       );
 
       // Get the updated template
-      const updatedTemplate = await scopeTemplatesCollection.findOne({ _id: new ObjectId(specificTemplateId) });
+      const updatedTemplate = await scopeTemplatesCollection.findOne({ _id: new ObjectId(specificTemplateId), teamId: teamId });
       updatedTemplate.id = updatedTemplate._id.toString();
       delete updatedTemplate._id;
 
@@ -248,7 +255,8 @@ exports.handler = async (event, context) => {
       // Check if the template exists and belongs to the user's team
       const templateExists = await scopeTemplatesCollection.findOne({
         _id: new ObjectId(specificTemplateId),
-        teamId: teamId
+        teamId: teamId,
+        ...notDeleted
       });
 
       if (!templateExists) {
@@ -256,11 +264,12 @@ exports.handler = async (event, context) => {
         return createErrorResponse(404, 'Scope template not found');
       }
 
-      // Delete the template
-      const result = await scopeTemplatesCollection.deleteOne({
+      // Soft delete the template
+      const result = await softDelete(scopeTemplatesCollection, {
         _id: new ObjectId(specificTemplateId),
-        teamId: teamId
-      });
+        teamId: teamId,
+        ...notDeleted
+      }, userId);
 
       await createAuditLog(db, { userId, teamId, action: 'delete', resourceType: 'scopeTemplate', resourceId: specificTemplateId });
 

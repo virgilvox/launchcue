@@ -1,7 +1,7 @@
 <template>
   <PageContainer>
     <div v-if="loading" class="text-center py-10">
-      <p class="text-[var(--text-secondary)]">Loading project details...</p>
+      <LoadingSpinner text="Loading project details..." />
     </div>
 
     <div v-else-if="!project" class="text-center py-10">
@@ -16,9 +16,17 @@
         :title="projectTitle"
       >
         <template #actions>
-          <span :class="`px-2 py-1 text-xs ${getStatusColor(project.status)}`">
-            {{ project.status }}
-          </span>
+          <select
+            :value="project.status"
+            class="input text-body-sm py-1 px-2 min-w-[140px]"
+            @change="handleStatusChange($event.target.value)"
+          >
+            <option value="Planning">Planning</option>
+            <option value="In Progress">In Progress</option>
+            <option value="On Hold">On Hold</option>
+            <option value="Completed">Completed</option>
+            <option value="Cancelled">Cancelled</option>
+          </select>
           <span v-if="project.client" class="text-[var(--text-secondary)]">
             Client:
             <router-link
@@ -84,7 +92,7 @@
     <!-- Add/Edit Task Modal -->
     <div v-if="taskModal.isOpen.value" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <div class="bg-[var(--surface-elevated)] border-2 border-[var(--border-light)] p-6 w-full max-w-md">
-        <h3 class="text-xl font-semibold text-[var(--text-primary)] mb-4">
+        <h3 class="heading-section mb-4">
           {{ taskModal.editingItem.value ? 'Edit Task' : 'Add Task' }}
         </h3>
 
@@ -175,7 +183,7 @@
     <!-- Add Team Member Modal -->
     <div v-if="teamMemberModal.isOpen.value" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <div class="bg-[var(--surface-elevated)] border-2 border-[var(--border-light)] p-6 w-full max-w-md">
-        <h3 class="text-xl font-semibold text-[var(--text-primary)] mb-4">Add Team Member</h3>
+        <h3 class="heading-section mb-4">Add Team Member</h3>
 
         <form @submit.prevent="saveTeamMember">
           <div class="mb-4">
@@ -236,7 +244,7 @@
     <!-- Delete Project Confirmation Modal -->
     <div v-if="deleteDialog.isOpen.value" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <div class="bg-[var(--surface-elevated)] border-2 border-[var(--border-light)] p-6 w-full max-w-md">
-        <h3 class="text-xl font-semibold text-[var(--text-primary)] mb-4">Confirm Delete</h3>
+        <h3 class="heading-section mb-4">Confirm Delete</h3>
         <p class="text-[var(--text-secondary)] mb-6">
           Are you sure you want to delete this project? This action cannot be undone and will also delete all tasks and team member associations.
         </p>
@@ -265,7 +273,6 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useToast } from 'vue-toastification'
-import { useAuthStore } from '../stores/auth'
 import { useModalState } from '@/composables/useModalState'
 import { useConfirmDialog } from '@/composables/useConfirmDialog'
 import projectService from '@/services/project.service'
@@ -276,12 +283,11 @@ import ProjectDetailsCard from '@/components/project/ProjectDetailsCard.vue'
 import ProjectTasksSection from '@/components/project/ProjectTasksSection.vue'
 import ProjectTeamSection from '@/components/project/ProjectTeamSection.vue'
 import ProjectStatsCard from '@/components/project/ProjectStatsCard.vue'
-import { getStatusColor } from '@/utils/statusColors'
+import LoadingSpinner from '@/components/LoadingSpinner.vue'
 
 const route = useRoute()
 const router = useRouter()
 const toast = useToast()
-const authStore = useAuthStore()
 
 // State
 const loading = ref(true)
@@ -391,7 +397,6 @@ async function loadProject() {
 
     await loadProjectTasks(projectId)
   } catch (err) {
-    console.error('Error loading project:', err)
     error.value = 'Failed to load project details. Please try again.'
   } finally {
     loading.value = false
@@ -405,7 +410,6 @@ async function loadProjectTasks(projectId) {
   try {
     projectTasks.value = await taskService.getProjectTasks(projectId)
   } catch (err) {
-    console.error('Error loading project tasks:', err)
     toast.error('Failed to load project tasks')
   } finally {
     tasksLoading.value = false
@@ -415,24 +419,31 @@ async function loadProjectTasks(projectId) {
 // Toggle task completion
 async function toggleTaskCompletion(task) {
   try {
-    const updatedTask = {
-      ...task,
-      completed: !task.completed,
-      status: !task.completed ? 'Done' : 'To Do',
-    }
-
-    await taskService.updateTask(task.id, updatedTask)
+    const newCompleted = !task.completed
+    const result = await taskService.updateTask(task.id, {
+      completed: newCompleted,
+      status: newCompleted ? 'Done' : 'To Do',
+    })
 
     const index = projectTasks.value.findIndex(t => t.id === task.id)
     if (index !== -1) {
-      projectTasks.value[index].completed = !task.completed
-      projectTasks.value[index].status = !task.completed ? 'Done' : 'To Do'
+      projectTasks.value[index] = { ...projectTasks.value[index], ...result }
     }
 
-    toast.success(`Task marked as ${updatedTask.completed ? 'completed' : 'incomplete'}`)
+    toast.success(`Task marked as ${newCompleted ? 'completed' : 'incomplete'}`)
   } catch (err) {
-    console.error('Error toggling task completion:', err)
     toast.error('Failed to update task status')
+  }
+}
+
+// Change project status
+async function handleStatusChange(newStatus) {
+  try {
+    const result = await projectService.updateProject(project.value.id, { status: newStatus })
+    project.value = { ...project.value, ...result }
+    toast.success(`Project status changed to ${newStatus}`)
+  } catch (err) {
+    toast.error('Failed to update project status')
   }
 }
 
@@ -495,7 +506,6 @@ async function saveTask() {
 
     taskModal.close()
   } catch (err) {
-    console.error('Error saving task:', err)
     toast.error(`Failed to save task: ${err.message || 'Unknown error'}`)
   } finally {
     taskModal.setLoading(false)
@@ -514,7 +524,6 @@ async function deleteTask(task) {
 
     toast.success('Task deleted successfully')
   } catch (err) {
-    console.error('Error deleting task:', err)
     toast.error('Failed to delete task')
   }
 }
@@ -546,7 +555,6 @@ async function saveTeamMember() {
 
     teamMemberModal.close()
   } catch (err) {
-    console.error('Error adding team member:', err)
     toast.error('Failed to add team member')
   } finally {
     teamMemberModal.setLoading(false)
@@ -565,7 +573,6 @@ async function removeTeamMember(member) {
 
     toast.success('Team member removed successfully')
   } catch (err) {
-    console.error('Error removing team member:', err)
     toast.error('Failed to remove team member')
   }
 }
@@ -590,7 +597,6 @@ async function executeDeleteProject() {
       router.push('/projects')
     }
   } catch (err) {
-    console.error('Error deleting project:', err)
     toast.error('Failed to delete project')
   } finally {
     deleteDialog.done()

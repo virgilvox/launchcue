@@ -7,6 +7,7 @@ const logger = require('./utils/logger');
 const { getPaginationParams, createPaginatedResponse } = require('./utils/pagination');
 const { createAuditLog } = require('./utils/auditLog');
 const { rateLimitCheck } = require('./utils/rateLimit');
+const { notDeleted, softDelete } = require('./utils/softDelete');
 
 // Resource schema validation
 const ResourceSchema = z.object({
@@ -67,9 +68,10 @@ exports.handler = async (event, context) => {
       if (specificResourceId) {
         logger.debug(`Fetching specific resource: ${specificResourceId}`);
         try {
-          const resource = await resourcesCollection.findOne({ 
+          const resource = await resourcesCollection.findOne({
             _id: new ObjectId(specificResourceId),
-            teamId: teamId
+            teamId: teamId,
+            ...notDeleted
           });
           
           if (!resource) {
@@ -92,7 +94,7 @@ exports.handler = async (event, context) => {
       // Otherwise, fetch all resources for the authenticated team
       else {
         const qp = event.queryStringParameters || {};
-        const query = { teamId };
+        const query = { teamId, ...notDeleted };
         const formatResource = r => { r.id = r._id.toString(); delete r._id; return r; };
 
         if (qp.page) {
@@ -176,9 +178,10 @@ exports.handler = async (event, context) => {
       const validatedData = validationResult.data;
       
       // Find the resource to check if it exists and belongs to the user's team
-      const resourceExists = await resourcesCollection.findOne({ 
+      const resourceExists = await resourcesCollection.findOne({
         _id: new ObjectId(specificResourceId),
-        teamId: teamId
+        teamId: teamId,
+        ...notDeleted
       });
       
       if (!resourceExists) {
@@ -194,9 +197,13 @@ exports.handler = async (event, context) => {
       };
       
       // Remove fields that should not be updated
+      delete updateData._id;
+      delete updateData.id;
       delete updateData.teamId;
       delete updateData.createdBy;
       delete updateData.createdAt;
+      delete updateData.deletedAt;
+      delete updateData.deletedBy;
       
       // Update the resource
       const result = await resourcesCollection.updateOne(
@@ -205,7 +212,7 @@ exports.handler = async (event, context) => {
       );
       
       // Get the updated resource
-      const updatedResource = await resourcesCollection.findOne({ _id: new ObjectId(specificResourceId) });
+      const updatedResource = await resourcesCollection.findOne({ _id: new ObjectId(specificResourceId), teamId: teamId });
       updatedResource.id = updatedResource._id.toString();
       delete updatedResource._id;
 
@@ -219,9 +226,10 @@ exports.handler = async (event, context) => {
       logger.debug(`Deleting resource: ${specificResourceId}`);
       
       // Check if the resource exists and belongs to the user's team
-      const resourceExists = await resourcesCollection.findOne({ 
+      const resourceExists = await resourcesCollection.findOne({
         _id: new ObjectId(specificResourceId),
-        teamId: teamId
+        teamId: teamId,
+        ...notDeleted
       });
       
       if (!resourceExists) {
@@ -229,11 +237,12 @@ exports.handler = async (event, context) => {
         return createErrorResponse(404, 'Resource not found');
       }
       
-      // Delete the resource
-      const result = await resourcesCollection.deleteOne({
+      // Soft delete the resource
+      const result = await softDelete(resourcesCollection, {
         _id: new ObjectId(specificResourceId),
-        teamId: teamId
-      });
+        teamId: teamId,
+        ...notDeleted
+      }, userId);
 
       await createAuditLog(db, { userId, teamId, action: 'delete', resourceType: 'resource', resourceId: specificResourceId });
 

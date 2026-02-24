@@ -19,7 +19,6 @@ export const useOnboardingStore = defineStore('onboarding', () => {
       invitations.value = Array.isArray(response) ? response : []
       return invitations.value
     } catch (error) {
-      console.error('Error fetching invitations:', error)
       invitations.value = []
       throw error
     } finally {
@@ -35,7 +34,6 @@ export const useOnboardingStore = defineStore('onboarding', () => {
       }
       return result
     } catch (error) {
-      console.error('Error creating invitation:', error)
       throw error
     }
   }
@@ -45,7 +43,6 @@ export const useOnboardingStore = defineStore('onboarding', () => {
       await onboardingService.deleteInvitation(id)
       invitations.value = invitations.value.filter(inv => inv.id !== id)
     } catch (error) {
-      console.error('Error deleting invitation:', error)
       throw error
     }
   }
@@ -59,7 +56,6 @@ export const useOnboardingStore = defineStore('onboarding', () => {
       checklists.value = Array.isArray(response) ? response : []
       return checklists.value
     } catch (error) {
-      console.error('Error fetching checklists:', error)
       checklists.value = []
       throw error
     } finally {
@@ -75,7 +71,6 @@ export const useOnboardingStore = defineStore('onboarding', () => {
       }
       return result
     } catch (error) {
-      console.error('Error creating checklist:', error)
       throw error
     }
   }
@@ -90,7 +85,6 @@ export const useOnboardingStore = defineStore('onboarding', () => {
       }
       return updated
     } catch (error) {
-      console.error('Error updating checklist:', error)
       throw error
     } finally {
       isLoading.value = false
@@ -106,7 +100,6 @@ export const useOnboardingStore = defineStore('onboarding', () => {
       }
       return updated
     } catch (error) {
-      console.error('Error completing step:', error)
       throw error
     }
   }
@@ -116,7 +109,6 @@ export const useOnboardingStore = defineStore('onboarding', () => {
       await onboardingService.deleteChecklist(id)
       checklists.value = checklists.value.filter(c => c.id !== id)
     } catch (error) {
-      console.error('Error deleting checklist:', error)
       throw error
     }
   }

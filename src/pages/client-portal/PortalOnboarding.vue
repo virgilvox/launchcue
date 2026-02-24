@@ -10,7 +10,7 @@
 
     <!-- Loading -->
     <div v-if="loading" class="text-center py-10">
-      <p class="text-[var(--text-secondary)]">Loading onboarding...</p>
+      <LoadingSpinner text="Loading onboarding..." />
     </div>
 
     <!-- Not Found -->
@@ -168,6 +168,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useToast } from 'vue-toastification'
 import onboardingService from '@/services/onboarding.service'
+import LoadingSpinner from '@/components/LoadingSpinner.vue'
 import OnboardingProgress from '@/components/onboarding/OnboardingProgress.vue'
 import OnboardingStepForm from '@/components/onboarding/OnboardingStepForm.vue'
 import OnboardingStepUpload from '@/components/onboarding/OnboardingStepUpload.vue'
@@ -236,7 +237,6 @@ async function completeCurrentStep(response) {
       currentStepIndex.value = nextIncomplete
     }
   } catch (err) {
-    console.error('Error completing step:', err)
     toast.error('Failed to complete step')
   } finally {
     stepLoading.value = false
@@ -257,7 +257,6 @@ async function loadChecklist() {
       }
     }
   } catch (err) {
-    console.error('Error loading checklist:', err)
     toast.error('Failed to load onboarding checklist')
   } finally {
     loading.value = false

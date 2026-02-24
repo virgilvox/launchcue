@@ -64,7 +64,6 @@ export const useTeamStore = defineStore('team', () => {
         return { success: false, error: error.value }
       }
     } catch (err: unknown) {
-      console.error('Error fetching teams:', err)
       const message = err instanceof Error ? err.message : 'Failed to fetch teams'
       error.value = message
       toast.error(error.value)
@@ -97,7 +96,6 @@ export const useTeamStore = defineStore('team', () => {
         return { success: false, error: error.value }
       }
     } catch (err: unknown) {
-      console.error('Error fetching team members:', err)
       const message = err instanceof Error ? err.message : 'Failed to fetch team members'
       error.value = message
       toast.error(error.value)
@@ -130,7 +128,6 @@ export const useTeamStore = defineStore('team', () => {
         return { success: false, error: error.value }
       }
     } catch (err: unknown) {
-      console.error('Error creating team:', err)
       const message = err instanceof Error ? err.message : 'Failed to create team'
       error.value = message
       toast.error(error.value)
@@ -160,7 +157,6 @@ export const useTeamStore = defineStore('team', () => {
         return { success: false, error: error.value }
       }
     } catch (err: unknown) {
-      console.error('Error inviting user:', err)
       const message = err instanceof Error ? err.message : 'Failed to send invitation'
       error.value = message
       toast.error(error.value)
@@ -189,7 +185,6 @@ export const useTeamStore = defineStore('team', () => {
         return { success: false, error: error.value }
       }
     } catch (err: unknown) {
-      console.error('Error fetching pending invites:', err)
       const message = err instanceof Error ? err.message : 'Failed to fetch pending invites'
       error.value = message
       return { success: false, error: error.value }
@@ -220,7 +215,6 @@ export const useTeamStore = defineStore('team', () => {
         return { success: false, error: error.value }
       }
     } catch (err: unknown) {
-      console.error('Error removing team member:', err)
       const message = err instanceof Error ? err.message : 'Failed to remove team member'
       error.value = message
       toast.error(error.value)

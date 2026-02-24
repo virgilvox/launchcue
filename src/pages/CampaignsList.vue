@@ -1,9 +1,10 @@
 <template>
-  <div>
-    <div class="flex justify-between items-center mb-6">
-      <h2 class="text-2xl font-bold text-[var(--text-primary)]">Campaigns</h2>
-      <router-link to="/campaigns/new" class="btn btn-primary">New Campaign</router-link>
-    </div>
+  <PageContainer>
+    <PageHeader title="Campaigns">
+      <template #actions>
+        <router-link to="/campaigns/new" class="btn btn-primary">New Campaign</router-link>
+      </template>
+    </PageHeader>
 
     <!-- Filters -->
     <div class="card mb-6">
@@ -45,13 +46,17 @@
     <div v-else-if="error" class="text-center py-10">
       <p class="text-[var(--danger)]">{{ error }}</p>
     </div>
-    <div v-else-if="filteredCampaigns.length === 0" class="text-center py-10 bg-[var(--surface)]">
-      <p class="text-[var(--text-secondary)]">No campaigns found matching your criteria.</p>
-       <router-link to="/campaigns/new" v-if="!hasActiveFilters" class="btn btn-secondary mt-4">Create First Campaign</router-link>
-       <button @click="clearFilters" v-if="hasActiveFilters" class="text-[var(--accent-primary)] hover:underline mt-2">
-          Clear Filters
-      </button>
-    </div>
+    <EmptyState
+      v-else-if="filteredCampaigns.length === 0"
+      :icon="MegaphoneIcon"
+      :title="hasActiveFilters ? 'No campaigns match your filters' : 'No campaigns yet'"
+      :description="hasActiveFilters ? 'Try adjusting your filters or create a new campaign.' : 'Create your first campaign to get started.'"
+    >
+      <template #action>
+        <router-link v-if="!hasActiveFilters" to="/campaigns/new" class="btn btn-primary">Create First Campaign</router-link>
+        <button v-if="hasActiveFilters" @click="clearFilters" class="btn btn-secondary">Clear Filters</button>
+      </template>
+    </EmptyState>
 
     <!-- Campaign List/Grid -->
     <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -83,7 +88,7 @@
         </router-link>
     </div>
 
-  </div>
+  </PageContainer>
 </template>
 
 <script setup>
@@ -94,8 +99,12 @@ import { useProjectStore } from '../stores/project';
 import { useToast } from 'vue-toastification';
 import { formatShortDate } from '@/utils/dateFormatter';
 import { useEntityLookup } from '@/composables/useEntityLookup';
+import PageContainer from '@/components/ui/PageContainer.vue';
+import PageHeader from '@/components/ui/PageHeader.vue';
 import LoadingSpinner from '../components/LoadingSpinner.vue';
 import ClientColorDot from '../components/ui/ClientColorDot.vue';
+import EmptyState from '@/components/ui/EmptyState.vue';
+import { MegaphoneIcon } from '@heroicons/vue/24/outline';
 
 const clientStore = useClientStore();
 const projectStore = useProjectStore();
@@ -137,11 +146,10 @@ async function loadInitialData() {
         ]);
         results.forEach((result, i) => {
             if (result.status === 'rejected') {
-                console.error(`Fetch #${i} failed:`, result.reason);
+                // silently handled
             }
         });
     } catch (err) {
-        console.error("Error loading initial data for campaigns list:", err);
         error.value = "Failed to load necessary data.";
         toast.error(error.value);
     } finally {
@@ -158,7 +166,6 @@ async function fetchCampaigns() {
         if (filters.value.status) queryParams.status = filters.value.status;
         campaigns.value = await campaignService.getCampaigns(queryParams);
     } catch (err) {
-        console.error("Error fetching campaigns:", err);
         error.value = "Failed to load campaigns.";
         toast.error(error.value);
     } finally {

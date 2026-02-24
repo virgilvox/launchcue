@@ -48,7 +48,7 @@
         />
         <button 
           @click="addItem" 
-          class="btn-primary text-sm py-1.5" 
+          class="btn btn-primary text-sm py-1.5"
           :disabled="!newItemTitle.trim()"
         >
           Add
@@ -59,7 +59,7 @@
          <span class="text-sm text-[var(--text-secondary)] mr-auto">
              {{ completedCount }} / {{ totalCount }} completed
          </span>
-        <button type="button" @click="emit('update:modelValue', false)" class="btn-primary">
+        <button type="button" @click="emit('update:modelValue', false)" class="btn btn-primary">
           Done
         </button>
       </div>

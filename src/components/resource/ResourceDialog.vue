@@ -98,7 +98,6 @@ async function submitForm() {
   try {
     emit('save', { ...form.value });
   } catch (error) {
-    console.error('Error submitting resource form:', error);
     // Error is handled by parent component
   } finally {
     isSubmitting.value = false;
@@ -123,7 +122,7 @@ function removeTag(tagToRemove) {
     <!-- Dialog -->
     <div class="bg-[var(--surface-elevated)] border-2 border-[var(--border-light)] p-6 w-full max-w-lg z-10 relative max-h-[90vh] overflow-y-auto">
       <div class="flex items-center justify-between mb-6">
-        <h2 class="text-xl font-semibold text-[var(--text-primary)]">
+        <h2 class="heading-section">
           {{ resource ? 'Edit Resource' : 'Add Resource' }}
         </h2>
         <button

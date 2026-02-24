@@ -30,7 +30,6 @@ export const useResourceStore = defineStore('resource', () => {
       resources.value = data
       return data
     } catch (err: unknown) {
-      console.error('Error fetching resources:', err)
       const message = err instanceof Error ? err.message : 'Failed to load resources'
       error.value = message
       return []
@@ -48,7 +47,6 @@ export const useResourceStore = defineStore('resource', () => {
       currentResource.value = data
       return data
     } catch (err: unknown) {
-      console.error(`Error fetching resource ${id}:`, err)
       const message = err instanceof Error ? err.message : `Failed to load resource ${id}`
       error.value = message
       return null
@@ -73,7 +71,6 @@ export const useResourceStore = defineStore('resource', () => {
       resources.value.push(data)
       return data
     } catch (err: unknown) {
-      console.error('Error creating resource:', err)
       const message = err instanceof Error ? err.message : 'Failed to create resource'
       error.value = message
       throw err
@@ -102,7 +99,6 @@ export const useResourceStore = defineStore('resource', () => {
 
       return data
     } catch (err: unknown) {
-      console.error(`Error updating resource ${id}:`, err)
       const message = err instanceof Error ? err.message : `Failed to update resource ${id}`
       error.value = message
       throw err
@@ -128,7 +124,6 @@ export const useResourceStore = defineStore('resource', () => {
 
       return true
     } catch (err: unknown) {
-      console.error(`Error deleting resource ${id}:`, err)
       const message = err instanceof Error ? err.message : `Failed to delete resource ${id}`
       error.value = message
       throw err

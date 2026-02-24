@@ -6,6 +6,7 @@ const { z } = require('zod');
 const logger = require('./utils/logger');
 const { createAuditLog } = require('./utils/auditLog');
 const { rateLimitCheck } = require('./utils/rateLimit');
+const { notDeleted, softDelete } = require('./utils/softDelete');
 
 // Zod Schema for Calendar Event
 const EventSchema = z.object({
@@ -109,7 +110,7 @@ exports.handler = async function(event, context) {
         // GET: List events (supports date range filtering)
         if (event.httpMethod === 'GET' && !eventId) {
             const { start, end, clientId, projectId } = event.queryStringParameters || {};
-            const query = { teamId };
+            const query = { teamId, ...notDeleted };
             
             // Date range filtering (required for calendar view)
             if (start) query.start = { $gte: new Date(start) };
@@ -149,7 +150,7 @@ exports.handler = async function(event, context) {
 
         // GET: Single event (if needed)
         else if (event.httpMethod === 'GET' && eventId) {
-            const eventDoc = await collection.findOne({ _id: new ObjectId(eventId), teamId });
+            const eventDoc = await collection.findOne({ _id: new ObjectId(eventId), teamId, ...notDeleted });
             if (!eventDoc) return createErrorResponse(404, 'Event not found');
             eventDoc.id = eventDoc._id.toString();
             eventDoc.start = eventDoc.start?.toISOString();
@@ -227,15 +228,15 @@ exports.handler = async function(event, context) {
             if (validatedData.hasOwnProperty('recurrence')) updateFields.recurrence = validatedData.recurrence || null;
             if (validatedData.hasOwnProperty('reminders')) updateFields.reminders = validatedData.reminders || [];
 
-            delete updateFields.teamId; delete updateFields.userId; delete updateFields.createdAt; delete updateFields.id;
+            delete updateFields._id; delete updateFields.id; delete updateFields.teamId; delete updateFields.userId; delete updateFields.createdAt; delete updateFields.deletedAt; delete updateFields.deletedBy;
 
-            const result = await collection.updateOne({ _id: new ObjectId(eventId), teamId }, { $set: updateFields });
+            const result = await collection.updateOne({ _id: new ObjectId(eventId), teamId, ...notDeleted }, { $set: updateFields });
 
             if (result.matchedCount === 0) {
                 return createErrorResponse(404, 'Event not found or user unauthorized');
             }
             
-            const updatedEvent = await collection.findOne({ _id: new ObjectId(eventId) });
+            const updatedEvent = await collection.findOne({ _id: new ObjectId(eventId), teamId });
             updatedEvent.id = updatedEvent._id.toString();
             updatedEvent.start = updatedEvent.start?.toISOString();
             updatedEvent.end = updatedEvent.end?.toISOString();
@@ -244,10 +245,10 @@ exports.handler = async function(event, context) {
             return createResponse(200, updatedEvent);
         }
 
-        // DELETE: Delete event
+        // DELETE: Soft delete event
         else if (event.httpMethod === 'DELETE' && eventId) {
-            const result = await collection.deleteOne({ _id: new ObjectId(eventId), teamId });
-            if (result.deletedCount === 0) {
+            const result = await softDelete(collection, { _id: new ObjectId(eventId), teamId, ...notDeleted }, userId);
+            if (result.matchedCount === 0) {
                  return createErrorResponse(404, 'Event not found or user unauthorized');
             }
             await createAuditLog(db, { userId, teamId, action: 'delete', resourceType: 'calendarEvent', resourceId: eventId });

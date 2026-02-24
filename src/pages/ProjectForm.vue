@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <PageContainer>
     <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
       <div class="flex items-center gap-3">
         <router-link 
@@ -10,7 +10,7 @@
             <path fill-rule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clip-rule="evenodd" />
           </svg>
         </router-link>
-        <h2 class="text-2xl font-bold text-[var(--text-primary)]">
+        <h2 class="heading-page">
           {{ isEditing ? 'Edit Project' : 'Create Project' }}
         </h2>
       </div>
@@ -18,7 +18,7 @@
     
     <div class="bg-[var(--surface-elevated)] border-2 border-[var(--border-light)] p-6">
       <div v-if="loading" class="text-center py-4">
-        <p class="text-[var(--text-secondary)]">Loading...</p>
+        <LoadingSpinner text="Loading..." />
       </div>
       
       <div v-else>
@@ -175,31 +175,33 @@
         </form>
       </div>
     </div>
-  </div>
+  </PageContainer>
 </template>
 
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
+import { useRoute, useRouter, onBeforeRouteLeave } from 'vue-router';
 import { useToast } from 'vue-toastification';
 import projectService from '@/services/project.service';
 import clientService from '@/services/client.service';
 import { useClientStore } from '@/stores/client';
 import { useProjectStore } from '@/stores/project';
-import { useTeamStore } from '@/stores/team';
 import { formatDate } from '../utils/dateFormatter';
+import PageContainer from '@/components/ui/PageContainer.vue';
+import LoadingSpinner from '@/components/LoadingSpinner.vue';
 
 const route = useRoute();
 const router = useRouter();
 const toast = useToast();
 const clientStore = useClientStore();
 const projectStore = useProjectStore();
-const teamStore = useTeamStore();
 
 const loading = ref(true);
 const saving = ref(false);
 const error = ref(null);
 const tagsInput = ref('');
+const isDirty = ref(false);
+const loaded = ref(false);
 const clients = computed(() => clientStore.clients.filter(client => !client.isContact));
 
 const projectForm = ref({
@@ -230,14 +232,31 @@ const editMode = ref(!!projectId);
 watch(tagsInput, (value) => {
   if (value.includes(',')) {
     const newTags = value.split(',').map(tag => tag.trim()).filter(tag => tag);
-    
+
     newTags.forEach(tag => {
       if (!projectForm.value.tags.includes(tag)) {
         projectForm.value.tags.push(tag);
       }
     });
-    
+
     tagsInput.value = '';
+  }
+});
+
+// Track unsaved changes (skip initial data load)
+watch(projectForm, () => {
+  if (loaded.value) {
+    isDirty.value = true;
+  }
+}, { deep: true });
+
+// Warn before navigating away with unsaved changes
+onBeforeRouteLeave((to, from, next) => {
+  if (isDirty.value) {
+    const answer = window.confirm('You have unsaved changes. Are you sure you want to leave?');
+    next(answer);
+  } else {
+    next();
   }
 });
 
@@ -268,7 +287,6 @@ async function loadProject() {
       // Update tags input
       tagsInput.value = '';
     } catch (err) {
-      console.error('Error loading project:', err);
       error.value = 'Failed to load project. Please try again.';
       toast.error('Failed to load project details');
     }
@@ -286,7 +304,7 @@ async function loadProject() {
         projectForm.value.title = `${client.name} - `;
       }
     } catch (err) {
-      console.error('Error loading client:', err);
+      // silently handled
       // Not critical, so we don't set error state
     }
   }
@@ -341,11 +359,12 @@ async function submitForm() {
       result = await projectStore.createProject(projectData);
       toast.success('Project created successfully');
     }
-    
+
+    isDirty.value = false;
+
     // Navigate back
     navigateBack(result);
   } catch (err) {
-    console.error('Error saving project:', err);
     error.value = 'Failed to save project. Please try again.';
     toast.error('Failed to save project');
   } finally {
@@ -420,14 +439,15 @@ onMounted(async () => {
           projectForm.value.title = `${client.name} Project`;
         }
       } catch (err) {
-        console.error('Error fetching client details:', err);
+        // silently handled
       }
     }
   } catch (error) {
-    console.error('Error initializing project form:', error);
     toast.error(`Error loading project data: ${error.message}`);
   } finally {
     loading.value = false;
+    // Use nextTick delay to ensure the watch skips the initial population
+    setTimeout(() => { loaded.value = true; }, 0);
   }
 });
 </script> 

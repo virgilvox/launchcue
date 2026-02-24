@@ -7,6 +7,7 @@ const logger = require('./utils/logger');
 const { getPaginationParams, createPaginatedResponse } = require('./utils/pagination');
 const { createAuditLog } = require('./utils/auditLog');
 const { rateLimitCheck } = require('./utils/rateLimit');
+const { notDeleted, softDelete } = require('./utils/softDelete');
 
 // Schema definitions
 const FormFieldSchema = z.object({
@@ -120,7 +121,8 @@ exports.handler = async (event, context) => {
         try {
           const checklist = await collection.findOne({
             _id: new ObjectId(specificId),
-            teamId: teamId
+            teamId: teamId,
+            ...notDeleted
           });
 
           if (!checklist) {
@@ -143,7 +145,7 @@ exports.handler = async (event, context) => {
       // Otherwise, fetch all for the authenticated team
       else {
         const qp = event.queryStringParameters || {};
-        const query = { teamId };
+        const query = { teamId, ...notDeleted };
         const formatChecklist = c => { c.id = c._id.toString(); delete c._id; return c; };
 
         // Optional filters
@@ -170,6 +172,10 @@ exports.handler = async (event, context) => {
 
     // POST: Create a new onboarding checklist
     else if (event.httpMethod === 'POST') {
+      // RBAC: Only owner/admin can create onboarding checklists
+      if (!authContext.role || !['owner', 'admin'].includes(authContext.role)) {
+        return createErrorResponse(403, 'Forbidden: insufficient permissions');
+      }
       logger.debug('Creating a new onboarding checklist');
 
       let data;
@@ -218,6 +224,10 @@ exports.handler = async (event, context) => {
 
     // PUT: Update an existing onboarding checklist
     else if (event.httpMethod === 'PUT' && specificId) {
+      // RBAC: Only owner/admin can update onboarding checklists
+      if (!authContext.role || !['owner', 'admin'].includes(authContext.role)) {
+        return createErrorResponse(403, 'Forbidden: insufficient permissions');
+      }
       const qp = event.queryStringParameters || {};
 
       // Special action: complete a step
@@ -240,7 +250,8 @@ exports.handler = async (event, context) => {
         // Find the checklist
         const checklist = await collection.findOne({
           _id: new ObjectId(specificId),
-          teamId: teamId
+          teamId: teamId,
+          ...notDeleted
         });
 
         if (!checklist) {
@@ -279,7 +290,7 @@ exports.handler = async (event, context) => {
         );
 
         // Get the updated checklist
-        const updatedChecklist = await collection.findOne({ _id: new ObjectId(specificId) });
+        const updatedChecklist = await collection.findOne({ _id: new ObjectId(specificId), teamId: teamId });
         updatedChecklist.id = updatedChecklist._id.toString();
         delete updatedChecklist._id;
 
@@ -312,7 +323,8 @@ exports.handler = async (event, context) => {
       // Find the checklist to check if it exists and belongs to the user's team
       const checklistExists = await collection.findOne({
         _id: new ObjectId(specificId),
-        teamId: teamId
+        teamId: teamId,
+        ...notDeleted
       });
 
       if (!checklistExists) {
@@ -333,9 +345,13 @@ exports.handler = async (event, context) => {
       };
 
       // Remove fields that should not be updated
+      delete updateData._id;
+      delete updateData.id;
       delete updateData.teamId;
       delete updateData.createdBy;
       delete updateData.createdAt;
+      delete updateData.deletedAt;
+      delete updateData.deletedBy;
 
       // Compute status based on steps
       // Use the new steps if provided, otherwise keep existing
@@ -349,7 +365,7 @@ exports.handler = async (event, context) => {
       );
 
       // Get the updated checklist
-      const updatedChecklist = await collection.findOne({ _id: new ObjectId(specificId) });
+      const updatedChecklist = await collection.findOne({ _id: new ObjectId(specificId), teamId: teamId });
       updatedChecklist.id = updatedChecklist._id.toString();
       delete updatedChecklist._id;
 
@@ -360,12 +376,17 @@ exports.handler = async (event, context) => {
 
     // DELETE: Delete an existing onboarding checklist
     else if (event.httpMethod === 'DELETE' && specificId) {
+      // RBAC: Only owner/admin can delete onboarding checklists
+      if (!authContext.role || !['owner', 'admin'].includes(authContext.role)) {
+        return createErrorResponse(403, 'Forbidden: insufficient permissions');
+      }
       logger.debug(`Deleting onboarding checklist: ${specificId}`);
 
       // Check if the checklist exists and belongs to the user's team
       const checklistExists = await collection.findOne({
         _id: new ObjectId(specificId),
-        teamId: teamId
+        teamId: teamId,
+        ...notDeleted
       });
 
       if (!checklistExists) {
@@ -373,11 +394,12 @@ exports.handler = async (event, context) => {
         return createErrorResponse(404, 'Onboarding checklist not found');
       }
 
-      // Delete the checklist
-      await collection.deleteOne({
+      // Soft delete the checklist
+      await softDelete(collection, {
         _id: new ObjectId(specificId),
-        teamId: teamId
-      });
+        teamId: teamId,
+        ...notDeleted
+      }, userId);
 
       await createAuditLog(db, { userId, teamId, action: 'delete', resourceType: 'onboarding', resourceId: specificId });
 

@@ -2,7 +2,22 @@ const { MongoClient, ObjectId } = require('mongodb');
 const { connectToDb } = require('./utils/db');
 const { authenticate } = require('./utils/authHandler'); // New unified authentication
 const { createResponse, createErrorResponse, handleOptionsRequest } = require('./utils/response');
+const { notDeleted, softDelete } = require('./utils/softDelete');
+const { z } = require('zod');
 const logger = require('./utils/logger');
+
+const ProjectUpdateSchema = z.object({
+  title: z.string().min(1).max(200).optional(),
+  name: z.string().min(1).max(200).optional(),
+  description: z.string().max(5000).optional(),
+  status: z.string().optional(),
+  clientId: z.string().optional(),
+  startDate: z.string().nullable().optional(),
+  dueDate: z.string().nullable().optional(),
+  endDate: z.string().nullable().optional(),
+  tags: z.array(z.string()).optional(),
+  teamMembers: z.array(z.any()).optional(),
+});
 
 exports.handler = async function(event, context) {
   const optionsResponse = handleOptionsRequest(event);
@@ -37,7 +52,7 @@ exports.handler = async function(event, context) {
     const tasksCollection = db.collection('tasks'); // For deleting related tasks
 
     // Find the project, ensuring it belongs to the user's team
-    const query = { _id: new ObjectId(projectId), teamId };
+    const query = { _id: new ObjectId(projectId), teamId, ...notDeleted };
 
     // GET: Fetch a single project
     if (event.httpMethod === 'GET') {
@@ -68,13 +83,21 @@ exports.handler = async function(event, context) {
 
     // PUT: Update a project
     else if (event.httpMethod === 'PUT') {
-      const data = JSON.parse(event.body);
-      const updateData = { ...data }; // Copy data to avoid modifying original
+      let data;
+      try { data = JSON.parse(event.body); } catch (e) { return createErrorResponse(400, 'Invalid JSON'); }
+
+      const validationResult = ProjectUpdateSchema.safeParse(data);
+      if (!validationResult.success) {
+        return createErrorResponse(400, 'Validation failed', validationResult.error.format());
+      }
+      const updateData = { ...validationResult.data };
       delete updateData.id; // Don't update the id field
       delete updateData._id; // Don't update the _id field
       delete updateData.teamId; // Prevent changing teamId
       delete updateData.createdBy; // Prevent changing createdBy
       delete updateData.createdAt; // Prevent changing createdAt
+      delete updateData.deletedAt;
+      delete updateData.deletedBy;
 
       if (updateData.clientId && !ObjectId.isValid(updateData.clientId)) {
           return createErrorResponse(400, 'Invalid Client ID format provided for update');
@@ -113,17 +136,19 @@ exports.handler = async function(event, context) {
           return createErrorResponse(404, 'Project not found or you do not have permission to delete it');
       }
       
-      // Delete the project
-      const deleteProjectResult = await projectsCollection.deleteOne(query);
+      // Soft delete the project
+      const deleteProjectResult = await softDelete(projectsCollection, query, userId);
 
-      if (deleteProjectResult.deletedCount === 0) {
+      if (deleteProjectResult.matchedCount === 0) {
         // This case should ideally not be reached if findOne succeeded, but good for safety
         return createErrorResponse(404, 'Project not found or could not be deleted');
       }
 
-      // Optional: Delete associated tasks (consider cascading implications)
-      const deleteTaskResult = await tasksCollection.deleteMany({ projectId: projectId, teamId: teamId });
-      logger.debug(`Deleted ${deleteTaskResult.deletedCount} tasks associated with project ${projectId}`);
+      // Cascade soft-delete associated tasks
+      await tasksCollection.updateMany(
+        { projectId: projectId, teamId: teamId, ...notDeleted },
+        { $set: { deletedAt: new Date(), deletedBy: userId } }
+      );
 
       return createResponse(200, { message: 'Project and associated tasks deleted successfully' });
     }

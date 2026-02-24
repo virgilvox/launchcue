@@ -1,7 +1,7 @@
 <template>
   <PageContainer>
     <div v-if="loading" class="text-center py-10">
-      <p class="text-[var(--text-secondary)]">Loading client details...</p>
+      <LoadingSpinner text="Loading client details..." />
     </div>
 
     <div v-else-if="!client" class="text-center py-10">
@@ -69,7 +69,7 @@
     <!-- Edit Client Modal -->
     <div v-if="showClientModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <div class="bg-[var(--surface-elevated)] border-2 border-[var(--border-light)] p-6 w-full max-w-md">
-        <h3 class="text-xl font-semibold text-[var(--text-primary)] mb-4">Edit Client</h3>
+        <h3 class="heading-section mb-4">Edit Client</h3>
 
         <form @submit.prevent="saveClient">
           <div class="mb-4">
@@ -226,7 +226,6 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useToast } from 'vue-toastification'
-import { useAuthStore } from '@/stores/auth'
 import clientService from '@/services/client.service'
 import projectService from '@/services/project.service'
 import Modal from '@/components/Modal.vue'
@@ -237,10 +236,10 @@ import ClientContactsSection from '@/components/client/ClientContactsSection.vue
 import ClientProjectsTable from '@/components/client/ClientProjectsTable.vue'
 import ClientColorDot from '@/components/ui/ClientColorDot.vue'
 import ClientColorPicker from '@/components/ui/ClientColorPicker.vue'
+import LoadingSpinner from '@/components/LoadingSpinner.vue'
 
 const route = useRoute()
 const router = useRouter()
-const authStore = useAuthStore()
 const toast = useToast()
 
 // State
@@ -333,7 +332,6 @@ async function loadClient() {
       client.value.contacts = []
     }
   } catch (err) {
-    console.error('Error loading client:', err)
     error.value = 'Failed to load client details. Please try again.'
   } finally {
     loading.value = false
@@ -347,7 +345,6 @@ async function loadClientProjects(clientId) {
   try {
     clientProjects.value = await projectService.getProjectsByClient(clientId)
   } catch (err) {
-    console.error('Error loading client projects:', err)
     toast.error('Failed to load client projects')
   } finally {
     projectsLoading.value = false
@@ -372,7 +369,6 @@ async function loadClientContacts(clientId) {
       client.value.contacts = response
     }
   } catch (err) {
-    console.error('Error loading client contacts:', err)
     toast.error('Failed to load client contacts')
   } finally {
     contactsLoading.value = false
@@ -406,7 +402,6 @@ async function saveClient() {
     toast.success('Client updated successfully')
     closeClientModal()
   } catch (err) {
-    console.error('Error saving client:', err)
     error.value = 'Failed to update client. Please try again.'
     toast.error('Failed to update client')
   } finally {
@@ -447,7 +442,6 @@ async function deleteProject() {
     toast.success('Project deleted successfully')
     closeDeleteModal()
   } catch (err) {
-    console.error('Error deleting project:', err)
     error.value = 'Failed to delete project. Please try again.'
     toast.error('Failed to delete project')
   } finally {
@@ -516,7 +510,6 @@ async function saveContact() {
     closeContactModal()
   } catch (err) {
     if (!err.silentError) {
-      console.error('Error saving contact:', err)
       toast.error('Failed to save contact')
     } else {
       toast.success(editingContact.value ? 'Contact updated' : 'Contact added')
@@ -555,7 +548,6 @@ async function deleteContact() {
     closeDeleteContactModal()
   } catch (err) {
     if (!err.silentError) {
-      console.error('Error deleting contact:', err)
       toast.error('Failed to delete contact')
     } else {
       toast.success('Contact deleted')

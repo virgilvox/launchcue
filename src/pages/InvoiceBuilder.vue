@@ -134,7 +134,7 @@
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
+import { useRoute, useRouter, onBeforeRouteLeave } from 'vue-router';
 import { useToast } from 'vue-toastification';
 import { useInvoiceStore } from '@/stores/invoice';
 import { useClientStore } from '@/stores/client';
@@ -166,6 +166,8 @@ const saving = ref(false);
 const error = ref(null);
 const showPreview = ref(false);
 const showScopeImport = ref(false);
+const isDirty = ref(false);
+const loaded = ref(false);
 
 const formData = ref({
   id: null,
@@ -232,8 +234,25 @@ watch(() => formData.value.projectId, async (projectId) => {
     try {
       await scopeStore.fetchScopes({ projectId });
     } catch (err) {
-      console.error('Error loading scopes:', err);
+      // silently handled
     }
+  }
+});
+
+// Track unsaved changes (skip initial data load)
+watch(formData, () => {
+  if (loaded.value) {
+    isDirty.value = true;
+  }
+}, { deep: true });
+
+// Warn before navigating away with unsaved changes
+onBeforeRouteLeave((to, from, next) => {
+  if (isDirty.value) {
+    const answer = window.confirm('You have unsaved changes. Are you sure you want to leave?');
+    next(answer);
+  } else {
+    next();
   }
 });
 
@@ -247,11 +266,11 @@ async function loadClientsAndProjects() {
     ]);
     results.forEach((result, i) => {
       if (result.status === 'rejected') {
-        console.error(`Fetch #${i} failed:`, result.reason);
+        // silently handled
       }
     });
   } catch (err) {
-    console.error('Error loading clients/projects:', err);
+    // silently handled
   }
 }
 
@@ -285,7 +304,6 @@ async function loadInvoice(id) {
       dueDate: invoiceData.dueDate ? invoiceData.dueDate.slice(0, 10) : null,
     };
   } catch (err) {
-    console.error('Error loading invoice:', err);
     error.value = 'Failed to load invoice. Please try again.';
     toast.error(error.value);
   } finally {
@@ -380,10 +398,11 @@ async function save() {
       toast.success('Invoice created successfully!');
       formData.value.id = created.id;
       formData.value.invoiceNumber = created.invoiceNumber;
+      isDirty.value = false;
       router.replace(`/invoices/${created.id}`);
     }
+    isDirty.value = false;
   } catch (err) {
-    console.error('Error saving invoice:', err);
     error.value = 'Failed to save invoice. Please try again.';
     toast.error(error.value);
   } finally {
@@ -402,7 +421,6 @@ async function markAsSent() {
     formData.value.status = updated.status || 'sent';
     toast.success('Invoice marked as sent');
   } catch (err) {
-    console.error('Error marking invoice as sent:', err);
     toast.error('Failed to update invoice status');
   } finally {
     saving.value = false;
@@ -418,7 +436,6 @@ async function markAsPaid() {
     formData.value.status = updated.status || 'paid';
     toast.success('Invoice marked as paid');
   } catch (err) {
-    console.error('Error marking invoice as paid:', err);
     toast.error('Failed to update invoice status');
   } finally {
     saving.value = false;
@@ -462,10 +479,11 @@ onMounted(async () => {
       };
     }
   } catch (err) {
-    console.error('Error initializing invoice builder:', err);
     error.value = 'Failed to initialize page. Please try again.';
   } finally {
     loading.value = false;
+    // Use nextTick delay to ensure the watch skips the initial population
+    setTimeout(() => { loaded.value = true; }, 0);
   }
 });
 </script>

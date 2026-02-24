@@ -287,9 +287,13 @@ exports.handler = async (event, context) => {
       }
 
       // Remove fields that should not be updated
+      delete updateData._id;
+      delete updateData.id;
       delete updateData.teamId;
       delete updateData.createdBy;
       delete updateData.createdAt;
+      delete updateData.deletedAt;
+      delete updateData.deletedBy;
 
       // Update the scope
       const result = await scopesCollection.updateOne(
@@ -298,7 +302,7 @@ exports.handler = async (event, context) => {
       );
 
       // Get the updated scope
-      const updatedScope = await scopesCollection.findOne({ _id: new ObjectId(specificScopeId) });
+      const updatedScope = await scopesCollection.findOne({ _id: new ObjectId(specificScopeId), teamId: teamId });
       updatedScope.id = updatedScope._id.toString();
       delete updatedScope._id;
 

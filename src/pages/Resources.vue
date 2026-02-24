@@ -1,5 +1,5 @@
 <template>
-  <div class="container px-4 py-8 mx-auto">
+  <PageContainer>
     <PageHeader title="Resources">
       <template #actions>
         <button class="btn btn-primary" @click="openResourceDialog()">
@@ -43,7 +43,7 @@
 
     <!-- Loading State -->
     <div v-if="resourceStore.isLoading" class="flex justify-center py-12">
-      <div class="w-16 h-16 border-t-4 border-b-4 border-[var(--accent-primary)] rounded-full animate-spin"></div>
+      <LoadingSpinner text="Loading resources..." />
     </div>
 
     <!-- Error State -->
@@ -55,13 +55,14 @@
     </div>
 
     <!-- Empty State -->
-    <div v-else-if="!resourceStore.resources.length" class="p-12 text-center bg-[var(--surface)]">
-      <h3 class="mb-4 text-xl font-medium text-[var(--text-primary)]">No resources yet</h3>
-      <p class="mb-6 text-[var(--text-secondary)]">Add resources like links, documents, or references for your team.</p>
-      <button class="btn btn-primary" @click="openResourceDialog()">
-        Add Your First Resource
-      </button>
-    </div>
+    <EmptyState
+      v-else-if="!resourceStore.resources.length"
+      :icon="BookOpenIcon"
+      title="No resources yet"
+      description="Add resources like links, documents, or references for your team."
+      actionLabel="Add Your First Resource"
+      @action="openResourceDialog()"
+    />
 
     <!-- No results for filter -->
     <div v-else-if="sortedResources.length === 0" class="p-12 text-center bg-[var(--surface)]">
@@ -191,15 +192,18 @@
       :resource="editResource"
       @save="saveResource"
     />
-  </div>
+  </PageContainer>
 </template>
 
 <script setup>
 import { ref, onMounted, computed, defineAsyncComponent } from 'vue';
-import { useRouter } from 'vue-router';
 import { useResourceStore } from '@/stores/resource';
 import { useToast } from 'vue-toastification';
+import PageContainer from '@/components/ui/PageContainer.vue';
 import PageHeader from '../components/ui/PageHeader.vue';
+import LoadingSpinner from '@/components/LoadingSpinner.vue';
+import EmptyState from '@/components/ui/EmptyState.vue';
+import { BookOpenIcon } from '@heroicons/vue/24/outline';
 
 // Import ResourceDialog using defineAsyncComponent for better error handling
 const ResourceDialog = defineAsyncComponent({
@@ -208,12 +212,10 @@ const ResourceDialog = defineAsyncComponent({
     template: '<div class="p-4 bg-[var(--surface)] text-[var(--danger)] border-2 border-[var(--danger)]">Failed to load resource dialog component</div>'
   },
   onError(error, retry, fail) {
-    console.error('Error loading ResourceDialog component:', error);
     fail();
   }
 });
 
-const router = useRouter();
 const toast = useToast();
 const resourceStore = useResourceStore();
 const showDialog = ref(false);
@@ -300,7 +302,7 @@ onMounted(async () => {
   try {
     await resourceStore.fetchResources();
   } catch (error) {
-    console.error('Failed to load resources:', error);
+    // silently handled
   }
 });
 
@@ -408,7 +410,6 @@ async function saveResource(resourceData) {
     showDialog.value = false;
     editResource.value = null;
   } catch (error) {
-    console.error('Error saving resource:', error);
     toast.error(`Failed to save resource: ${error.message}`);
   }
 }
@@ -429,7 +430,6 @@ async function deleteResource(resource) {
     }
     toast.success('Resource deleted successfully');
   } catch (error) {
-    console.error('Error deleting resource:', error);
     toast.error(`Failed to delete resource: ${error.message}`);
   }
 }

@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <PageContainer>
     <PageHeader title="Team Management">
       <template #actions>
         <button v-if="authStore.canManageTeam" @click="openInviteModal" class="btn btn-secondary">
@@ -280,7 +280,7 @@
         </button>
       </div>
     </Modal>
-  </div>
+  </PageContainer>
 </template>
 
 <script setup>
@@ -290,6 +290,7 @@ import teamService from '@/services/team.service';
 import { useToast } from 'vue-toastification';
 import { getInitials } from '@/utils/formatters';
 import Modal from '../components/Modal.vue';
+import PageContainer from '@/components/ui/PageContainer.vue';
 import PageHeader from '../components/ui/PageHeader.vue';
 import LoadingSpinner from '../components/LoadingSpinner.vue';
 
@@ -365,7 +366,6 @@ async function createTeam() {
     toast.success(`Team "${newTeam.name}" created successfully!`);
 
   } catch (err) {
-    console.error('Error creating team:', err);
     error.value = err.message || 'Failed to create team. Please try again.';
     toast.error(error.value);
   } finally {
@@ -382,7 +382,6 @@ async function switchTeam(teamId) {
     // Reload the page after switching teams to ensure all data is refreshed
     window.location.reload();
   } catch (err) {
-    console.error('Error switching team:', err);
     error.value = 'Failed to switch team. Please try again.';
   } finally {
     loading.value = false;
@@ -405,7 +404,6 @@ async function loadTeamMembers() {
       toast.error(result.error || 'Failed to load team members');
     }
   } catch (error) {
-    console.error('Error loading team members:', error);
     toast.error('Failed to load team members');
   } finally {
     isLoadingMembers.value = false;
@@ -430,12 +428,10 @@ async function sendInvite() {
       inviteEmail.value = '';
       toast.success('Invitation sent successfully');
     } else {
-      console.error('Invitation failed with error:', result.error);
       inviteError.value = result.error || 'Failed to send invite. Please try again.';
       toast.error(inviteError.value);
     }
   } catch (err) {
-    console.error('Error sending invite:', err);
     error.value = 'Failed to send invite. Please try again.';
     inviteError.value = err.message || 'Failed to send invite. Please try again.';
     toast.error(inviteError.value);
@@ -477,7 +473,6 @@ async function leaveTeam() {
     toast.success('You have left the team successfully');
     showLeaveModal.value = false;
   } catch (err) {
-    console.error('Error leaving team:', err);
     toast.error('Failed to leave team: ' + (err.message || 'Unknown error'));
   } finally {
     leavingTeam.value = false;
@@ -569,7 +564,6 @@ async function executeRoleChange() {
       toast.error(result.error || 'Failed to update role');
     }
   } catch (err) {
-    console.error('Error changing role:', err);
     toast.error('Failed to update member role');
   } finally {
     changingRole.value = false;
@@ -592,7 +586,6 @@ onMounted(async () => {
       await loadTeamMembers();
     }
   } catch (err) {
-    console.error('Error initializing team page:', err);
     error.value = 'Failed to load team data.';
     toast.error(error.value);
   } finally {

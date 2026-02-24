@@ -218,7 +218,7 @@ async function fetchComments() {
     const data = await commentService.getComments(props.resourceType, props.resourceId)
     comments.value = Array.isArray(data) ? data : []
   } catch (error) {
-    console.error('Failed to fetch comments:', error)
+    // silently handled
     comments.value = []
   } finally {
     isLoading.value = false
@@ -238,7 +238,7 @@ async function submitComment() {
     comments.value.push(created)
     newComment.value = ''
   } catch (error) {
-    console.error('Failed to create comment:', error)
+    // silently handled
   } finally {
     isSaving.value = false
   }
@@ -269,7 +269,7 @@ async function saveEdit(id) {
     editingId.value = null
     editContent.value = ''
   } catch (error) {
-    console.error('Failed to update comment:', error)
+    // silently handled
   } finally {
     isSaving.value = false
   }
@@ -282,7 +282,7 @@ async function deleteComment(id) {
     await commentService.deleteComment(id)
     comments.value = comments.value.filter(c => c.id !== id)
   } catch (error) {
-    console.error('Failed to delete comment:', error)
+    // silently handled
   }
 }
 

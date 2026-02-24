@@ -22,6 +22,7 @@
             <button
               @click="navigatePrev"
               class="p-2 hover:bg-[var(--surface)] transition-colors text-[var(--accent-primary)]"
+              :aria-label="`Previous ${calendarView}`"
             >
               <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                 <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" />
@@ -38,13 +39,14 @@
             <button
               @click="navigateNext"
               class="p-2 hover:bg-[var(--surface)] transition-colors text-[var(--accent-primary)]"
+              :aria-label="`Next ${calendarView}`"
             >
               <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                 <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
               </svg>
             </button>
 
-            <h3 class="text-xl font-semibold text-[var(--text-primary)] ml-2">{{ headerTitle }}</h3>
+            <h3 class="heading-section ml-2">{{ headerTitle }}</h3>
           </div>
 
           <!-- View Toggle Buttons -->
@@ -147,7 +149,7 @@
               @click="navigateToTask(task)"
             >
               <div class="flex items-center">
-                <div :class="`w-2 h-2 rounded-full bg-${task.statusColor}-500 mr-3`"></div>
+                <div :class="['w-2 h-2 rounded-full mr-3', getStatusDotBg(task.statusColor)]"></div>
                 <span class="text-[var(--text-primary)]">{{ task.title }}</span>
               </div>
               <div class="flex items-center text-sm text-[var(--text-primary)]">
@@ -180,6 +182,7 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
+import { useToast } from 'vue-toastification';
 import { useCalendarStore } from '../stores/calendar';
 import { useProjectStore } from '../stores/project';
 import { useTaskStore } from '../stores/task';
@@ -196,6 +199,7 @@ import CalendarDayView from '@/components/calendar/CalendarDayView.vue';
 import CalendarEventSidebar from '@/components/calendar/CalendarEventSidebar.vue';
 
 const router = useRouter();
+const toast = useToast();
 const calendarStore = useCalendarStore();
 const projectStore = useProjectStore();
 const taskStore = useTaskStore();
@@ -205,6 +209,19 @@ const { getProjectName } = useEntityLookup();
 const projects = computed(() => projectStore.projects);
 const clients = computed(() => clientStore.clients);
 const tasks = ref([]);
+
+const statusColorMap = {
+  blue: 'bg-[#3B82F6]',
+  green: 'bg-[#22C55E]',
+  red: 'bg-[#EF4444]',
+  orange: 'bg-[#F97316]',
+  purple: 'bg-[#8B5CF6]',
+  yellow: 'bg-[#EAB308]',
+  pink: 'bg-[#EC4899]',
+  indigo: 'bg-[#6366F1]',
+  gray: 'bg-[#6B7280]',
+};
+const getStatusDotBg = (color) => statusColorMap[color] || 'bg-[var(--accent-primary)]';
 
 // View state
 const calendarView = ref('month');
@@ -316,11 +333,6 @@ const headerTitle = computed(() => {
   return currentDate.value.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
 });
 
-// Keep backward compatibility
-const formattedCurrentMonth = computed(() => {
-  return currentDate.value.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-});
-
 // Computed project name for selected event (used by sidebar)
 const selectedEventProjectName = computed(() => {
   if (!selectedEvent.value || !selectedEvent.value.projectId) return 'Project';
@@ -357,10 +369,6 @@ function navigateNext() {
 function goToToday() {
   currentDate.value = new Date();
 }
-
-// Keep old functions as aliases for backward compat
-function prevMonth() { navigatePrev(); }
-function nextMonth() { navigateNext(); }
 
 function clearFilters() {
   filterClientId.value = null;
@@ -649,11 +657,6 @@ async function loadEventsForCurrentView() {
   await calendarStore.fetchEvents(startDate, endDate);
 }
 
-// Keep old function name for initial mount
-async function loadEventsForCurrentMonth() {
-  await loadEventsForCurrentView();
-}
-
 // Get events for a specific day
 function getEventsForDay(date) {
   if (!filteredEvents.value || !Array.isArray(filteredEvents.value)) return [];
@@ -702,23 +705,12 @@ async function fetchTasks() {
       tasks.value = [];
     }
   } catch (err) {
-    console.error('Error fetching tasks:', err);
+    // silently handled
+    toast.error('Failed to load tasks');
     tasks.value = [];
   } finally {
     loading.value = false;
   }
-}
-
-// Helper function to get task status color
-function getTaskStatusColor(status) {
-  if (!status) return 'gray';
-
-  const statusLower = status.toLowerCase();
-  if (statusLower.includes('complete')) return 'green';
-  if (statusLower.includes('progress')) return 'blue';
-  if (statusLower.includes('review')) return 'yellow';
-  if (statusLower.includes('block')) return 'red';
-  return 'gray';
 }
 
 // ============================================================
@@ -780,11 +772,13 @@ async function selectEvent(event) {
             }
           }
         } catch (apiError) {
-          console.error('API error fetching project details:', apiError);
+          // silently handled
+          toast.error('Failed to load event details');
         }
       }
     } catch (err) {
-      console.error('Error in selectEvent:', err);
+      // silently handled
+      toast.error('Failed to load event details');
     }
   }
 }
@@ -843,11 +837,12 @@ onMounted(async () => {
     ]);
     results.forEach((result, i) => {
       if (result.status === 'rejected') {
-        console.error(`Fetch #${i} failed:`, result.reason);
+        // silently handled
       }
     });
   } catch (err) {
-    console.error('Error initializing calendar:', err);
+    // silently handled
+    toast.error('Failed to load calendar');
   } finally {
     loading.value = false;
   }

@@ -261,7 +261,6 @@ async function performDelete() {
     showDeleteModal.value = false;
     itemToDelete.value = null;
   } catch (err) {
-    console.error('Error deleting:', err);
     toast.error('Failed to delete. Please try again.');
   } finally {
     deleting.value = false;
@@ -277,7 +276,6 @@ async function createFromTemplate(template) {
       router.push(`/scopes/${newScope.id}`);
     }
   } catch (err) {
-    console.error('Error creating scope from template:', err);
     toast.error('Failed to create scope from template.');
   }
 }
@@ -293,11 +291,10 @@ onMounted(async () => {
     ]);
     results.forEach((result, i) => {
       if (result.status === 'rejected') {
-        console.error(`Fetch #${i} failed:`, result.reason);
+        // silently handled
       }
     });
   } catch (err) {
-    console.error('Error loading scope data:', err);
     toast.error('Failed to load data. Please try again.');
   }
 });

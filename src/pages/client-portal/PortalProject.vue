@@ -10,7 +10,7 @@
 
     <!-- Loading -->
     <div v-if="loading" class="text-center py-10">
-      <p class="text-[var(--text-secondary)]">Loading project...</p>
+      <LoadingSpinner text="Loading project..." />
     </div>
 
     <!-- Not Found -->
@@ -140,6 +140,7 @@ import scopeService from '@/services/scope.service'
 import { getStatusColor } from '@/utils/statusColors'
 import { formatCurrency } from '@/utils/formatters'
 import { formatDate } from '@/utils/dateFormatter'
+import LoadingSpinner from '@/components/LoadingSpinner.vue'
 import CommentThread from '@/components/ui/CommentThread.vue'
 
 const route = useRoute()
@@ -166,7 +167,6 @@ async function loadProject() {
       ? scopesData.value
       : []
   } catch (err) {
-    console.error('Error loading project:', err)
     toast.error('Failed to load project details')
   } finally {
     loading.value = false
@@ -183,7 +183,6 @@ async function approveScope(scope) {
     }
     toast.success('Scope approved successfully')
   } catch (err) {
-    console.error('Error approving scope:', err)
     toast.error('Failed to approve scope')
   } finally {
     scopeActionLoading.value = false
@@ -200,7 +199,6 @@ async function requestScopeChanges(scope) {
     }
     toast.success('Change request submitted')
   } catch (err) {
-    console.error('Error requesting scope changes:', err)
     toast.error('Failed to submit change request')
   } finally {
     scopeActionLoading.value = false

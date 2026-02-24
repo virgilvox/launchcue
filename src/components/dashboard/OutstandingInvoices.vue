@@ -27,12 +27,12 @@
               getDaysOverdue(inv) > 30 ? 'bg-[var(--accent-hot-wash)]' : ''
             ]"
           >
-            <td class="mono">{{ inv.invoiceNumber || '—' }}</td>
-            <td class="flex items-center gap-2">
+            <td class="mono text-[var(--text-primary)]">{{ inv.invoiceNumber || '—' }}</td>
+            <td class="flex items-center gap-2 text-[var(--text-primary)]">
               <ClientColorDot :color="inv.clientColor" />
               {{ inv.clientName || '—' }}
             </td>
-            <td class="text-right mono">{{ formatCurrency(inv.total) }}</td>
+            <td class="text-right mono text-[var(--text-primary)]">{{ formatCurrency(inv.total) }}</td>
             <td class="text-right">
               <span
                 v-if="getDaysOverdue(inv) > 0"

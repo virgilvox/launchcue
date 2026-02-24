@@ -188,7 +188,6 @@ class ApiService {
     try {
       return await this.axiosInstance.get(endpoint, { params }) as unknown as T;
     } catch (error) {
-      console.error(`GET ${endpoint} failed:`, error);
       throw this._handleError(error as AxiosError);
     }
   }
@@ -197,7 +196,6 @@ class ApiService {
     try {
       return await this.axiosInstance.post(endpoint, data) as unknown as T;
     } catch (error) {
-      console.error(`POST ${endpoint} failed:`, error);
       throw this._handleError(error as AxiosError);
     }
   }
@@ -206,7 +204,6 @@ class ApiService {
     try {
       return await this.axiosInstance.put(endpoint, data) as unknown as T;
     } catch (error) {
-      console.error(`PUT ${endpoint} failed:`, error);
       throw this._handleError(error as AxiosError);
     }
   }
@@ -215,7 +212,6 @@ class ApiService {
     try {
       return await this.axiosInstance.delete(endpoint, config) as unknown as T;
     } catch (error) {
-      console.error(`DELETE ${endpoint} failed:`, error);
       throw this._handleError(error as AxiosError);
     }
   }
@@ -247,12 +243,6 @@ class ApiService {
     if (error.response) {
       // Server responded with a status outside 2xx range
       const data = error.response.data as Record<string, unknown> | undefined;
-      console.error('API error response:', {
-        status: error.response.status,
-        url: error.config?.url || 'Unknown URL',
-        method: error.config?.method || 'Unknown method',
-        data
-      });
       return {
         status: error.response.status,
         message: (data?.message as string) || 'An error occurred on the server',
@@ -260,21 +250,12 @@ class ApiService {
       };
     } else if (error.request) {
       // Request was made but no response received
-      console.error('API request error (no response):', {
-        url: error.config?.url || 'Unknown URL',
-        method: error.config?.method || 'Unknown method'
-      }, error.request);
       return {
         status: 0,
         message: 'No response from server. Please check your connection.'
       };
     } else {
       // Something happened in setting up the request
-      console.error('API request setup error:', {
-        url: error.config?.url || 'Unknown URL',
-        method: error.config?.method || 'Unknown method',
-        message: error.message
-      });
       return {
         status: 0,
         message: error.message || 'Error setting up the request'

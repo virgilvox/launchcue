@@ -60,7 +60,7 @@ exports.handler = async function(event, context) {
         // GET: List or single item
         if (event.httpMethod === 'GET') {
             if (noteId) {
-                const note = await collection.findOne({ _id: new ObjectId(noteId), teamId });
+                const note = await collection.findOne({ _id: new ObjectId(noteId), teamId, ...notDeleted });
                 if (!note) {
                     return createErrorResponse(404, 'Note not found');
                 }

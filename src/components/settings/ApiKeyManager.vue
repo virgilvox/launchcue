@@ -132,11 +132,11 @@
          <p class="text-xs text-[var(--text-secondary)]">Prefix: {{ keyToDelete.prefix }}...</p>
         <p class="text-sm text-[var(--danger)]">This action cannot be undone.</p>
         <div class="form-actions">
-          <button type="button" @click="showDeleteModal = false" class="btn-outline">Cancel</button>
-          <button 
-            type="button" 
-            @click="deleteKey" 
-            class="btn-danger" 
+          <button type="button" @click="showDeleteModal = false" class="btn btn-outline">Cancel</button>
+          <button
+            type="button"
+            @click="deleteKey"
+            class="btn btn-danger" 
             :disabled="isDeleting"
            >
             {{ isDeleting ? 'Deleting...' : 'Delete Key' }}
@@ -203,7 +203,6 @@ async function loadApiKeys() {
     try {
         apiKeys.value = await apiKeyService.getKeys();
     } catch (error) {
-        console.error("Error loading API keys:", error);
         toast.error("Failed to load API keys.");
     } finally {
         loadingKeys.value = false;
@@ -242,7 +241,6 @@ async function generateKey() {
              throw new Error("Invalid response from server during key generation.");
         }
     } catch (error) {
-        console.error("Error generating API key:", error);
         toast.error(`Failed to generate API key: ${error.message || 'Unknown error'}`);
     } finally {
         isGenerating.value = false;
@@ -264,7 +262,6 @@ async function deleteKey() {
         keyToDelete.value = null;
         await loadApiKeys(); // Refresh the list
     } catch (error) {
-        console.error("Error deleting API key:", error);
         toast.error(`Failed to delete API key: ${error.message || 'Unknown error'}`);
     } finally {
         isDeleting.value = false;
@@ -278,7 +275,6 @@ async function copyGeneratedKey() {
     await navigator.clipboard.writeText(newlyGeneratedKey.value);
     toast.success('API Key Copied!');
   } catch (error) {
-    console.error('Failed to copy API key:', error);
     toast.error('Could not copy key to clipboard.');
   }
 }

@@ -9,7 +9,7 @@
 
       <div class="bg-[var(--surface-elevated)] shadow-brutal-md p-6">
         <div v-if="loading" class="text-center py-6">
-          <p class="text-[var(--text-secondary)]">Processing invitation...</p>
+          <LoadingSpinner text="Processing invitation..." />
         </div>
 
         <div v-else-if="error" class="text-center py-6">
@@ -81,6 +81,7 @@ import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import onboardingService from '@/services/onboarding.service'
+import LoadingSpinner from '@/components/LoadingSpinner.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -139,7 +140,6 @@ async function handleSubmit() {
       formError.value = 'Unexpected response. Please try again.'
     }
   } catch (err) {
-    console.error('Error accepting invitation:', err)
     formError.value = err.message || 'Failed to create account. The invitation may have expired.'
   } finally {
     submitting.value = false

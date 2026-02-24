@@ -24,7 +24,7 @@
       placeholder="Paste your notes, meeting summaries, or ideas here..."
     ></textarea>
     <div class="flex justify-end space-x-2 mt-3">
-      <button @click="$emit('clear-input')" class="btn-outline btn-sm">Clear</button>
+      <button @click="$emit('clear-input')" class="btn btn-outline btn-sm">Clear</button>
     </div>
   </div>
 </template>

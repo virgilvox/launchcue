@@ -80,6 +80,10 @@
                 >
                   <component :is="item.icon" class="flex-shrink-0 h-5 w-5" aria-hidden="true" />
                   <span class="ml-3">{{ item.name }}</span>
+                  <span
+                    v-if="shortcutMap[item.name]"
+                    class="ml-auto text-[10px] font-mono opacity-0 group-hover:opacity-40 transition-opacity"
+                  >{{ shortcutMap[item.name] }}</span>
                 </router-link>
               </div>
             </Transition>
@@ -243,6 +247,17 @@ const navGroups = computed(() => [
     ]
   }
 ])
+
+// Keyboard shortcut hints for nav items (from useKeyboardShortcuts g-chords)
+const shortcutMap = {
+  'Dashboard': 'G D',
+  'Tasks': 'G T',
+  'Projects': 'G P',
+  'Clients': 'G C',
+  'Notes': 'G N',
+  'Brain Dump': 'G B',
+  'Settings': 'G S',
+}
 
 const userInitials = computed(() => getInitials(authStore.user?.name))
 

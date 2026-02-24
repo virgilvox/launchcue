@@ -8,7 +8,7 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import { Bar } from 'vue-chartjs'
 import {
   Chart as ChartJS,
@@ -28,17 +28,48 @@ const props = defineProps({
   }
 })
 
-const isDark = computed(() => document.documentElement.classList.contains('dark'))
+function getCssVar(name) {
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim()
+}
+
+// Theme colors resolved from CSS custom properties after mount
+const colors = ref({
+  accentPrimary: '#7C3AED',
+  accentHot: '#E8503A',
+  warning: '#F59E0B',
+  danger: '#DC2626',
+  success: '#0D9488',
+  surfaceElevated: '#FFFFFF',
+  textPrimary: '#1A1A1A',
+  textSecondary: '#6B6560',
+  borderLight: '#D6D0C8',
+  surface: '#F5F0EB',
+})
+
+onMounted(() => {
+  colors.value = {
+    accentPrimary: getCssVar('--accent-primary'),
+    accentHot: getCssVar('--accent-hot'),
+    warning: getCssVar('--warning'),
+    danger: getCssVar('--danger'),
+    success: getCssVar('--success'),
+    surfaceElevated: getCssVar('--surface-elevated'),
+    textPrimary: getCssVar('--text-primary'),
+    textSecondary: getCssVar('--text-secondary'),
+    borderLight: getCssVar('--border-light'),
+    surface: getCssVar('--surface'),
+  }
+})
 
 const statuses = ['Planning', 'In Progress', 'On Hold', 'Completed', 'Cancelled']
 
-const statusColors = {
-  'Planning': '#818CF8',      // indigo-400
-  'In Progress': '#FBBF24',   // yellow-400
-  'On Hold': '#FB923C',       // orange-400
-  'Completed': '#4ADE80',     // green-400
-  'Cancelled': '#F87171'      // red-400
-}
+const statusColorMap = computed(() => ({
+  'Planning': colors.value.accentPrimary,
+  'In Progress': colors.value.warning,
+  'On Hold': colors.value.accentHot,
+  'Completed': colors.value.success,
+  'Cancelled': colors.value.danger,
+}))
 
 const statusCounts = computed(() => {
   const counts = {}
@@ -63,8 +94,8 @@ const chartData = computed(() => ({
     {
       label: 'Projects',
       data: statuses.map(s => statusCounts.value[s]),
-      backgroundColor: statuses.map(s => statusColors[s]),
-      borderColor: statuses.map(s => statusColors[s]),
+      backgroundColor: statuses.map(s => statusColorMap.value[s]),
+      borderColor: statuses.map(s => statusColorMap.value[s]),
       borderWidth: 1,
       borderRadius: 4,
       barThickness: 28
@@ -81,10 +112,10 @@ const chartOptions = computed(() => ({
       display: false
     },
     tooltip: {
-      backgroundColor: isDark.value ? '#374151' : '#FFFFFF',
-      titleColor: isDark.value ? '#F9FAFB' : '#111827',
-      bodyColor: isDark.value ? '#D1D5DB' : '#4B5563',
-      borderColor: isDark.value ? '#4B5563' : '#E5E7EB',
+      backgroundColor: colors.value.surfaceElevated,
+      titleColor: colors.value.textPrimary,
+      bodyColor: colors.value.textSecondary,
+      borderColor: colors.value.borderLight,
       borderWidth: 1,
       padding: 12
     }
@@ -94,16 +125,16 @@ const chartOptions = computed(() => ({
       beginAtZero: true,
       ticks: {
         stepSize: 1,
-        color: isDark.value ? '#9CA3AF' : '#6B7280',
+        color: colors.value.textSecondary,
         font: { size: 11 }
       },
       grid: {
-        color: isDark.value ? '#374151' : '#F3F4F6'
+        color: colors.value.borderLight,
       }
     },
     y: {
       ticks: {
-        color: isDark.value ? '#D1D5DB' : '#374151',
+        color: colors.value.textPrimary,
         font: { size: 12 }
       },
       grid: {

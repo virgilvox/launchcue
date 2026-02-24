@@ -1,9 +1,9 @@
 <template>
-  <div>
+  <PageContainer>
     <Breadcrumb v-if="!loading && campaign" :items="breadcrumbItems" />
 
     <div v-if="loading" class="text-center py-10">
-      <p class="text-[var(--text-secondary)]">Loading campaign details...</p>
+      <LoadingSpinner text="Loading campaign details..." />
     </div>
 
     <div v-else-if="error" class="text-center py-10">
@@ -26,7 +26,7 @@
                 <path fill-rule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clip-rule="evenodd" />
               </svg>
             </router-link>
-            <h2 class="text-2xl font-bold text-[var(--text-primary)]">{{ campaign.title }}</h2>
+            <h2 class="heading-page">{{ campaign.title }}</h2>
           </div>
           <div class="flex items-center mt-2">
             <span 
@@ -91,7 +91,7 @@
             </div>
             
             <div v-if="stepsLoading" class="text-center py-4">
-              <p class="text-[var(--text-secondary)]">Loading timeline...</p>
+              <LoadingSpinner text="Loading timeline..." />
             </div>
             
             <div v-else-if="!campaignSteps || campaignSteps.length === 0" class="text-center py-6">
@@ -221,7 +221,7 @@
     <!-- Add/Edit Step Modal -->
     <div v-if="showStepModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <div class="bg-[var(--surface-elevated)] border-2 border-[var(--border-light)] p-6 w-full max-w-md">
-        <h3 class="text-xl font-semibold text-[var(--text-primary)] mb-4">
+        <h3 class="heading-section mb-4">
           {{ editingStep ? 'Edit Step' : 'Add Step' }}
         </h3>
         
@@ -283,7 +283,7 @@
     <!-- Delete Step Confirmation Modal -->
     <div v-if="showDeleteStepModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <div class="bg-[var(--surface-elevated)] border-2 border-[var(--border-light)] p-6 w-full max-w-md">
-        <h3 class="text-xl font-semibold text-[var(--text-primary)] mb-4">Confirm Delete</h3>
+        <h3 class="heading-section mb-4">Confirm Delete</h3>
         <p class="text-[var(--text-secondary)] mb-6">
           Are you sure you want to delete this step? This action cannot be undone.
         </p>
@@ -309,19 +309,19 @@
     <!-- Delete Campaign Confirmation Modal -->
     <div v-if="showDeleteModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <div class="bg-[var(--surface-elevated)] border-2 border-[var(--border-light)] p-6 w-full max-w-md">
-        <h3 class="text-xl font-semibold text-[var(--text-primary)] mb-4">Confirm Delete</h3>
+        <h3 class="heading-section mb-4">Confirm Delete</h3>
         <p class="text-[var(--text-secondary)] mb-6">
           Are you sure you want to delete this campaign? This action cannot be undone and will also delete all steps and team member associations.
         </p>
-        
+
         <div class="flex justify-end space-x-3">
-          <button 
+          <button
             @click="closeDeleteModal"
             class="btn btn-secondary"
           >
             Cancel
           </button>
-          <button 
+          <button
             @click="deleteCampaign"
             class="btn btn-danger"
             :disabled="deleting"
@@ -331,7 +331,7 @@
         </div>
       </div>
     </div>
-  </div>
+  </PageContainer>
 </template>
 
 <script setup>
@@ -339,9 +339,11 @@ import { ref, computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useToast } from 'vue-toastification';
 import campaignService from '@/services/campaign.service';
+import PageContainer from '@/components/ui/PageContainer.vue';
 import Breadcrumb from '@/components/ui/Breadcrumb.vue';
 import { getInitials } from '@/utils/formatters';
 import { formatDate } from '@/utils/dateFormatter';
+import LoadingSpinner from '@/components/LoadingSpinner.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -388,7 +390,6 @@ async function loadCampaign() {
     // Load campaign steps
     await loadCampaignSteps(campaignId);
   } catch (err) {
-    console.error('Error loading campaign:', err);
     error.value = 'Failed to load campaign details. Please try again.';
   } finally {
     loading.value = false;
@@ -405,7 +406,6 @@ async function loadCampaignSteps(campaignId) {
     // Sort steps by date
     campaignSteps.value.sort((a, b) => new Date(a.date) - new Date(b.date));
   } catch (err) {
-    console.error('Error loading campaign steps:', err);
     toast.error('Failed to load campaign timeline');
   } finally {
     stepsLoading.value = false;
@@ -502,7 +502,6 @@ async function saveStep() {
     
     closeStepModal();
   } catch (err) {
-    console.error('Error saving step:', err);
     toast.error('Failed to save step');
   } finally {
     savingStep.value = false;
@@ -539,7 +538,6 @@ async function deleteStep() {
     toast.success('Step deleted successfully');
     closeDeleteStepModal();
   } catch (err) {
-    console.error('Error deleting step:', err);
     toast.error('Failed to delete step');
   } finally {
     deletingStep.value = false;
@@ -568,7 +566,6 @@ async function deleteCampaign() {
     // Navigate back to campaigns page
     router.push('/campaigns');
   } catch (err) {
-    console.error('Error deleting campaign:', err);
     toast.error('Failed to delete campaign');
     deleting.value = false;
   }
@@ -587,7 +584,6 @@ async function exportCampaign(format) {
       toast.error('Export failed: No download URL provided');
     }
   } catch (err) {
-    console.error('Error exporting campaign:', err);
     toast.error('Failed to export campaign');
   } finally {
     exporting.value = false;

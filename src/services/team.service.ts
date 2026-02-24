@@ -40,7 +40,6 @@ const teamService: TeamServiceInterface = {
         teams: response
       };
     } catch (error: unknown) {
-      console.error('Error fetching teams:', error);
       const err = error as { response?: { data?: { error?: string } }; message?: string };
       return {
         success: false,
@@ -66,7 +65,6 @@ const teamService: TeamServiceInterface = {
         members: validMembers
       };
     } catch (error: unknown) {
-      console.error('Error fetching team members:', error);
       const err = error as { response?: { data?: { error?: string } }; message?: string };
       return {
         success: false,
@@ -86,7 +84,6 @@ const teamService: TeamServiceInterface = {
         team: response
       };
     } catch (error: unknown) {
-      console.error('Error creating team:', error);
       const err = error as { response?: { data?: { error?: string } }; message?: string };
       return {
         success: false,
@@ -100,7 +97,6 @@ const teamService: TeamServiceInterface = {
    */
   async inviteUser(teamId: string, email: string): Promise<TeamServiceResult> {
     if (!teamId) {
-      console.error('Team ID is required for invitation');
       return {
         success: false,
         error: 'Team ID is required'
@@ -108,7 +104,6 @@ const teamService: TeamServiceInterface = {
     }
 
     if (!email) {
-      console.error('Email is required for invitation');
       return {
         success: false,
         error: 'Email is required'
@@ -122,7 +117,6 @@ const teamService: TeamServiceInterface = {
         invite: response
       };
     } catch (error: unknown) {
-      console.error('Error inviting user:', error);
       const err = error as { response?: { data?: { error?: string }; status?: number }; message?: string };
 
       return {
@@ -150,7 +144,6 @@ const teamService: TeamServiceInterface = {
         invites: response
       };
     } catch (error: unknown) {
-      console.error('Error fetching pending invites:', error);
       const err = error as { response?: { data?: { error?: string } }; message?: string };
       return {
         success: false,
@@ -167,7 +160,6 @@ const teamService: TeamServiceInterface = {
       await api.delete(`${TEAM_ENDPOINT}?id=${teamId}&action=removeMember&memberId=${memberId}`);
       return { success: true };
     } catch (error: unknown) {
-      console.error('Error removing team member:', error);
       const err = error as { response?: { data?: { error?: string } }; message?: string };
       return {
         success: false,
@@ -187,7 +179,6 @@ const teamService: TeamServiceInterface = {
         data: response
       };
     } catch (error: unknown) {
-      console.error('Error updating member role:', error);
       const err = error as { response?: { data?: { error?: string } }; message?: string };
       return {
         success: false,
@@ -210,7 +201,6 @@ const teamService: TeamServiceInterface = {
         team: accept ? response : null
       };
     } catch (error: unknown) {
-      console.error('Error responding to invite:', error);
       const err = error as { response?: { data?: { error?: string } }; message?: string };
       return {
         success: false,

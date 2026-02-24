@@ -19,7 +19,6 @@ class ProjectService {
     try {
       return await apiService.get<Project[]>(PROJECT_ENDPOINT, params as Record<string, unknown>);
     } catch (error) {
-      console.error('Error fetching projects:', error);
       throw error;
     }
   }
@@ -38,7 +37,6 @@ class ProjectService {
     try {
       return await apiService.get<Project>(`${PROJECT_ENDPOINT}/${id}`);
     } catch (error) {
-      console.error(`Error fetching project ${id}:`, error);
       throw error;
     }
   }
@@ -50,7 +48,6 @@ class ProjectService {
     try {
       return await apiService.post<Project>(PROJECT_ENDPOINT, data);
     } catch (error) {
-      console.error('Error creating project:', error);
       throw error;
     }
   }
@@ -64,7 +61,6 @@ class ProjectService {
       const result = await apiService.put<Project>(endpoint, data);
       return result;
     } catch (error) {
-      console.error(`Error updating project ${id}:`, error);
       throw error;
     }
   }
@@ -76,7 +72,6 @@ class ProjectService {
     try {
       return await apiService.delete(`${PROJECT_ENDPOINT}/${id}`);
     } catch (error) {
-      console.error(`Error deleting project ${id}:`, error);
       throw error;
     }
   }
@@ -90,7 +85,6 @@ class ProjectService {
       // Use the getProjects method with a filter parameter
       return await this.getProjects({ clientId });
     } catch (error) {
-      console.error(`Error fetching projects for client ${clientId}:`, error);
       throw error;
     }
   }
@@ -112,7 +106,6 @@ class ProjectService {
       // Use TASK_ENDPOINT constant
       return await apiService.get<Task[]>(TASK_ENDPOINT, { projectId });
     } catch (error) {
-      console.error(`Error fetching tasks for project ${projectId}:`, error);
       throw error;
     }
   }
@@ -125,7 +118,6 @@ class ProjectService {
       // Assuming endpoint like /projects/{projectId}/members
       return await apiService.post(`${PROJECT_ENDPOINT}/${projectId}/members`, memberData);
     } catch (error) {
-      console.error(`Error adding member to project ${projectId}:`, error);
       throw error;
     }
   }
@@ -138,7 +130,6 @@ class ProjectService {
       // Assuming endpoint like /projects/{projectId}/members/{memberId}
       return await apiService.delete(`${PROJECT_ENDPOINT}/${projectId}/members/${memberId}`);
     } catch (error) {
-      console.error(`Error removing member ${memberId} from project ${projectId}:`, error);
       throw error;
     }
   }
@@ -151,7 +142,6 @@ class ProjectService {
       // Assuming an endpoint like /projects/{projectId}/members exists
       return await apiService.get<TeamMember[]>(`${PROJECT_ENDPOINT}/${projectId}/members`);
     } catch (error) {
-      console.error(`Error fetching members for project ${projectId}:`, error);
       throw error;
     }
   }

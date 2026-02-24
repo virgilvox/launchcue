@@ -28,8 +28,8 @@
          </div>
       </div>
       <div class="form-actions">
-        <button type="button" @click="$emit('update:show', false)" class="btn-outline">Cancel</button>
-        <button type="submit" class="btn-primary" :disabled="isSaving">
+        <button type="button" @click="$emit('update:show', false)" class="btn btn-outline">Cancel</button>
+        <button type="submit" class="btn btn-primary" :disabled="isSaving">
           {{ isSaving ? 'Saving...' : 'Save Note' }}
         </button>
       </div>
@@ -109,7 +109,6 @@ async function confirmSaveToNotes() {
     emit('update:show', false); // Close modal
 
   } catch (error) {
-      console.error("Error saving note from Brain Dump:", error);
       toast.error(`Failed to save note: ${error.message || 'Unknown error'}`);
   } finally {
     isSaving.value = false;

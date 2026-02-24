@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <PageContainer>
     <PageHeader title="Notes">
       <template #actions>
         <button @click="openAddNoteModal" class="btn btn-primary">
@@ -177,13 +177,12 @@
             </div>
         </div>
     </Modal>
-  </div>
+  </PageContainer>
 </template>
 
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue';
 import DOMPurify from 'dompurify';
-import { useAuthStore } from '../stores/auth';
 import noteService from '../services/note.service';
 import { useClientStore } from '../stores/client';
 import { useProjectStore } from '../stores/project';
@@ -193,11 +192,11 @@ import { useEntityLookup } from '@/composables/useEntityLookup';
 import Modal from '../components/Modal.vue';
 import LoadingSpinner from '../components/LoadingSpinner.vue';
 import RichTextEditor from '../components/ui/RichTextEditor.vue';
+import PageContainer from '@/components/ui/PageContainer.vue';
 import PageHeader from '../components/ui/PageHeader.vue';
 import EmptyState from '../components/ui/EmptyState.vue';
 import { PlusIcon, DocumentTextIcon } from '@heroicons/vue/24/outline';
 
-const authStore = useAuthStore();
 const clientStore = useClientStore();
 const projectStore = useProjectStore();
 const toast = useToast();
@@ -309,11 +308,10 @@ async function loadDependencies() {
         ]);
         results.forEach((result, i) => {
           if (result.status === 'rejected') {
-            console.error(`Notes dependency fetch #${i} failed:`, result.reason);
+            // silently handled
           }
         });
     } catch (err) {
-        console.error("Failed to load clients/projects for filtering", err);
         toast.error("Could not load filter options.");
     } finally {
         loadingClients.value = false;
@@ -328,7 +326,6 @@ async function loadNotes() {
     // Fetch all notes for the team
     notes.value = await noteService.getNotes();
   } catch (err) {
-    console.error('Error loading notes:', err);
     error.value = 'Failed to load notes. Please try again.';
     toast.error(error.value);
   } finally {
@@ -403,7 +400,6 @@ async function saveNote() {
     }
     closeNoteModal();
   } catch (err) {
-    console.error('Error saving note:', err);
     toast.error(`Failed to save note: ${err.message || 'Unknown error'}`);
   } finally {
     saving.value = false;
@@ -436,7 +432,6 @@ async function deleteNote() {
 
     closeDeleteModal();
   } catch (err) {
-    console.error('Error deleting note:', err);
     alert('Failed to delete note. Please try again.');
   } finally {
     deleting.value = false;
@@ -488,6 +483,8 @@ onBeforeUnmount(() => {
   border: 2px solid var(--border-light);
   font-size: 0.75rem;
   font-family: 'JetBrains Mono', monospace;
+  color: var(--text-primary);
+  background-color: var(--surface);
 }
 .form-actions {
   display: flex;

@@ -25,8 +25,7 @@ export function formatDate(date: Date | string | null | undefined, options: Intl
     }
 
     return new Intl.DateTimeFormat('en-US', mergedOptions).format(dateObj)
-  } catch (error) {
-    console.error('Error formatting date:', error)
+  } catch {
     return ''
   }
 }
@@ -75,8 +74,7 @@ export function formatRelativeTime(date: Date | string | null | undefined): stri
 
     // Default to standard date format for older dates
     return formatDate(dateObj)
-  } catch (error) {
-    console.error('Error formatting relative time:', error)
+  } catch {
     return ''
   }
 }

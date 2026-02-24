@@ -2,7 +2,7 @@
   <PageContainer>
     <div class="flex flex-col h-full">
       <header class="mb-6 flex justify-between items-center">
-        <h2 class="text-2xl font-bold text-[var(--text-primary)]">Campaign Builder</h2>
+        <h2 class="heading-page">Campaign Builder</h2>
         <button
           @click="saveCampaign"
           class="btn btn-primary"
@@ -247,7 +247,6 @@ async function loadCampaign(id) {
     }
 
   } catch (err) {
-    console.error('Error loading campaign:', err);
     error.value = 'Failed to load campaign. Please try again.';
   } finally {
     loadingCampaigns.value = false;
@@ -260,7 +259,7 @@ async function loadTimelineEvents(campaignId) {
   try {
     timelineEvents.value = await campaignService.getCampaignSteps(campaignId);
   } catch (err) {
-    console.error('Error loading timeline events:', err);
+    // silently handled
   }
 }
 
@@ -280,11 +279,10 @@ async function loadTeamMembers() {
         avatar: member.photoURL || null
       }));
     } else {
-      console.error('Failed to load team members:', result.error);
       teamMembers.value = [];
     }
   } catch (err) {
-    console.error('Error loading team members:', err);
+    // silently handled
     teamMembers.value = [];
   } finally {
     loadingTeam.value = false;
@@ -301,11 +299,11 @@ async function loadClientsAndProjects() {
     ]);
     results.forEach((result, i) => {
       if (result.status === 'rejected') {
-        console.error(`Fetch #${i} failed:`, result.reason);
+        // silently handled
       }
     });
   } catch (err) {
-    console.error("Error loading clients/projects for campaign builder", err);
+    // silently handled
   } finally {
     loadingClients.value = false;
     loadingProjects.value = false;
@@ -350,7 +348,6 @@ async function saveCampaign() {
     }
 
   } catch (err) {
-    console.error('Error saving campaign:', err);
     error.value = 'Failed to save campaign. Please try again.';
     toast.error(error.value);
   } finally {
@@ -373,7 +370,6 @@ async function exportRecap() {
 
     showRecapModal.value = false;
   } catch (err) {
-    console.error('Error exporting campaign recap:', err);
     error.value = 'Failed to export recap. Please try again.';
   }
 }
@@ -403,7 +399,7 @@ onMounted(async () => {
     ]);
     initResults.forEach((result, i) => {
       if (result.status === 'rejected') {
-        console.error(`Fetch #${i} failed:`, result.reason);
+        // silently handled
       }
     });
 
@@ -423,7 +419,6 @@ onMounted(async () => {
       attachments.value = [];
     }
   } catch (err) {
-    console.error('Error initializing campaign page:', err);
     error.value = 'Failed to initialize campaign page. Please try again.';
   } finally {
     loading.value = false;

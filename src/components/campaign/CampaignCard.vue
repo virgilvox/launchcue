@@ -2,7 +2,7 @@
   <div class="w-80">
     <!-- Attachments -->
     <div class="card p-5 mb-6">
-      <h3 class="text-lg font-bold text-[var(--text-primary)] mb-4">Attachments</h3>
+      <h3 class="heading-card mb-4">Attachments</h3>
 
       <div class="space-y-3">
         <div v-for="(attachment, index) in attachments" :key="index" class="flex items-center">
@@ -24,7 +24,7 @@
 
     <!-- Team -->
     <div class="card p-5">
-      <h3 class="text-lg font-bold text-[var(--text-primary)] mb-4">Team</h3>
+      <h3 class="heading-card mb-4">Team</h3>
 
       <div class="flex justify-between items-center mb-4">
         <!-- Team members avatars -->

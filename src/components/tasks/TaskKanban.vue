@@ -54,16 +54,21 @@
             </span>
           </div>
 
-          <!-- Bottom row: project name + assignee -->
-          <div class="flex items-center justify-between mt-2 text-caption">
-            <span v-if="task.projectId" class="truncate max-w-[8rem]">
-              {{ getProjectName(task.projectId) }}
-            </span>
-            <span v-else></span>
-
-            <span v-if="task.assigneeName" class="truncate max-w-[6rem] text-right">
-              {{ task.assigneeName }}
-            </span>
+          <!-- Bottom row: project + client + assignee -->
+          <div class="mt-2 text-caption space-y-1">
+            <div class="flex items-center justify-between">
+              <span v-if="task.projectId" class="truncate max-w-[8rem]">
+                {{ getProjectName(task.projectId) }}
+              </span>
+              <span v-else></span>
+              <span v-if="task.assigneeName" class="truncate max-w-[6rem] text-right">
+                {{ task.assigneeName }}
+              </span>
+            </div>
+            <div v-if="getClientIdForTask(task)" class="flex items-center gap-1">
+              <ClientColorDot :color="getClientColorId(getClientIdForTask(task))" />
+              <span class="truncate text-[var(--text-secondary)]">{{ getClientName(getClientIdForTask(task)) }}</span>
+            </div>
           </div>
 
           <!-- Actions -->
@@ -72,6 +77,7 @@
               @click.stop="emit('delete', task)"
               class="text-[var(--text-secondary)] hover:text-[var(--danger)] transition-colors"
               title="Delete task"
+              aria-label="Delete task"
             >
               <TrashIcon class="h-4 w-4" />
             </button>
@@ -95,6 +101,8 @@ import { ref, computed } from 'vue';
 import { CalendarIcon, TrashIcon } from '@heroicons/vue/24/outline';
 import { formatShortDate } from '@/utils/dateFormatter';
 import { useEntityLookup } from '@/composables/useEntityLookup';
+import { useProjectStore } from '../../stores/project';
+import ClientColorDot from '@/components/ui/ClientColorDot.vue';
 
 const props = defineProps({
   tasks: {
@@ -109,7 +117,14 @@ const props = defineProps({
 
 const emit = defineEmits(['updateStatus', 'edit', 'delete']);
 
-const { getProjectName } = useEntityLookup();
+const { getProjectName, getClientName, getClientColorId } = useEntityLookup();
+const projectStore = useProjectStore();
+
+const getClientIdForTask = (task) => {
+  if (!task.projectId) return null;
+  const project = projectStore.projects.find(p => p.id === task.projectId);
+  return project?.clientId || null;
+};
 
 const columns = [
   { status: 'To Do', label: 'TO DO' },

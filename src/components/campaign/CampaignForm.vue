@@ -124,7 +124,7 @@
         :class="[
           'px-4 py-2 text-sm font-medium transition-colors border-2',
           type.active
-            ? `bg-${type.color}-600 text-white border-${type.color}-600`
+            ? getTypeActiveClasses(type.color)
             : 'bg-[var(--surface)] text-[var(--text-primary)] border-[var(--border)] hover:border-[var(--accent-primary)]'
         ]"
         @click="emit('toggle-type', type)"
@@ -205,6 +205,22 @@ const emit = defineEmits<{
   'update:metric': [key: string, value: number]
   'toggle-type': [type: CampaignType]
 }>()
+
+const typeColorMap: Record<string, { bg: string; border: string }> = {
+  blue: { bg: 'bg-[#2563EB]', border: 'border-[#2563EB]' },
+  green: { bg: 'bg-[#16A34A]', border: 'border-[#16A34A]' },
+  red: { bg: 'bg-[#DC2626]', border: 'border-[#DC2626]' },
+  orange: { bg: 'bg-[#EA580C]', border: 'border-[#EA580C]' },
+  purple: { bg: 'bg-[#7C3AED]', border: 'border-[#7C3AED]' },
+  yellow: { bg: 'bg-[#CA8A04]', border: 'border-[#CA8A04]' },
+  pink: { bg: 'bg-[#DB2777]', border: 'border-[#DB2777]' },
+  indigo: { bg: 'bg-[#4F46E5]', border: 'border-[#4F46E5]' },
+}
+const getTypeActiveClasses = (color: string): string => {
+  const entry = typeColorMap[color]
+  if (!entry) return 'bg-[var(--accent-primary)] text-white border-[var(--accent-primary)]'
+  return `${entry.bg} text-white ${entry.border}`
+}
 
 function emitTitle(event: Event) {
   emit('update:title', (event.target as HTMLInputElement).value)

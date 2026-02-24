@@ -1,37 +1,40 @@
 <template>
-  <Breadcrumb v-if="!loading && task" :items="breadcrumbItems" class="px-6 pt-6" />
-  <div v-if="loading" class="p-8 text-center">Loading task details...</div>
-  <div v-else-if="error" class="p-8 text-center text-[var(--danger)]">Error loading task: {{ error }}</div>
-  <div v-else-if="task" class="p-6">
-    <h2 class="text-2xl font-bold mb-4">{{ task.title }}</h2>
-    <p class="mb-2"><strong>Status:</strong> {{ task.status }}</p>
-    <p v-if="task.dueDate" class="mb-2"><strong>Due Date:</strong> {{ formattedDueDate }}</p>
-    <p v-if="task.projectId" class="mb-2"><strong>Project:</strong> {{ projectName }}</p>
-    <p v-if="task.clientId" class="mb-4"><strong>Client:</strong> {{ clientName }}</p>
-    
-    <div class="prose max-w-none mt-4" v-if="task.description">
-      <h3 class="text-lg font-semibold mb-2">Description</h3>
-      <p>{{ task.description }}</p>
-    </div>
+  <PageContainer>
+    <PageHeader
+      v-if="!loading && task"
+      :title="task.title"
+      backTo="/tasks"
+      :breadcrumbs="breadcrumbItems"
+    />
 
-    <div v-if="task.checklist && task.checklist.length > 0" class="mt-6">
-      <h3 class="text-lg font-semibold mb-2">Checklist</h3>
-      <ul>
-        <li v-for="item in task.checklist" :key="item.id || item.title"
-            :class="{ 'line-through text-[var(--text-secondary)]': item.completed }">
-          <input type="checkbox" :checked="item.completed" disabled class="mr-2"> 
-          {{ item.title }}
-        </li>
-      </ul>
+    <div v-if="loading" class="p-8 text-center">
+      <LoadingSpinner text="Loading task details..." />
     </div>
+    <div v-else-if="error" class="p-8 text-center text-[var(--danger)]">Error loading task: {{ error }}</div>
+    <div v-else-if="task">
+      <p class="mb-2"><strong>Status:</strong> {{ task.status }}</p>
+      <p v-if="task.dueDate" class="mb-2"><strong>Due Date:</strong> {{ formattedDueDate }}</p>
+      <p v-if="task.projectId" class="mb-2"><strong>Project:</strong> {{ projectName }}</p>
+      <p v-if="task.clientId" class="mb-4"><strong>Client:</strong> {{ clientName }}</p>
 
-    <div class="mt-6">
-        <router-link :to="{ name: 'tasks' }" class="text-[var(--accent-primary)] hover:underline">
-          &larr; Back to Tasks
-        </router-link>
+      <div class="prose max-w-none mt-4" v-if="task.description">
+        <h3 class="text-lg font-semibold mb-2">Description</h3>
+        <p>{{ task.description }}</p>
+      </div>
+
+      <div v-if="task.checklist && task.checklist.length > 0" class="mt-6">
+        <h3 class="text-lg font-semibold mb-2">Checklist</h3>
+        <ul>
+          <li v-for="item in task.checklist" :key="item.id || item.title"
+              :class="{ 'line-through text-[var(--text-secondary)]': item.completed }">
+            <input type="checkbox" :checked="item.completed" disabled class="mr-2">
+            {{ item.title }}
+          </li>
+        </ul>
+      </div>
     </div>
-  </div>
-  <div v-else class="p-8 text-center">Task not found.</div>
+    <div v-else class="p-8 text-center">Task not found.</div>
+  </PageContainer>
 </template>
 
 <script setup>
@@ -41,7 +44,9 @@ import { useTaskStore } from '../stores/task';
 import { useProjectStore } from '../stores/project';
 import { useClientStore } from '../stores/client';
 import { format } from 'date-fns';
-import Breadcrumb from '@/components/ui/Breadcrumb.vue';
+import PageContainer from '@/components/ui/PageContainer.vue';
+import PageHeader from '@/components/ui/PageHeader.vue';
+import LoadingSpinner from '@/components/LoadingSpinner.vue';
 
 const props = defineProps({
   id: {
@@ -76,7 +81,6 @@ const fetchTaskDetails = async (taskId) => {
       task.value = null;
     }
   } catch (err) {
-    console.error("Error fetching task details:", err);
     error.value = err.message || 'Failed to load task details.';
   } finally {
     loading.value = false;

@@ -20,7 +20,6 @@ class NoteService {
     try {
       return await apiService.get<Note[]>(NOTE_ENDPOINT, params as Record<string, unknown>);
     } catch (error) {
-      console.error('Error fetching notes:', error);
       throw error;
     }
   }
@@ -32,7 +31,6 @@ class NoteService {
     try {
       return await apiService.get<Note>(`${NOTE_ENDPOINT}/${id}`);
     } catch (error) {
-      console.error(`Error fetching note ${id}:`, error);
       throw error;
     }
   }
@@ -44,7 +42,6 @@ class NoteService {
     try {
       return await apiService.post<Note>(NOTE_ENDPOINT, data);
     } catch (error) {
-      console.error('Error creating note:', error);
       throw error;
     }
   }
@@ -56,7 +53,6 @@ class NoteService {
     try {
       return await apiService.put<Note>(`${NOTE_ENDPOINT}/${id}`, data);
     } catch (error) {
-      console.error(`Error updating note ${id}:`, error);
       throw error;
     }
   }
@@ -68,7 +64,6 @@ class NoteService {
     try {
       return await apiService.delete(`${NOTE_ENDPOINT}/${id}`);
     } catch (error) {
-      console.error(`Error deleting note ${id}:`, error);
       throw error;
     }
   }

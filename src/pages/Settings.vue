@@ -1,6 +1,6 @@
 <template>
-  <div>
-    <h2 class="text-2xl font-bold text-[var(--text-primary)] mb-6">Settings</h2>
+  <PageContainer>
+    <PageHeader title="Settings" />
 
     <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
       <!-- Left Navigation (Optional) -->
@@ -48,11 +48,13 @@
         </section>
       </div>
     </div>
-  </div>
+  </PageContainer>
 </template>
 
 <script setup>
 import { ref } from 'vue';
+import PageContainer from '@/components/ui/PageContainer.vue';
+import PageHeader from '@/components/ui/PageHeader.vue';
 import ApiKeyManager from '../components/settings/ApiKeyManager.vue';
 import WebhookManager from '../components/settings/WebhookManager.vue';
 import AuditLogViewer from '../components/settings/AuditLogViewer.vue';

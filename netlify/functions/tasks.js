@@ -36,7 +36,9 @@ const TaskCreateSchema = z.object({
 
 // Zod schema for validating task update data (PUT)
 // Allows partial updates, making fields optional
-const TaskUpdateSchema = TaskCreateSchema.partial();
+const TaskUpdateSchema = TaskCreateSchema.partial().extend({
+  completed: z.boolean().optional(),
+});
 
 // Helper function to sync task with calendar
 async function syncTaskWithCalendar(db, task, operation) {
@@ -128,7 +130,8 @@ exports.handler = async function(event, context) {
       if (taskId) {
         const task = await collection.findOne({
           _id: new ObjectId(taskId),
-          teamId: teamId 
+          teamId: teamId,
+          ...notDeleted
         });
         if (!task) {
           return createErrorResponse(404, 'Task not found');
@@ -265,7 +268,8 @@ exports.handler = async function(event, context) {
         // Find the task ensuring it belongs to the correct team
         const existingTask = await collection.findOne({
             _id: new ObjectId(taskId),
-            teamId: teamId
+            teamId: teamId,
+            ...notDeleted
         });
         if (!existingTask) {
             return createErrorResponse(404, 'Task not found');
@@ -281,16 +285,24 @@ exports.handler = async function(event, context) {
                 }
             }
         }
-        delete updateFields.teamId; delete updateFields.userId; delete updateFields.createdAt; delete updateFields.id;
+        // Sync completed ↔ status
+        if (updateFields.completed !== undefined) {
+            updateFields.status = updateFields.completed ? 'Done' : (updateFields.status || 'To Do');
+        } else if (updateFields.status === 'Done') {
+            updateFields.completed = true;
+        } else if (updateFields.status && updateFields.status !== 'Done') {
+            updateFields.completed = false;
+        }
+        delete updateFields.teamId; delete updateFields.userId; delete updateFields.createdAt; delete updateFields.id; delete updateFields._id; delete updateFields.deletedAt; delete updateFields.deletedBy;
 
         if (Object.keys(updateFields).length === 0) {
             return createErrorResponse(400, 'No valid fields provided for update');
         }
         updateFields.updatedAt = new Date();
 
-        await collection.updateOne({ _id: new ObjectId(taskId) }, { $set: updateFields });
-        
-        const updatedTaskResult = await collection.findOne({ _id: new ObjectId(taskId) });
+        await collection.updateOne({ _id: new ObjectId(taskId), teamId: teamId }, { $set: updateFields });
+
+        const updatedTaskResult = await collection.findOne({ _id: new ObjectId(taskId), teamId: teamId });
         const updatedTask = { ...updatedTaskResult, id: updatedTaskResult._id.toString() };
         delete updatedTask._id;
         

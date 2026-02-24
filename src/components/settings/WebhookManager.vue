@@ -178,7 +178,7 @@
         </div>
 
         <div class="form-actions">
-          <button type="button" @click="showEditModal = false" class="btn-outline">Cancel</button>
+          <button type="button" @click="showEditModal = false" class="btn btn-outline">Cancel</button>
           <button
             type="button"
             @click="updateWebhook"
@@ -198,11 +198,11 @@
         <p class="font-mono text-sm text-[var(--text-primary)] break-all">{{ webhookToDelete.url }}</p>
         <p class="text-sm text-[var(--danger)]">This action cannot be undone.</p>
         <div class="form-actions">
-          <button type="button" @click="showDeleteModal = false" class="btn-outline">Cancel</button>
+          <button type="button" @click="showDeleteModal = false" class="btn btn-outline">Cancel</button>
           <button
             type="button"
             @click="deleteWebhook"
-            class="btn-danger"
+            class="btn btn-danger"
             :disabled="isDeleting"
           >
             {{ isDeleting ? 'Deleting...' : 'Delete Webhook' }}
@@ -254,7 +254,6 @@ async function loadWebhooks() {
   try {
     webhooks.value = await webhookService.getWebhooks();
   } catch (error) {
-    console.error('Error loading webhooks:', error);
     toast.error('Failed to load webhooks.');
   } finally {
     loadingWebhooks.value = false;
@@ -288,7 +287,6 @@ async function createWebhook() {
     newWebhook.value = { url: '', events: [], active: true };
     await loadWebhooks();
   } catch (error) {
-    console.error('Error creating webhook:', error);
     toast.error(`Failed to create webhook: ${error.message || 'Unknown error'}`);
   } finally {
     isCreating.value = false;
@@ -320,7 +318,6 @@ async function updateWebhook() {
     editingWebhook.value = null;
     await loadWebhooks();
   } catch (error) {
-    console.error('Error updating webhook:', error);
     toast.error(`Failed to update webhook: ${error.message || 'Unknown error'}`);
   } finally {
     isUpdating.value = false;
@@ -343,7 +340,6 @@ async function deleteWebhook() {
     webhookToDelete.value = null;
     await loadWebhooks();
   } catch (error) {
-    console.error('Error deleting webhook:', error);
     toast.error(`Failed to delete webhook: ${error.message || 'Unknown error'}`);
   } finally {
     isDeleting.value = false;
@@ -356,7 +352,6 @@ async function copySecret() {
     await navigator.clipboard.writeText(newlyCreatedSecret.value);
     toast.success('Webhook secret copied!');
   } catch (error) {
-    console.error('Failed to copy secret:', error);
     toast.error('Could not copy secret to clipboard.');
   }
 }

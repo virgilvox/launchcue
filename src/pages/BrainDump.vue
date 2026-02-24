@@ -1,50 +1,48 @@
 <template>
-  <div>
-    <!-- Header -->
-    <div class="mb-6 flex justify-between items-start">
-      <div>
-        <h2 class="heading-page">Brain Dump</h2>
-        <p class="text-caption mt-1">
-          Use AI to help brainstorm and organize your thoughts.
-        </p>
-      </div>
-      <!-- Tab Toggle -->
-      <div class="inline-flex border-2 border-[var(--border)]">
-        <button
-          @click="activeTab = 'new'"
-          :class="[
-            'px-4 py-1.5 text-body-sm font-medium transition-colors font-heading uppercase',
-            activeTab === 'new'
-              ? 'bg-[var(--accent-primary)] text-white'
-              : 'bg-[var(--surface)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
-          ]"
-        >
-          New
-        </button>
-        <button
-          @click="activeTab = 'history'; loadHistory()"
-          :class="[
-            'px-4 py-1.5 text-body-sm font-medium transition-colors font-heading uppercase border-l-2 border-[var(--border)]',
-            activeTab === 'history'
-              ? 'bg-[var(--accent-primary)] text-white'
-              : 'bg-[var(--surface)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
-          ]"
-        >
-          History
-        </button>
-      </div>
-    </div>
+  <PageContainer>
+    <PageHeader title="Brain Dump" subtitle="Use AI to help brainstorm and organize your thoughts.">
+      <template #actions>
+        <!-- Tab Toggle -->
+        <div class="inline-flex border-2 border-[var(--border)]">
+          <button
+            @click="activeTab = 'new'"
+            :class="[
+              'px-4 py-1.5 text-body-sm font-medium transition-colors font-heading uppercase',
+              activeTab === 'new'
+                ? 'bg-[var(--accent-primary)] text-white'
+                : 'bg-[var(--surface)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+            ]"
+          >
+            New
+          </button>
+          <button
+            @click="activeTab = 'history'; loadHistory()"
+            :class="[
+              'px-4 py-1.5 text-body-sm font-medium transition-colors font-heading uppercase border-l-2 border-[var(--border)]',
+              activeTab === 'history'
+                ? 'bg-[var(--accent-primary)] text-white'
+                : 'bg-[var(--surface)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+            ]"
+          >
+            History
+          </button>
+        </div>
+      </template>
+    </PageHeader>
 
     <!-- History Tab -->
     <div v-if="activeTab === 'history'">
       <div v-if="historyLoading" class="text-center py-10">
-        <div class="animate-spin inline-block h-6 w-6 border-t-2 border-r-2 border-[var(--accent-primary)] rounded-full"></div>
-        <p class="text-[var(--text-secondary)] mt-2 text-sm">Loading history...</p>
+        <LoadingSpinner text="Loading history..." />
       </div>
-      <div v-else-if="historyItems.length === 0" class="text-center py-10 bg-[var(--surface)]">
-        <p class="text-[var(--text-secondary)]">No brain dumps yet. Start by creating one!</p>
-        <button @click="activeTab = 'new'" class="text-[var(--accent-primary)] hover:underline mt-2 text-sm">Go to New</button>
-      </div>
+      <EmptyState
+        v-else-if="historyItems.length === 0"
+        :icon="LightBulbIcon"
+        title="No brain dumps yet"
+        description="Start by creating one to brainstorm and organize your thoughts."
+        actionLabel="Create New"
+        @action="activeTab = 'new'"
+      />
       <div v-else class="space-y-4">
         <div
           v-for="item in historyItems"
@@ -206,7 +204,7 @@
         />
       </div>
     </div>
-  </div>
+  </PageContainer>
 </template>
 
 <script setup>
@@ -217,10 +215,15 @@ import { useClientStore } from '../stores/client';
 import { useProjectStore } from '../stores/project';
 
 // Components
+import PageContainer from '@/components/ui/PageContainer.vue';
+import PageHeader from '@/components/ui/PageHeader.vue';
 import BrainDumpForm from '../components/brain-dump/BrainDumpForm.vue';
 import ContextOptions from '../components/brain-dump/ContextOptions.vue';
 import BrainDumpResults from '../components/brain-dump/BrainDumpResults.vue';
 import ActionableItems from '../components/brain-dump/ActionableItems.vue';
+import LoadingSpinner from '@/components/LoadingSpinner.vue';
+import EmptyState from '@/components/ui/EmptyState.vue';
+import { LightBulbIcon } from '@heroicons/vue/24/outline';
 
 const toast = useToast();
 const clientStore = useClientStore();
@@ -239,7 +242,6 @@ async function loadHistory() {
     const data = await brainDumpService.getDumps();
     historyItems.value = Array.isArray(data) ? data : (data.data || []);
   } catch (err) {
-    console.error('Error loading brain dump history:', err);
     toast.error('Failed to load brain dump history');
     historyItems.value = [];
   } finally {
@@ -264,7 +266,6 @@ async function deleteHistoryItem(id) {
     historyItems.value = historyItems.value.filter(item => item.id !== id);
     toast.success('Brain dump deleted');
   } catch (err) {
-    console.error('Error deleting brain dump:', err);
     toast.error('Failed to delete brain dump');
   }
 }
@@ -342,11 +343,10 @@ onMounted(async () => {
     ]);
     results.forEach((result, i) => {
       if (result.status === 'rejected') {
-        console.error(`BrainDump dependency fetch #${i} failed:`, result.reason);
+        // silently handled
       }
     });
   } catch(err) {
-    console.error("Error loading initial client/project data", err);
     toast.error("Failed to load client/project list");
   } finally {
     isLoadingClients.value = false;
@@ -398,7 +398,6 @@ async function processWithAI() {
     }
 
   } catch (error) {
-    console.error('Error processing with AI:', error);
     toast.error(`Processing failed: ${error.message || 'Unknown error'}`);
     aiResponse.value = `Error during processing: ${error.message || 'Unknown error'}`;
   } finally {
@@ -418,7 +417,6 @@ async function fetchContextData() {
     };
     contextData.value = await brainDumpService.getContextData(params);
   } catch (error) {
-    console.error('Error fetching context data:', error);
     toast.error('Failed to load context data');
     contextData.value = null;
   } finally {
@@ -507,7 +505,6 @@ async function createSelectedItems(selectedItems) {
       item => !selectedItems.includes(item)
     );
   } catch (error) {
-    console.error('Error creating items:', error);
     toast.error('Failed to create items');
   } finally {
     isCreatingItems.value = false;

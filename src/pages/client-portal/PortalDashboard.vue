@@ -3,7 +3,7 @@
     <h1 class="heading-page mb-6">Welcome{{ userName ? `, ${userName}` : '' }}</h1>
 
     <div v-if="loading" class="text-center py-10">
-      <p class="text-[var(--text-secondary)]">Loading your dashboard...</p>
+      <LoadingSpinner text="Loading your dashboard..." />
     </div>
 
     <div v-else class="space-y-8">
@@ -73,6 +73,7 @@ import { useToast } from 'vue-toastification'
 import { useAuthStore } from '@/stores/auth'
 import onboardingService from '@/services/onboarding.service'
 import apiService, { SCOPE_ENDPOINT, PROJECT_ENDPOINT } from '@/services/api.service'
+import LoadingSpinner from '@/components/LoadingSpinner.vue'
 import { getStatusColor } from '@/utils/statusColors'
 import { formatCurrency } from '@/utils/formatters'
 
@@ -128,7 +129,6 @@ async function loadDashboard() {
       ? scopesData.value
       : []
   } catch (err) {
-    console.error('Error loading portal dashboard:', err)
     toast.error('Failed to load dashboard data')
   } finally {
     loading.value = false

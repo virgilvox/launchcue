@@ -18,7 +18,6 @@ export const useScopeStore = defineStore('scope', () => {
       templates.value = Array.isArray(response) ? response : []
       return templates.value
     } catch (error) {
-      console.error('Error fetching scope templates:', error)
       templates.value = []
       throw error
     } finally {
@@ -33,7 +32,6 @@ export const useScopeStore = defineStore('scope', () => {
       scopes.value = Array.isArray(response) ? response : []
       return scopes.value
     } catch (error) {
-      console.error('Error fetching scopes:', error)
       scopes.value = []
       throw error
     } finally {
@@ -49,7 +47,6 @@ export const useScopeStore = defineStore('scope', () => {
       }
       return created
     } catch (error) {
-      console.error('Error creating scope template:', error)
       throw error
     }
   }
@@ -65,7 +62,6 @@ export const useScopeStore = defineStore('scope', () => {
       }
       return updated
     } catch (error) {
-      console.error('Error updating scope template:', error)
       throw error
     } finally {
       isLoading.value = false
@@ -79,7 +75,6 @@ export const useScopeStore = defineStore('scope', () => {
       await scopeService.deleteScopeTemplate(id)
       templates.value = templates.value.filter(t => t.id !== id)
     } catch (error) {
-      console.error('Error deleting scope template:', error)
       throw error
     } finally {
       isLoading.value = false
@@ -94,7 +89,6 @@ export const useScopeStore = defineStore('scope', () => {
       }
       return created
     } catch (error) {
-      console.error('Error creating scope:', error)
       throw error
     }
   }
@@ -107,7 +101,6 @@ export const useScopeStore = defineStore('scope', () => {
       }
       return created
     } catch (error) {
-      console.error('Error creating scope from template:', error)
       throw error
     }
   }
@@ -123,7 +116,6 @@ export const useScopeStore = defineStore('scope', () => {
       }
       return updated
     } catch (error) {
-      console.error('Error updating scope:', error)
       throw error
     } finally {
       isLoading.value = false
@@ -137,7 +129,6 @@ export const useScopeStore = defineStore('scope', () => {
       await scopeService.deleteScope(id)
       scopes.value = scopes.value.filter(s => s.id !== id)
     } catch (error) {
-      console.error('Error deleting scope:', error)
       throw error
     } finally {
       isLoading.value = false

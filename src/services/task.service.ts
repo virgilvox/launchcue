@@ -15,7 +15,6 @@ class TaskService {
     try {
       return await this.getTasks({ projectId });
     } catch (error) {
-      console.error(`Error fetching tasks for project ${projectId}:`, error);
       throw error;
     }
   }
@@ -27,7 +26,6 @@ class TaskService {
     try {
       return await apiService.get<Task>(`${TASK_ENDPOINT}/${taskId}`);
     } catch (error) {
-      console.error(`Error fetching task ${taskId}:`, error);
       throw error;
     }
   }
@@ -52,7 +50,6 @@ class TaskService {
 
       return await apiService.post<Task>(TASK_ENDPOINT, formattedTaskData);
     } catch (error) {
-      console.error('Error creating task:', error);
       throw error;
     }
   }
@@ -66,16 +63,16 @@ class TaskService {
       const formattedTaskData: Record<string, unknown> = {
         ...(taskData.title !== undefined ? { title: taskData.title } : {}),
         ...(taskData.description !== undefined ? { description: taskData.description } : {}),
-        ...(taskData.completed !== undefined ? { status: taskData.completed ? 'Done' : (taskData.status || 'To Do') } : {}),
+        ...(taskData.completed !== undefined ? { completed: taskData.completed, status: taskData.completed ? 'Done' : (taskData.status || 'To Do') } : {}),
         ...(taskData.dueDate !== undefined ? { dueDate: taskData.dueDate } : {}),
         ...(taskData.priority !== undefined ? { priority: taskData.priority } : {}),
         ...(taskData.assigneeId !== undefined ? { assigneeId: taskData.assigneeId } : {}),
+        ...(taskData.status !== undefined && taskData.completed === undefined ? { status: taskData.status } : {}),
         ...(taskData.projectId !== undefined ? { projectId: taskData.projectId } : {})
       };
 
       return await apiService.put<Task>(`${TASK_ENDPOINT}/${taskId}`, formattedTaskData);
     } catch (error) {
-      console.error(`Error updating task ${taskId}:`, error);
       throw error;
     }
   }
@@ -87,7 +84,6 @@ class TaskService {
     try {
       return await apiService.delete(`${TASK_ENDPOINT}/${taskId}`);
     } catch (error) {
-      console.error(`Error deleting task ${taskId}:`, error);
       throw error;
     }
   }
@@ -111,7 +107,6 @@ class TaskService {
       const response = await apiService.get<Task[] | unknown>(TASK_ENDPOINT, params as Record<string, unknown>);
       return Array.isArray(response) ? response : [];
     } catch (error) {
-      console.error('Error fetching tasks:', error);
       throw error;
     }
   }

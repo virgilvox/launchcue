@@ -121,7 +121,7 @@ async function fetchActivity() {
     const data = await commentService.getRecentComments()
     activities.value = Array.isArray(data) ? data : []
   } catch (error) {
-    console.error('Failed to fetch activity feed:', error)
+    // silently handled
     activities.value = []
   } finally {
     isLoading.value = false

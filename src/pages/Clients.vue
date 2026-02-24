@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <PageContainer>
     <PageHeader title="Clients">
       <template #actions>
         <button 
@@ -152,7 +152,7 @@
     <Modal v-model="showDeleteModal" title="Confirm Delete" size="sm">
       <div class="space-y-4">
         <p>Are you sure you want to delete this client? This will also delete all associated projects and cannot be undone.</p>
-        
+
         <div class="flex justify-end gap-3 pt-4 border-t-2 border-[var(--border-light)]">
           <button @click.stop="closeDeleteModal" class="btn btn-secondary">CANCEL</button>
           <button @click="deleteClient($event)" class="btn btn-danger" :disabled="deleting">
@@ -161,13 +161,11 @@
         </div>
       </div>
     </Modal>
-  </div>
+  </PageContainer>
 </template>
 
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
-import { useRouter } from 'vue-router';
-import { useAuthStore } from '../stores/auth';
 import { useClientStore } from '../stores/client';
 import { useProjectStore } from '../stores/project';
 import clientService from '@/services/client.service';
@@ -175,15 +173,14 @@ import { useToast } from 'vue-toastification';
 import { getStatusColor } from '@/utils/statusColors';
 import { PlusIcon, UsersIcon, EllipsisVerticalIcon, XMarkIcon } from '@heroicons/vue/24/outline';
 import Modal from '../components/Modal.vue';
+import PageContainer from '@/components/ui/PageContainer.vue';
 import PageHeader from '../components/ui/PageHeader.vue';
 import LoadingSpinner from '../components/LoadingSpinner.vue';
 import EmptyState from '../components/ui/EmptyState.vue';
 import ClientColorPicker from '../components/ui/ClientColorPicker.vue';
 import { getNextClientColor, getClientColor } from '@/constants/clientColors';
 
-const router = useRouter();
 const toast = useToast();
-const authStore = useAuthStore();
 const clientStore = useClientStore();
 const projectStore = useProjectStore();
 
@@ -228,7 +225,6 @@ async function loadClients() {
     // Attach projects from the store (no extra API calls)
     attachProjectsFromStore();
   } catch (err) {
-    console.error('Error loading clients:', err);
     error.value = 'Failed to load clients. Please try again.';
     toast.error('Failed to load clients');
   } finally {
@@ -294,7 +290,6 @@ async function saveClient() {
     }
     closeClientModal();
   } catch (err) {
-    console.error('Error saving client:', err);
     error.value = 'Failed to save client. Please try again.';
     toast.error('Failed to save client');
   } finally {
@@ -330,7 +325,6 @@ async function deleteClient(event) {
     toast.success('Client deleted successfully');
     closeDeleteModal();
   } catch (err) {
-    console.error('Error deleting client:', err);
     error.value = 'Failed to delete client. Please try again.';
     toast.error('Failed to delete client');
   } finally {
@@ -363,7 +357,6 @@ async function runContactMigration() {
       await loadClients();
     }
   } catch (err) {
-    console.error('Error running contact migration:', err);
     toast.error('Failed to run contact migration');
   } finally {
     migratingContacts.value = false;

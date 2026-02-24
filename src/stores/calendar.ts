@@ -106,7 +106,6 @@ export const useCalendarStore = defineStore('calendar', () => {
       events.value = processedEvents
       return { success: true, events: processedEvents }
     } catch (err: unknown) {
-      console.error('Error fetching calendar events:', err)
       const message = err instanceof Error ? err.message : 'Failed to fetch calendar events'
       error.value = message
       toast.error('Failed to fetch calendar events')
@@ -156,7 +155,6 @@ export const useCalendarStore = defineStore('calendar', () => {
       toast.success('Event created successfully')
       return { success: true, event: data }
     } catch (err: unknown) {
-      console.error('Error creating calendar event:', err)
       const message = err instanceof Error ? err.message : 'Failed to create calendar event'
       error.value = message
       toast.error('Failed to create calendar event')
@@ -192,7 +190,6 @@ export const useCalendarStore = defineStore('calendar', () => {
       toast.success('Event updated successfully')
       return { success: true, event: data }
     } catch (err: unknown) {
-      console.error('Error updating calendar event:', err)
       const message = err instanceof Error ? err.message : 'Failed to update calendar event'
       error.value = message
       toast.error('Failed to update calendar event')
@@ -220,7 +217,6 @@ export const useCalendarStore = defineStore('calendar', () => {
       toast.success('Event deleted successfully')
       return { success: true }
     } catch (err: unknown) {
-      console.error('Error deleting calendar event:', err)
       const message = err instanceof Error ? err.message : 'Failed to delete calendar event'
       error.value = message
       toast.error('Failed to delete calendar event')
@@ -312,7 +308,6 @@ export const useCalendarStore = defineStore('calendar', () => {
 
       return { success: true, items: allItems }
     } catch (err: unknown) {
-      console.error('Error fetching upcoming items:', err)
       const message = err instanceof Error ? err.message : 'Failed to fetch upcoming items'
       error.value = message
       toast.error('Failed to fetch upcoming items')
@@ -358,7 +353,6 @@ export const useCalendarStore = defineStore('calendar', () => {
 
       return processedTasks
     } catch (err: unknown) {
-      console.error('Error fetching task deadlines:', err)
       const message = err instanceof Error ? err.message : 'Failed to fetch task deadlines'
       error.value = message
       return []

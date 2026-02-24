@@ -78,7 +78,6 @@ class BrainDumpService {
           // Use direct call to apiService.post
           return await apiService.post<AiProcessingResult>(AI_PROCESS_ENDPOINT, aiPayload);
       } catch (error) {
-          console.error("AI Processing error:", error);
           throw error;
       }
   }

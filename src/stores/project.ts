@@ -18,7 +18,6 @@ export const useProjectStore = defineStore('project', () => {
       projects.value = Array.isArray(response) ? response : []
       return projects.value
     } catch (error) {
-      console.error('Error fetching projects:', error)
       // Ensure projects.value is reset to an empty array on error
       projects.value = []
       throw error
@@ -36,7 +35,6 @@ export const useProjectStore = defineStore('project', () => {
       const response: unknown = await apiService.get(`${PROJECT_ENDPOINT}?clientId=${clientId}`)
       return Array.isArray(response) ? response : []
     } catch (error) {
-      console.error('Error fetching client projects:', error)
       throw error
     } finally {
       isLoading.value = false
@@ -49,7 +47,6 @@ export const useProjectStore = defineStore('project', () => {
       const response: Project = await apiService.get(`${PROJECT_ENDPOINT}/${id}`)
       return response
     } catch (error) {
-      console.error('Error fetching project:', error)
       throw error
     }
   }
@@ -62,7 +59,6 @@ export const useProjectStore = defineStore('project', () => {
       }
       return createdProject
     } catch (error) {
-      console.error('Error creating project:', error)
       throw error
     }
   }
@@ -80,7 +76,6 @@ export const useProjectStore = defineStore('project', () => {
       }
       return updatedProject
     } catch (error) {
-      console.error('Error updating project:', error)
       throw error
     } finally {
       isLoading.value = false
@@ -96,7 +91,6 @@ export const useProjectStore = defineStore('project', () => {
       await apiService.delete(`${PROJECT_ENDPOINT}/${id}`)
       projects.value = projects.value.filter(p => p.id !== id)
     } catch (error) {
-      console.error('Error deleting project:', error)
       throw error
     } finally {
       isLoading.value = false

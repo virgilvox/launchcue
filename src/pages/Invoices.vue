@@ -38,8 +38,19 @@
       </select>
     </div>
 
+    <!-- Empty State -->
+    <EmptyState
+      v-if="!invoiceStore.invoices.length"
+      :icon="DocumentTextIcon"
+      title="No invoices yet"
+      description="Create your first invoice to start tracking payments."
+      actionLabel="New Invoice"
+      @action="router.push('/invoices/new')"
+    />
+
     <!-- Invoice Table -->
     <DataTable
+      v-else
       :columns="columns"
       :data="filteredInvoices"
       :clickable="true"
@@ -98,6 +109,8 @@ import PageContainer from '@/components/ui/PageContainer.vue';
 import PageHeader from '@/components/ui/PageHeader.vue';
 import Modal from '@/components/Modal.vue';
 import ClientColorDot from '@/components/ui/ClientColorDot.vue';
+import EmptyState from '@/components/ui/EmptyState.vue';
+import { DocumentTextIcon } from '@heroicons/vue/24/outline';
 
 const router = useRouter();
 const toast = useToast();
@@ -183,7 +196,6 @@ async function performDelete() {
     showDeleteModal.value = false;
     deleteTarget.value = null;
   } catch (err) {
-    console.error('Error deleting invoice:', err);
     toast.error('Failed to delete invoice');
   } finally {
     deleting.value = false;
@@ -200,11 +212,10 @@ onMounted(async () => {
     ]);
     results.forEach((result, i) => {
       if (result.status === 'rejected') {
-        console.error(`Fetch #${i} failed:`, result.reason);
+        // silently handled
       }
     });
   } catch (err) {
-    console.error('Error loading invoice data:', err);
     toast.error('Failed to load invoices');
   }
 });

@@ -41,7 +41,6 @@ export const useClientStore = defineStore('client', () => {
 
       return response
     } catch (err: unknown) {
-      console.error('Error fetching clients:', err)
       const message = err instanceof Error ? err.message : 'Failed to fetch clients'
       error.value = message
       loading.value = false
@@ -65,7 +64,6 @@ export const useClientStore = defineStore('client', () => {
       const response: Client = await clientService.getClient(id)
       return { success: true, client: response }
     } catch (err: unknown) {
-      console.error('Error getting client:', err)
       const message = err instanceof Error ? err.message : 'Failed to get client'
       toast.error('Failed to load client details')
       return { success: false, error: message }
@@ -87,7 +85,6 @@ export const useClientStore = defineStore('client', () => {
       toast.success('Client created successfully')
       return { success: true, client: response }
     } catch (err: unknown) {
-      console.error('Error creating client:', err)
       const message = err instanceof Error ? err.message : 'Failed to create client'
       toast.error('Failed to create client')
       return { success: false, error: message }
@@ -110,7 +107,6 @@ export const useClientStore = defineStore('client', () => {
       toast.success('Client updated successfully')
       return { success: true, client: response }
     } catch (err: unknown) {
-      console.error('Error updating client:', err)
       const message = err instanceof Error ? err.message : 'Failed to update client'
       toast.error('Failed to update client')
       return { success: false, error: message }
@@ -133,7 +129,6 @@ export const useClientStore = defineStore('client', () => {
       toast.success('Client deleted successfully')
       return { success: true }
     } catch (err: unknown) {
-      console.error('Error deleting client:', err)
       const message = err instanceof Error ? err.message : 'Failed to delete client'
       toast.error('Failed to delete client')
       return { success: false, error: message }
@@ -145,7 +140,6 @@ export const useClientStore = defineStore('client', () => {
       const response: Contact[] = await clientService.getClientContacts(clientId)
       return { success: true, contacts: response }
     } catch (err: unknown) {
-      console.error('Error fetching client contacts:', err)
       const message = err instanceof Error ? err.message : 'Failed to fetch client contacts'
       toast.error('Failed to load client contacts')
       return { success: false, error: message }
@@ -157,7 +151,6 @@ export const useClientStore = defineStore('client', () => {
       const response: Project[] = await clientService.getClientProjects(clientId)
       return { success: true, projects: response }
     } catch (err: unknown) {
-      console.error('Error fetching client projects:', err)
       const message = err instanceof Error ? err.message : 'Failed to fetch client projects'
       toast.error('Failed to load client projects')
       return { success: false, error: message }
@@ -178,7 +171,6 @@ export const useClientStore = defineStore('client', () => {
 
       return { success: true, result: response }
     } catch (err: unknown) {
-      console.error('Error running contact migration:', err)
       const message = err instanceof Error ? err.message : 'Failed to run contact migration'
       error.value = message
       toast.error('Failed to run contact migration')

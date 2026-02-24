@@ -81,14 +81,14 @@
         <button
           @click="loadLogs(pagination.page - 1)"
           :disabled="pagination.page <= 1"
-          class="btn-outline text-xs px-3 py-1"
+          class="btn btn-outline text-xs px-3 py-1"
         >
           Previous
         </button>
         <button
           @click="loadLogs(pagination.page + 1)"
           :disabled="!pagination.hasMore"
-          class="btn-outline text-xs px-3 py-1"
+          class="btn btn-outline text-xs px-3 py-1"
         >
           Next
         </button>
@@ -131,7 +131,6 @@ async function loadLogs(page = 1) {
       pagination.value = null;
     }
   } catch (error) {
-    console.error('Error loading audit logs:', error);
     toast.error('Failed to load audit logs.');
   } finally {
     loading.value = false;

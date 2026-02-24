@@ -29,6 +29,7 @@
                 @click="$refs.globalSearch?.open()"
                 class="flex items-center gap-2 px-3 sm:px-4 py-2 text-body-sm border-2 border-[var(--border)] hover:shadow-brutal-sm transition-shadow sm:min-w-[200px]"
                 style="background-color: var(--bg); color: var(--text-secondary);"
+                aria-label="Search (⌘K)"
               >
                 <MagnifyingGlassIcon class="h-4 w-4 shrink-0" />
                 <span class="hidden sm:inline">Search...</span>
@@ -98,7 +99,7 @@
           >
             <div class="flex justify-between items-center mb-4 pb-4 border-b-2" style="border-color: var(--border);">
               <h3 class="heading-section">Keyboard Shortcuts</h3>
-              <button @click="showHelp = false" class="btn-icon">
+              <button @click="showHelp = false" class="btn-icon" aria-label="Close keyboard shortcuts">
                 <XMarkIcon class="h-5 w-5" />
               </button>
             </div>

@@ -1,11 +1,7 @@
 <template>
-  <div class="tasks-page">
-    <div class="page-header flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
-      <div>
-        <h1 class="heading-page">Tasks</h1>
-        <p class="text-caption mt-1">Manage your tasks and track their progress</p>
-      </div>
-      <div class="flex items-center gap-2 flex-shrink-0">
+  <PageContainer>
+    <PageHeader title="Tasks" subtitle="Manage your tasks and track their progress">
+      <template #actions>
         <!-- View Toggle -->
         <div class="inline-flex border-2 border-[var(--border)]">
           <button
@@ -43,8 +39,8 @@
         <button @click="fetchTasks" class="btn btn-outline" title="Refresh Tasks">
           <ArrowPathIcon class="h-5 w-5" :class="{ 'animate-spin': isLoading }" />
         </button>
-      </div>
-    </div>
+      </template>
+    </PageHeader>
 
     <!-- Filter and Sort Controls -->
     <TaskFilters v-model="filters" />
@@ -124,7 +120,7 @@
         </div>
       </div>
     </Modal>
-  </div>
+  </PageContainer>
 </template>
 
 <script setup>
@@ -143,6 +139,8 @@ import {
 } from '@heroicons/vue/24/outline'
 
 // Import Components
+import PageContainer from '@/components/ui/PageContainer.vue'
+import PageHeader from '@/components/ui/PageHeader.vue'
 import Modal from '../components/Modal.vue'
 import LoadingSpinner from '../components/LoadingSpinner.vue'
 import TaskFilters from '../components/tasks/TaskFilters.vue'
@@ -269,7 +267,6 @@ const fetchTasks = async () => {
   try {
     await taskStore.fetchTasks()
   } catch (error) {
-    console.error('Failed to fetch tasks:', error)
     toast.error('Failed to load tasks. Please try again.')
     // Ensure loading is stopped even on error
     isLoading.value = false; 
@@ -289,7 +286,7 @@ const fetchSupportData = async () => {
   ]);
   results.forEach((result, i) => {
     if (result.status === 'rejected') {
-      console.error(`Support data fetch #${i} failed:`, result.reason)
+      // silently handled
     }
   });
 }
@@ -350,7 +347,6 @@ const handleSaveTask = async (taskData) => {
     
     showTaskFormModal.value = false;
   } catch (error) {
-    console.error('Error saving task:', error);
     // Extract the actual error message from the error object if available
     let errorMessage = 'Unknown error';
     
@@ -377,7 +373,6 @@ const handleDeleteTask = async () => {
     showDeleteModal.value = false
     taskToDelete.value = null // Clear selection
   } catch (error) {
-    console.error('Error deleting task:', error)
     toast.error(`Failed to delete task: ${error.message || 'Unknown error'}`)
   } finally {
     isDeletingTask.value = false
@@ -394,7 +389,6 @@ const handleUpdateTaskStatus = async ({ taskId, status }) => {
       await taskStore.updateTask({ ...task, status })
       // toast.info(`Task "${task.title}" status updated to ${status}.`); // Optional toast for status change
     } catch (error) {
-      console.error('Error updating task status:', error)
       toast.error(`Failed to update task status: ${error.message || 'Unknown error'}`)
       // Revert optimistic update on failure
       // task.status = originalStatus; 
@@ -412,7 +406,6 @@ const handleUpdateChecklist = async (newChecklist) => {
         // Optionally add a toast confirmation
         // toast.success("Checklist updated.");
     } catch (error) {
-        console.error('Error updating checklist:', error);
         toast.error(`Failed to update checklist: ${error.message || 'Unknown error'}`);
     }
 }

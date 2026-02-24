@@ -141,7 +141,7 @@
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
+import { useRoute, useRouter, onBeforeRouteLeave } from 'vue-router';
 import { useToast } from 'vue-toastification';
 import { useScopeStore } from '@/stores/scope';
 import { useClientStore } from '@/stores/client';
@@ -171,6 +171,8 @@ const saving = ref(false);
 const error = ref(null);
 const showPreview = ref(false);
 const tagsInput = ref('');
+const isDirty = ref(false);
+const loaded = ref(false);
 
 const formData = ref({
   id: null,
@@ -204,6 +206,23 @@ watch(() => formData.value.clientId, () => {
   formData.value.projectId = null;
 });
 
+// Track unsaved changes (skip initial data load)
+watch(formData, () => {
+  if (loaded.value) {
+    isDirty.value = true;
+  }
+}, { deep: true });
+
+// Warn before navigating away with unsaved changes
+onBeforeRouteLeave((to, from, next) => {
+  if (isDirty.value) {
+    const answer = window.confirm('You have unsaved changes. Are you sure you want to leave?');
+    next(answer);
+  } else {
+    next();
+  }
+});
+
 // --- Data Loading ---
 
 async function loadClientsAndProjects() {
@@ -214,11 +233,11 @@ async function loadClientsAndProjects() {
     ]);
     results.forEach((result, i) => {
       if (result.status === 'rejected') {
-        console.error(`Fetch #${i} failed:`, result.reason);
+        // silently handled
       }
     });
   } catch (err) {
-    console.error('Error loading clients/projects:', err);
+    // silently handled
   }
 }
 
@@ -254,7 +273,6 @@ async function loadScope(id) {
       status: scopeData.status || 'draft',
     };
   } catch (err) {
-    console.error('Error loading scope:', err);
     error.value = 'Failed to load scope. Please try again.';
     toast.error(error.value);
   } finally {
@@ -292,7 +310,6 @@ async function loadTemplate(id) {
     };
     tagsInput.value = (templateData.tags || []).join(', ');
   } catch (err) {
-    console.error('Error loading template:', err);
     error.value = 'Failed to load template. Please try again.';
     toast.error(error.value);
   } finally {
@@ -382,8 +399,10 @@ async function save() {
         const created = await scopeStore.createTemplate(templatePayload);
         toast.success('Template created successfully!');
         formData.value.id = created.id;
+        isDirty.value = false;
         router.replace(`/scope-templates/${created.id}`);
       }
+      isDirty.value = false;
     } else {
       const scopePayload = {
         title: formData.value.title,
@@ -411,11 +430,12 @@ async function save() {
         const created = await scopeStore.createScope(scopePayload);
         toast.success('Scope created successfully!');
         formData.value.id = created.id;
+        isDirty.value = false;
         router.replace(`/scopes/${created.id}`);
       }
+      isDirty.value = false;
     }
   } catch (err) {
-    console.error('Error saving:', err);
     error.value = isTemplate.value
       ? 'Failed to save template. Please try again.'
       : 'Failed to save scope. Please try again.';
@@ -465,10 +485,11 @@ onMounted(async () => {
       tagsInput.value = '';
     }
   } catch (err) {
-    console.error('Error initializing scope builder:', err);
     error.value = 'Failed to initialize page. Please try again.';
   } finally {
     loading.value = false;
+    // Use nextTick delay to ensure the watch skips the initial population
+    setTimeout(() => { loaded.value = true; }, 0);
   }
 });
 </script>

@@ -357,9 +357,13 @@ exports.handler = async (event, context) => {
       }
 
       // Remove fields that should not be updated
+      delete updateData._id;
+      delete updateData.id;
       delete updateData.teamId;
       delete updateData.createdBy;
       delete updateData.createdAt;
+      delete updateData.deletedAt;
+      delete updateData.deletedBy;
 
       // Update the invoice
       const result = await invoicesCollection.updateOne(
@@ -368,7 +372,7 @@ exports.handler = async (event, context) => {
       );
 
       // Get the updated invoice
-      const updatedInvoice = await invoicesCollection.findOne({ _id: new ObjectId(specificInvoiceId) });
+      const updatedInvoice = await invoicesCollection.findOne({ _id: new ObjectId(specificInvoiceId), teamId: teamId });
       updatedInvoice.id = updatedInvoice._id.toString();
       delete updatedInvoice._id;
 

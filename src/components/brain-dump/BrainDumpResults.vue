@@ -96,7 +96,6 @@ async function copyToClipboard(text) {
     toast.success('Copied to clipboard');
     emit('copy');
   } catch (error) {
-    console.error('Failed to copy:', error);
     toast.error('Unable to copy to clipboard');
   }
 }

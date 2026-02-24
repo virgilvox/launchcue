@@ -97,7 +97,7 @@ exports.handler = async function(event, context) {
         const action = event.queryStringParameters?.action;
 
         if (action === 'getContacts') {
-          const client = await clientsCollection.findOne({ _id: clientObjId, teamId: teamId });
+          const client = await clientsCollection.findOne({ _id: clientObjId, teamId: teamId, ...notDeleted });
           if (!client) {
             return createErrorResponse(404, 'Client not found');
           }
@@ -105,7 +105,7 @@ exports.handler = async function(event, context) {
         }
 
         if (event.httpMethod === 'GET') {
-          const client = await clientsCollection.findOne({ _id: clientObjId, teamId: teamId });
+          const client = await clientsCollection.findOne({ _id: clientObjId, teamId: teamId, ...notDeleted });
           if (!client) {
             return createErrorResponse(404, 'Client not found');
           }
@@ -115,12 +115,21 @@ exports.handler = async function(event, context) {
         }
 
         if (event.httpMethod === 'PUT' && !action) {
-          const body = JSON.parse(event.body);
-          delete body.teamId;
+          let body;
+          try { body = JSON.parse(event.body); } catch (e) { return createErrorResponse(400, 'Invalid JSON'); }
+
+          const validationResult = ClientUpdateSchema.safeParse(body);
+          if (!validationResult.success) {
+            return createErrorResponse(400, 'Validation failed', validationResult.error.format());
+          }
+          const validatedBody = validationResult.data;
+          delete validatedBody.teamId; delete validatedBody._id; delete validatedBody.id;
+          delete validatedBody.createdBy; delete validatedBody.createdAt;
+          delete validatedBody.deletedAt; delete validatedBody.deletedBy;
 
           const updateResult = await clientsCollection.findOneAndUpdate(
-            { _id: clientObjId, teamId: teamId },
-            { $set: { ...body, updatedAt: new Date() } },
+            { _id: clientObjId, teamId: teamId, ...notDeleted },
+            { $set: { ...validatedBody, updatedAt: new Date() } },
             { returnDocument: 'after' }
           );
 
@@ -146,7 +155,7 @@ exports.handler = async function(event, context) {
               return createErrorResponse(400, 'Contact ID is required for contact deletion');
             }
 
-            const clientDoc = await clientsCollection.findOne({ _id: new ObjectId(clientId), teamId });
+            const clientDoc = await clientsCollection.findOne({ _id: new ObjectId(clientId), teamId, ...notDeleted });
             if (!clientDoc) {
               return createErrorResponse(404, 'Client not found');
             }
@@ -190,19 +199,22 @@ exports.handler = async function(event, context) {
         }
 
         if (event.httpMethod === 'POST' && action === 'addContact') {
-          const body = JSON.parse(event.body);
-          if (!body.name) {
-            return createErrorResponse(400, 'Contact name is required');
+          let body;
+          try { body = JSON.parse(event.body); } catch (e) { return createErrorResponse(400, 'Invalid JSON'); }
+
+          const contactValidation = ContactSchema.safeParse(body);
+          if (!contactValidation.success) {
+            return createErrorResponse(400, 'Validation failed', contactValidation.error.format());
           }
 
           const newContact = {
-            ...body,
+            ...contactValidation.data,
             id: new ObjectId().toString(),
             createdAt: new Date(),
             updatedAt: new Date()
           };
 
-          const client = await clientsCollection.findOne({ _id: clientObjId, teamId });
+          const client = await clientsCollection.findOne({ _id: clientObjId, teamId, ...notDeleted });
           if (!client) {
             return createErrorResponse(404, 'Client not found');
           }
@@ -236,12 +248,20 @@ exports.handler = async function(event, context) {
             return createErrorResponse(400, 'Contact ID is required');
           }
 
-          const body = JSON.parse(event.body);
+          let body;
+          try { body = JSON.parse(event.body); } catch (e) { return createErrorResponse(400, 'Invalid JSON'); }
+
+          const contactValidation = ContactSchema.partial().safeParse(body);
+          if (!contactValidation.success) {
+            return createErrorResponse(400, 'Validation failed', contactValidation.error.format());
+          }
+          body = contactValidation.data;
 
           const client = await clientsCollection.findOne({
             _id: clientObjId,
             teamId: teamId,
-            'contacts.id': updateContactId
+            'contacts.id': updateContactId,
+            ...notDeleted
           });
 
           if (!client) {
@@ -362,7 +382,8 @@ exports.handler = async function(event, context) {
 
       const clientExists = await clientsCollection.findOne({
         _id: new ObjectId(clientId),
-        teamId: teamId
+        teamId: teamId,
+        ...notDeleted
       });
 
       if (!clientExists) {

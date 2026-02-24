@@ -14,7 +14,7 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import { Doughnut } from 'vue-chartjs'
 import {
   Chart as ChartJS,
@@ -32,7 +32,36 @@ const props = defineProps({
   }
 })
 
-const isDark = computed(() => document.documentElement.classList.contains('dark'))
+function getCssVar(name) {
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim()
+}
+
+// Theme colors resolved from CSS custom properties after mount
+const colors = ref({
+  accentPrimary: '#7C3AED',
+  warning: '#F59E0B',
+  danger: '#DC2626',
+  success: '#0D9488',
+  surfaceElevated: '#FFFFFF',
+  textPrimary: '#1A1A1A',
+  textSecondary: '#6B6560',
+  borderLight: '#D6D0C8',
+  surface: '#F5F0EB',
+})
+
+onMounted(() => {
+  colors.value = {
+    accentPrimary: getCssVar('--accent-primary'),
+    warning: getCssVar('--warning'),
+    danger: getCssVar('--danger'),
+    success: getCssVar('--success'),
+    surfaceElevated: getCssVar('--surface-elevated'),
+    textPrimary: getCssVar('--text-primary'),
+    textSecondary: getCssVar('--text-secondary'),
+    borderLight: getCssVar('--border-light'),
+    surface: getCssVar('--surface'),
+  }
+})
 
 const statusCounts = computed(() => {
   const counts = {
@@ -67,16 +96,16 @@ const chartData = computed(() => ({
         statusCounts.value['Done']
       ],
       backgroundColor: [
-        '#60A5FA', // blue-400
-        '#FBBF24', // yellow-400
-        '#F87171', // red-400
-        '#4ADE80'  // green-400
+        colors.value.accentPrimary,
+        colors.value.warning,
+        colors.value.danger,
+        colors.value.success,
       ],
       borderColor: [
-        '#3B82F6', // blue-500
-        '#F59E0B', // yellow-500
-        '#EF4444', // red-500
-        '#22C55E'  // green-500
+        colors.value.accentPrimary,
+        colors.value.warning,
+        colors.value.danger,
+        colors.value.success,
       ],
       borderWidth: 2,
       hoverOffset: 6
@@ -92,7 +121,7 @@ const chartOptions = computed(() => ({
     legend: {
       position: 'bottom',
       labels: {
-        color: isDark.value ? '#E5E7EB' : '#374151',
+        color: colors.value.textSecondary,
         padding: 16,
         usePointStyle: true,
         pointStyleWidth: 10,
@@ -102,10 +131,10 @@ const chartOptions = computed(() => ({
       }
     },
     tooltip: {
-      backgroundColor: isDark.value ? '#374151' : '#FFFFFF',
-      titleColor: isDark.value ? '#F9FAFB' : '#111827',
-      bodyColor: isDark.value ? '#D1D5DB' : '#4B5563',
-      borderColor: isDark.value ? '#4B5563' : '#E5E7EB',
+      backgroundColor: colors.value.surfaceElevated,
+      titleColor: colors.value.textPrimary,
+      bodyColor: colors.value.textSecondary,
+      borderColor: colors.value.borderLight,
       borderWidth: 1,
       padding: 12,
       callbacks: {

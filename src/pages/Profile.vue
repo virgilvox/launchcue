@@ -1,16 +1,17 @@
 <template>
-  <div>
-    <div class="flex justify-between items-center mb-6">
-      <h2 class="text-2xl font-bold text-[var(--text-primary)]">User Profile</h2>
-      <button @click="saveProfile" class="btn btn-primary" :disabled="saving">
-        {{ saving ? 'Saving...' : 'Save Changes' }}
-      </button>
-    </div>
+  <PageContainer>
+    <PageHeader title="Profile">
+      <template #actions>
+        <button @click="saveProfile" class="btn btn-primary" :disabled="saving">
+          {{ saving ? 'Saving...' : 'Save Changes' }}
+        </button>
+      </template>
+    </PageHeader>
     
     <!-- Profile Form -->
     <div class="card p-6 mb-6">
       <div v-if="loading" class="text-center py-4">
-        <p class="text-[var(--text-secondary)]">Loading profile...</p>
+        <LoadingSpinner text="Loading profile..." />
       </div>
       
       <div v-else-if="error" class="text-center py-4">
@@ -145,7 +146,7 @@
         </div>
       </div>
     </div>
-  </div>
+  </PageContainer>
 </template>
 
 <script setup>
@@ -153,6 +154,9 @@ import { ref, computed, onMounted } from 'vue';
 import { useToast } from 'vue-toastification';
 import { useAuthStore } from '../stores/auth';
 import userService from '../services/user.service';
+import PageContainer from '@/components/ui/PageContainer.vue';
+import PageHeader from '@/components/ui/PageHeader.vue';
+import LoadingSpinner from '@/components/LoadingSpinner.vue';
 
 const toast = useToast();
 const authStore = useAuthStore();
@@ -213,7 +217,6 @@ async function loadProfile() {
       avatarUrl: profileData.avatarUrl || ''
     };
   } catch (err) {
-    console.error('Error loading profile:', err);
     error.value = 'Failed to load profile. Please try again.';
     toast.error(error.value);
   } finally {
@@ -232,7 +235,6 @@ async function saveProfile() {
     
     toast.success('Profile updated successfully');
   } catch (err) {
-    console.error('Error saving profile:', err);
     error.value = 'Failed to save profile. Please try again.';
     toast.error('Failed to save profile');
   } finally {
@@ -259,7 +261,6 @@ async function changePassword() {
     
     toast.success('Password changed successfully');
   } catch (err) {
-    console.error('Error changing password:', err);
     const errorMessage = err.response?.data?.message || 'Failed to change password';
     toast.error(errorMessage);
   } finally {

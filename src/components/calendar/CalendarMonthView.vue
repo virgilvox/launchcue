@@ -35,7 +35,7 @@
           <div
             v-for="event in getEventsForDay(day.date)"
             :key="event.id"
-            :class="`bg-${event.color}-500 text-white text-xs py-1 px-2 truncate cursor-pointer hover:opacity-80`"
+            :class="[getEventBg(event.color), 'text-white text-xs py-1 px-2 truncate cursor-pointer hover:opacity-80']"
             @click="$emit('select-event', event)"
           >
             {{ getEventTitle(event) }}
@@ -75,4 +75,16 @@ defineProps<{
 defineEmits<{
   (e: 'select-event', event: CalendarEvent): void;
 }>();
+
+const colorMap: Record<string, string> = {
+  blue: 'bg-[#3B82F6]',
+  green: 'bg-[#22C55E]',
+  red: 'bg-[#EF4444]',
+  orange: 'bg-[#F97316]',
+  purple: 'bg-[#8B5CF6]',
+  yellow: 'bg-[#EAB308]',
+  pink: 'bg-[#EC4899]',
+  indigo: 'bg-[#6366F1]',
+};
+const getEventBg = (color: string) => colorMap[color] || 'bg-[var(--accent-primary)]';
 </script>
