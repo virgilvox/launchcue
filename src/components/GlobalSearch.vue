@@ -7,43 +7,105 @@
         @click.self="close"
       >
         <!-- Backdrop -->
-        <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" @click="close"></div>
+        <div class="absolute inset-0" style="background-color: rgba(0, 0, 0, 0.6);" @click="close"></div>
 
         <!-- Search Panel -->
         <div
-          class="relative w-full max-w-2xl mx-4 bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden"
+          class="relative w-full max-w-2xl mx-4 border-2 overflow-hidden"
+          style="background-color: var(--surface-elevated); border-color: var(--border); box-shadow: 6px 6px 0 0 var(--shadow-color);"
           @click.stop
         >
           <!-- Search Input -->
-          <div class="flex items-center px-4 border-b border-gray-200 dark:border-gray-700">
-            <MagnifyingGlassIcon class="h-5 w-5 text-gray-400 dark:text-gray-500 shrink-0" />
+          <div class="flex items-center px-4 border-b-2" style="border-color: var(--border);">
+            <MagnifyingGlassIcon v-if="!isCommandMode" class="h-5 w-5 shrink-0" style="color: var(--text-secondary);" />
+            <CommandLineIcon v-else class="h-5 w-5 shrink-0" style="color: var(--accent-primary);" />
             <input
               ref="searchInput"
               v-model="searchQuery"
               type="text"
-              placeholder="Search tasks, projects, clients, notes, campaigns..."
-              class="w-full px-3 py-4 bg-transparent text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none text-base"
+              :placeholder="isCommandMode ? 'Type a command...' : 'Search tasks, projects, clients, notes...'"
+              class="w-full px-3 py-4 bg-transparent focus:outline-none font-sans"
+              style="color: var(--text-primary);"
               @keydown.escape="close"
               @keydown.down.prevent="navigateDown"
               @keydown.up.prevent="navigateUp"
               @keydown.enter.prevent="selectFocused"
             />
-            <kbd
-              class="hidden sm:inline-flex items-center px-2 py-1 text-xs font-medium text-gray-400 dark:text-gray-500 bg-gray-100 dark:bg-gray-700 rounded border border-gray-200 dark:border-gray-600"
-            >
-              ESC
-            </kbd>
+            <div class="flex items-center gap-2">
+              <span
+                v-if="isCommandMode"
+                class="badge badge-coral text-[10px]"
+              >
+                CMD
+              </span>
+              <kbd
+                class="hidden sm:inline-flex items-center px-2 py-1 mono text-[10px] font-bold border-2"
+                style="border-color: var(--border-light); color: var(--text-secondary);"
+              >
+                ESC
+              </kbd>
+            </div>
           </div>
 
           <!-- Results Area -->
           <div class="max-h-[60vh] overflow-y-auto">
             <!-- Loading State -->
             <div v-if="isLoading" class="flex items-center justify-center py-8">
-              <svg class="animate-spin h-5 w-5 text-indigo-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <svg class="animate-spin h-5 w-5" style="color: var(--accent-primary);" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
               </svg>
-              <span class="ml-2 text-sm text-gray-500 dark:text-gray-400">Searching...</span>
+              <span class="ml-2 text-body-sm" style="color: var(--text-secondary);">Searching...</span>
+            </div>
+
+            <!-- Command Mode Results -->
+            <div v-else-if="isCommandMode">
+              <div v-if="filteredCommands.length === 0" class="py-8 text-center">
+                <p class="text-body-sm" style="color: var(--text-secondary);">No matching commands</p>
+              </div>
+              <div v-else>
+                <!-- Command Group Headers -->
+                <div
+                  v-for="group in commandGroups"
+                  :key="group.label"
+                >
+                  <div class="px-4 py-2 border-b" style="background-color: var(--surface); border-color: var(--border-light);">
+                    <span class="overline">{{ group.label }}</span>
+                  </div>
+                  <button
+                    v-for="(cmd, idx) in group.items"
+                    :key="cmd.id"
+                    class="w-full flex items-center gap-3 px-4 py-3 text-left transition-colors duration-100 border-b"
+                    :class="focusedIndex === getCommandGlobalIndex(group.label, idx) ? 'search-result-focused' : 'search-result'"
+                    style="border-color: var(--border-light);"
+                    @click="executeCommand(cmd)"
+                    @mouseenter="focusedIndex = getCommandGlobalIndex(group.label, idx)"
+                  >
+                    <div
+                      class="shrink-0 flex items-center justify-center w-8 h-8 border-2"
+                      :style="`border-color: var(--border); background-color: ${cmd.iconBg};`"
+                    >
+                      <component :is="cmd.icon" class="h-4 w-4" :style="`color: ${cmd.iconColor};`" />
+                    </div>
+                    <div class="min-w-0 flex-1">
+                      <p class="text-body-sm font-medium" style="color: var(--text-primary);">
+                        {{ cmd.label }}
+                      </p>
+                      <p v-if="cmd.description" class="text-caption mono mt-0.5">
+                        {{ cmd.description }}
+                      </p>
+                    </div>
+                    <kbd
+                      v-if="cmd.shortcut"
+                      class="shrink-0 mono text-[10px] font-bold px-1.5 py-0.5 border-2"
+                      style="border-color: var(--border-light); color: var(--text-secondary);"
+                    >
+                      {{ cmd.shortcut }}
+                    </kbd>
+                    <ChevronRightIcon class="h-4 w-4 shrink-0" style="color: var(--text-secondary);" />
+                  </button>
+                </div>
+              </div>
             </div>
 
             <!-- Empty State (query entered but no results) -->
@@ -51,8 +113,11 @@
               v-else-if="searchQuery.length >= 2 && !isLoading && groupedResults.length === 0 && hasSearched"
               class="py-8 text-center"
             >
-              <MagnifyingGlassIcon class="h-10 w-10 mx-auto text-gray-300 dark:text-gray-600 mb-3" />
-              <p class="text-sm text-gray-500 dark:text-gray-400">No results found for "{{ searchQuery }}"</p>
+              <MagnifyingGlassIcon class="h-10 w-10 mx-auto mb-3" style="color: var(--border-light);" />
+              <p class="text-body-sm" style="color: var(--text-secondary);">No results for "<strong>{{ searchQuery }}</strong>"</p>
+              <p class="text-caption mono mt-2" style="color: var(--text-secondary);">
+                Try <button class="font-bold hover:underline" style="color: var(--accent-primary);" @click="searchQuery = '>'">typing &gt;</button> for commands
+              </p>
             </div>
 
             <!-- Initial State -->
@@ -60,7 +125,7 @@
               v-else-if="searchQuery.length < 2 && !isLoading"
               class="py-8 text-center"
             >
-              <p class="text-sm text-gray-400 dark:text-gray-500">Type at least 2 characters to search</p>
+              <p class="text-body-sm" style="color: var(--text-secondary);">Type to search or <kbd class="mono text-[10px] font-bold px-1 py-0.5 border-2" style="border-color: var(--border-light);">&gt;</kbd> for commands</p>
             </div>
 
             <!-- Results grouped by type -->
@@ -68,59 +133,52 @@
               <div
                 v-for="group in groupedResults"
                 :key="group.type"
-                class="border-b border-gray-100 dark:border-gray-700 last:border-b-0"
               >
                 <!-- Group Header -->
-                <div class="px-4 py-2 bg-gray-50 dark:bg-gray-750 sticky top-0">
-                  <span class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    {{ group.label }}
-                  </span>
+                <div class="px-4 py-2 border-b" style="background-color: var(--surface); border-color: var(--border-light);">
+                  <span class="overline">{{ group.label }}</span>
                 </div>
 
                 <!-- Group Items -->
                 <button
                   v-for="(result, idx) in group.items"
                   :key="result.id"
-                  class="w-full flex items-center gap-3 px-4 py-3 text-left transition-colors duration-100"
-                  :class="[
-                    focusedIndex === getGlobalIndex(group.type, idx)
-                      ? 'bg-indigo-50 dark:bg-indigo-900/30'
-                      : 'hover:bg-gray-50 dark:hover:bg-gray-750'
-                  ]"
+                  class="w-full flex items-center gap-3 px-4 py-3 text-left transition-colors duration-100 border-b"
+                  :class="focusedIndex === getGlobalIndex(group.type, idx) ? 'search-result-focused' : 'search-result'"
+                  style="border-color: var(--border-light);"
                   @click="navigateTo(result)"
                   @mouseenter="focusedIndex = getGlobalIndex(group.type, idx)"
                 >
                   <!-- Type Icon -->
                   <div
-                    class="shrink-0 flex items-center justify-center w-8 h-8 rounded-lg"
-                    :class="typeIconClasses[result.type]"
+                    class="shrink-0 flex items-center justify-center w-8 h-8 border-2"
+                    :style="typeIconStyle[result.type]"
                   >
                     <component :is="typeIcons[result.type]" class="h-4 w-4" />
                   </div>
 
                   <!-- Content -->
                   <div class="min-w-0 flex-1">
-                    <p class="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                    <p class="text-body-sm font-medium" style="color: var(--text-primary);">
                       {{ result.title }}
                     </p>
                     <p
                       v-if="result.description"
-                      class="text-xs text-gray-500 dark:text-gray-400 truncate mt-0.5"
+                      class="text-caption mono mt-0.5"
                     >
                       {{ truncateText(result.description, 100) }}
                     </p>
                   </div>
 
-                  <!-- Status badge (for tasks/projects) -->
+                  <!-- Status badge -->
                   <span
                     v-if="result.status"
-                    class="shrink-0 text-xs px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300"
+                    class="badge badge-gray shrink-0"
                   >
                     {{ result.status }}
                   </span>
 
-                  <!-- Arrow indicator -->
-                  <ChevronRightIcon class="h-4 w-4 text-gray-400 dark:text-gray-500 shrink-0" />
+                  <ChevronRightIcon class="h-4 w-4 shrink-0" style="color: var(--text-secondary);" />
                 </button>
               </div>
             </div>
@@ -128,16 +186,19 @@
 
           <!-- Footer -->
           <div
-            v-if="groupedResults.length > 0"
-            class="px-4 py-2 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-750 flex items-center justify-between text-xs text-gray-400 dark:text-gray-500"
+            v-if="groupedResults.length > 0 || (isCommandMode && filteredCommands.length > 0)"
+            class="px-4 py-2 border-t-2 flex items-center justify-between"
+            style="border-color: var(--border); background-color: var(--surface);"
           >
-            <div class="flex items-center gap-2">
-              <kbd class="px-1.5 py-0.5 bg-gray-200 dark:bg-gray-600 rounded text-[10px]">↑↓</kbd>
-              <span>navigate</span>
-              <kbd class="px-1.5 py-0.5 bg-gray-200 dark:bg-gray-600 rounded text-[10px] ml-2">↵</kbd>
-              <span>open</span>
+            <div class="flex items-center gap-2 text-caption mono">
+              <kbd class="px-1.5 py-0.5 border-2 text-[10px] font-bold" style="border-color: var(--border-light);">↑↓</kbd>
+              <span style="color: var(--text-secondary);">navigate</span>
+              <kbd class="px-1.5 py-0.5 border-2 text-[10px] font-bold ml-2" style="border-color: var(--border-light);">↵</kbd>
+              <span style="color: var(--text-secondary);">{{ isCommandMode ? 'run' : 'open' }}</span>
             </div>
-            <span>{{ totalResults }} result{{ totalResults !== 1 ? 's' : '' }}</span>
+            <span class="mono text-caption" style="color: var(--text-secondary);">
+              {{ isCommandMode ? filteredCommands.length + ' command' + (filteredCommands.length !== 1 ? 's' : '') : totalResults + ' result' + (totalResults !== 1 ? 's' : '') }}
+            </span>
           </div>
         </div>
       </div>
@@ -157,6 +218,14 @@ import {
   UserGroupIcon,
   DocumentTextIcon,
   MegaphoneIcon,
+  PlusIcon,
+  CalendarIcon,
+  Cog6ToothIcon,
+  SunIcon,
+  LightBulbIcon,
+  CommandLineIcon,
+  HomeIcon,
+  UsersIcon,
 } from '@heroicons/vue/24/outline'
 
 const router = useRouter()
@@ -171,7 +240,64 @@ const searchInput = ref(null)
 
 let debounceTimer = null
 
-// Type configuration
+// Command mode detection
+const isCommandMode = computed(() => searchQuery.value.startsWith('>'))
+const commandQuery = computed(() =>
+  isCommandMode.value ? searchQuery.value.slice(1).trim().toLowerCase() : ''
+)
+
+// Commands
+const commands = [
+  { id: 'new-task', label: 'New Task', description: 'Create a new task', icon: PlusIcon, iconBg: 'var(--accent-hot-wash)', iconColor: 'var(--accent-hot)', shortcut: 'C', category: 'Create', action: () => router.push('/tasks?action=new') },
+  { id: 'new-client', label: 'New Client', description: 'Add a new client', icon: UsersIcon, iconBg: 'var(--accent-hot-wash)', iconColor: 'var(--accent-hot)', shortcut: null, category: 'Create', action: () => router.push('/clients?action=new') },
+  { id: 'new-project', label: 'New Project', description: 'Start a new project', icon: FolderIcon, iconBg: 'var(--accent-hot-wash)', iconColor: 'var(--accent-hot)', shortcut: null, category: 'Create', action: () => router.push('/projects?action=new') },
+  { id: 'new-note', label: 'New Note', description: 'Write a new note', icon: DocumentTextIcon, iconBg: 'var(--accent-hot-wash)', iconColor: 'var(--accent-hot)', shortcut: null, category: 'Create', action: () => router.push('/notes?action=new') },
+  { id: 'go-dashboard', label: 'Go to Dashboard', description: null, icon: HomeIcon, iconBg: 'transparent', iconColor: 'var(--text-secondary)', shortcut: 'G → D', category: 'Navigate', action: () => router.push('/') },
+  { id: 'go-tasks', label: 'Go to Tasks', description: null, icon: ClipboardDocumentListIcon, iconBg: 'transparent', iconColor: 'var(--text-secondary)', shortcut: 'G → T', category: 'Navigate', action: () => router.push('/tasks') },
+  { id: 'go-projects', label: 'Go to Projects', description: null, icon: FolderIcon, iconBg: 'transparent', iconColor: 'var(--text-secondary)', shortcut: 'G → P', category: 'Navigate', action: () => router.push('/projects') },
+  { id: 'go-clients', label: 'Go to Clients', description: null, icon: UserGroupIcon, iconBg: 'transparent', iconColor: 'var(--text-secondary)', shortcut: 'G → C', category: 'Navigate', action: () => router.push('/clients') },
+  { id: 'go-calendar', label: 'Go to Calendar', description: null, icon: CalendarIcon, iconBg: 'transparent', iconColor: 'var(--text-secondary)', shortcut: null, category: 'Navigate', action: () => router.push('/calendar') },
+  { id: 'go-notes', label: 'Go to Notes', description: null, icon: DocumentTextIcon, iconBg: 'transparent', iconColor: 'var(--text-secondary)', shortcut: 'G → N', category: 'Navigate', action: () => router.push('/notes') },
+  { id: 'go-braindump', label: 'Go to Brain Dump', description: null, icon: LightBulbIcon, iconBg: 'transparent', iconColor: 'var(--text-secondary)', shortcut: 'G → B', category: 'Navigate', action: () => router.push('/brain-dump') },
+  { id: 'go-settings', label: 'Go to Settings', description: null, icon: Cog6ToothIcon, iconBg: 'transparent', iconColor: 'var(--text-secondary)', shortcut: 'G → S', category: 'Navigate', action: () => router.push('/settings') },
+  { id: 'toggle-dark', label: 'Toggle Dark Mode', description: 'Switch between light and dark theme', icon: SunIcon, iconBg: 'transparent', iconColor: 'var(--text-secondary)', shortcut: null, category: 'System', action: () => document.documentElement.classList.toggle('dark') },
+]
+
+const filteredCommands = computed(() => {
+  if (!commandQuery.value) return commands
+  return commands.filter(cmd =>
+    cmd.label.toLowerCase().includes(commandQuery.value) ||
+    (cmd.description && cmd.description.toLowerCase().includes(commandQuery.value))
+  )
+})
+
+const commandGroups = computed(() => {
+  const groups = {}
+  for (const cmd of filteredCommands.value) {
+    if (!groups[cmd.category]) {
+      groups[cmd.category] = { label: cmd.category, items: [] }
+    }
+    groups[cmd.category].items.push(cmd)
+  }
+  const order = ['Create', 'Navigate', 'System']
+  return order.filter(cat => groups[cat]).map(cat => groups[cat])
+})
+
+function getCommandGlobalIndex(groupLabel, localIdx) {
+  let offset = 0
+  for (const group of commandGroups.value) {
+    if (group.label === groupLabel) return offset + localIdx
+    offset += group.items.length
+  }
+  return -1
+}
+
+function executeCommand(cmd) {
+  close()
+  cmd.action()
+}
+
+// Type configuration for search results
 const typeIcons = {
   task: ClipboardDocumentListIcon,
   project: FolderIcon,
@@ -180,12 +306,12 @@ const typeIcons = {
   campaign: MegaphoneIcon,
 }
 
-const typeIconClasses = {
-  task: 'bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400',
-  project: 'bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-400',
-  client: 'bg-green-100 dark:bg-green-900/40 text-green-600 dark:text-green-400',
-  note: 'bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400',
-  campaign: 'bg-rose-100 dark:bg-rose-900/40 text-rose-600 dark:text-rose-400',
+const typeIconStyle = {
+  task: 'border-color: var(--border); background-color: var(--accent-primary-wash); color: var(--accent-primary);',
+  project: 'border-color: var(--border); background-color: #F3E8FF; color: #7C3AED;',
+  client: 'border-color: var(--border); background-color: #D1FAE5; color: #059669;',
+  note: 'border-color: var(--border); background-color: #FEF3C7; color: #D97706;',
+  campaign: 'border-color: var(--border); background-color: #FFE4E6; color: #E11D48;',
 }
 
 const typeLabels = {
@@ -196,10 +322,9 @@ const typeLabels = {
   campaign: 'Campaigns',
 }
 
-// Group order for consistent display
 const typeOrder = ['task', 'project', 'client', 'note', 'campaign']
 
-// Grouped results computed
+// Grouped results
 const groupedResults = computed(() => {
   const groups = {}
   for (const result of results.value) {
@@ -212,14 +337,11 @@ const groupedResults = computed(() => {
     }
     groups[result.type].items.push(result)
   }
-
-  // Return in consistent order
   return typeOrder.filter((type) => groups[type]).map((type) => groups[type])
 })
 
 const totalResults = computed(() => results.value.length)
 
-// Flattened list for keyboard navigation
 const flatResults = computed(() => {
   const flat = []
   for (const group of groupedResults.value) {
@@ -230,7 +352,6 @@ const flatResults = computed(() => {
   return flat
 })
 
-// Get the global index for an item within a group
 function getGlobalIndex(type, localIdx) {
   let offset = 0
   for (const group of groupedResults.value) {
@@ -244,6 +365,14 @@ function getGlobalIndex(type, localIdx) {
 watch(searchQuery, (newVal) => {
   clearTimeout(debounceTimer)
   focusedIndex.value = -1
+
+  // Skip search in command mode
+  if (newVal.startsWith('>')) {
+    results.value = []
+    hasSearched.value = false
+    isLoading.value = false
+    return
+  }
 
   if (newVal.trim().length < 2) {
     results.value = []
@@ -291,21 +420,27 @@ function navigateTo(result) {
 }
 
 function navigateDown() {
-  if (flatResults.value.length === 0) return
-  focusedIndex.value = (focusedIndex.value + 1) % flatResults.value.length
+  const total = isCommandMode.value ? filteredCommands.value.length : flatResults.value.length
+  if (total === 0) return
+  focusedIndex.value = (focusedIndex.value + 1) % total
 }
 
 function navigateUp() {
-  if (flatResults.value.length === 0) return
+  const total = isCommandMode.value ? filteredCommands.value.length : flatResults.value.length
+  if (total === 0) return
   focusedIndex.value =
-    focusedIndex.value <= 0
-      ? flatResults.value.length - 1
-      : focusedIndex.value - 1
+    focusedIndex.value <= 0 ? total - 1 : focusedIndex.value - 1
 }
 
 function selectFocused() {
-  if (focusedIndex.value >= 0 && focusedIndex.value < flatResults.value.length) {
-    navigateTo(flatResults.value[focusedIndex.value])
+  if (isCommandMode.value) {
+    if (focusedIndex.value >= 0 && focusedIndex.value < filteredCommands.value.length) {
+      executeCommand(filteredCommands.value[focusedIndex.value])
+    }
+  } else {
+    if (focusedIndex.value >= 0 && focusedIndex.value < flatResults.value.length) {
+      navigateTo(flatResults.value[focusedIndex.value])
+    }
   }
 }
 
@@ -331,7 +466,6 @@ function close() {
 // Utility
 function truncateText(text, maxLength) {
   if (!text) return ''
-  // Strip HTML tags for clean display
   const clean = text.replace(/<[^>]*>/g, '')
   if (clean.length <= maxLength) return clean
   return clean.substring(0, maxLength) + '...'
@@ -358,12 +492,10 @@ onUnmounted(() => {
   clearTimeout(debounceTimer)
 })
 
-// Expose open method for parent components
 defineExpose({ open, close })
 </script>
 
 <style scoped>
-/* Transition for the overlay */
 .search-fade-enter-active,
 .search-fade-leave-active {
   transition: opacity 0.15s ease;
@@ -374,8 +506,15 @@ defineExpose({ open, close })
   opacity: 0;
 }
 
-/* Custom dark background for group headers and footer */
-.dark .bg-gray-750 {
-  background-color: rgb(42, 48, 60);
+.search-result {
+  background-color: transparent;
+}
+
+.search-result:hover {
+  background-color: var(--surface);
+}
+
+.search-result-focused {
+  background-color: var(--accent-primary-wash);
 }
 </style>

@@ -21,7 +21,7 @@
             <p class="text-caption mt-1">{{ completedStepCount(checklist) }} of {{ checklist.steps.length }} steps completed</p>
             <!-- Progress bar -->
             <div class="mt-3 w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-              <div class="bg-indigo-600 h-2 rounded-full transition-all" :style="{ width: progressPercent(checklist) + '%' }"></div>
+              <div class="bg-[var(--accent-primary)] h-2 rounded-full transition-all" :style="{ width: progressPercent(checklist) + '%' }"></div>
             </div>
           </router-link>
         </div>

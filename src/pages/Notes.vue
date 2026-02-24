@@ -1,14 +1,16 @@
 <template>
   <div>
-    <div class="flex justify-between items-center mb-6">
-      <h2 class="text-2xl font-bold text-gray-800 dark:text-white">Notes</h2>
-      <button @click="openAddNoteModal" class="btn btn-primary">
-        Add Note
-      </button>
-    </div>
+    <PageHeader title="Notes">
+      <template #actions>
+        <button @click="openAddNoteModal" class="btn btn-primary">
+          <PlusIcon class="h-4 w-4 mr-2" />
+          ADD NOTE
+        </button>
+      </template>
+    </PageHeader>
 
     <!-- Filters -->
-    <div class="mb-6 bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm">
+    <div class="mb-6 card">
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
          <!-- Client Filter -->
           <div>
@@ -53,12 +55,17 @@
       <p class="text-red-500">{{ error }}</p>
     </div>
 
-    <div v-else-if="filteredNotes.length === 0" class="text-center py-10 bg-gray-50 dark:bg-gray-800 rounded-lg">
-      <p class="text-gray-500 dark:text-gray-400">No notes found matching your criteria.</p>
-       <button @click="clearFilters" v-if="hasActiveFilters" class="text-primary-600 dark:text-primary-400 hover:underline mt-2">
-          Clear Filters
-      </button>
-    </div>
+    <EmptyState
+      v-else-if="filteredNotes.length === 0"
+      :icon="DocumentTextIcon"
+      title="No notes found"
+      :description="hasActiveFilters ? 'No notes match your filters.' : 'Start capturing your thoughts, meeting notes, and decisions.'"
+    >
+      <template #action>
+        <button v-if="hasActiveFilters" @click="clearFilters" class="btn btn-outline">CLEAR FILTERS</button>
+        <button v-else @click="openAddNoteModal" class="btn btn-primary">ADD NOTE</button>
+      </template>
+    </EmptyState>
 
     <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       <div
@@ -184,6 +191,9 @@ import { useToast } from 'vue-toastification';
 import Modal from '../components/Modal.vue';
 import LoadingSpinner from '../components/LoadingSpinner.vue';
 import RichTextEditor from '../components/ui/RichTextEditor.vue';
+import PageHeader from '../components/ui/PageHeader.vue';
+import EmptyState from '../components/ui/EmptyState.vue';
+import { PlusIcon, DocumentTextIcon } from '@heroicons/vue/24/outline';
 
 const authStore = useAuthStore();
 const clientStore = useClientStore();
@@ -474,14 +484,23 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-.card {
-    @apply bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 hover:shadow-lg transition-shadow flex flex-col;
-}
 .context-menu-item {
-    @apply block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600;
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 0.5rem 1rem;
+  font-size: 0.8125rem;
+  color: var(--text-primary);
+}
+.context-menu-item:hover {
+  background-color: var(--surface);
 }
 .tag {
-    @apply inline-block bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-2 py-0.5 rounded text-xs;
+  display: inline-block;
+  padding: 0.125rem 0.5rem;
+  border: 2px solid var(--border-light);
+  font-size: 0.75rem;
+  font-family: 'JetBrains Mono', monospace;
 }
 .form-actions {
   display: flex;

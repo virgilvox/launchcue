@@ -23,7 +23,7 @@ const handleLogout = async () => {
             <span class="text-sm text-gray-500 dark:text-gray-400 hidden sm:inline">Client Portal</span>
           </div>
           <nav class="flex items-center gap-4">
-            <router-link to="/portal" class="text-sm text-gray-600 dark:text-gray-300 hover:text-indigo-600">Dashboard</router-link>
+            <router-link to="/portal" class="text-sm text-gray-600 dark:text-gray-300 hover:text-[var(--accent-primary)]">Dashboard</router-link>
             <button @click="handleLogout" class="btn btn-sm btn-ghost text-gray-500">Logout</button>
           </nav>
         </div>

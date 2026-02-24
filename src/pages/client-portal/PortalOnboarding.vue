@@ -27,7 +27,7 @@
         <div class="mt-3 flex items-center gap-4">
           <div class="flex-1 bg-gray-200 dark:bg-gray-700 rounded-full h-2.5">
             <div
-              class="bg-indigo-600 h-2.5 rounded-full transition-all duration-300"
+              class="bg-[var(--accent-primary)] h-2.5 rounded-full transition-all duration-300"
               :style="{ width: overallProgress + '%' }"
             ></div>
           </div>
@@ -54,7 +54,7 @@
             <!-- Step Header -->
             <div class="mb-6">
               <div class="flex items-center gap-2 mb-1">
-                <span class="text-xs font-medium text-indigo-600 dark:text-indigo-400 uppercase tracking-wide">
+                <span class="text-xs font-medium text-[var(--accent-primary)] uppercase tracking-wide">
                   Step {{ currentStepIndex + 1 }} of {{ checklist.steps.length }}
                 </span>
                 <span

@@ -6,7 +6,7 @@
       <div
         :class="[
           'text-2xl font-bold mt-0.5',
-          dayViewHeader.isToday ? 'text-purple-600 dark:text-purple-400' : 'text-gray-800 dark:text-white'
+          dayViewHeader.isToday ? 'text-[var(--accent-primary)]' : 'text-gray-800 dark:text-white'
         ]"
       >
         {{ dayViewHeader.dayNum }}

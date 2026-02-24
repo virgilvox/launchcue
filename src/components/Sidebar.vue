@@ -3,7 +3,7 @@
   <Transition name="sidebar-backdrop">
     <div
       v-if="isMobile && isOpen"
-      class="fixed inset-0 bg-gray-900/50 z-30"
+      class="fixed inset-0 bg-black/60 z-30"
       @click="closeMobile"
     ></div>
   </Transition>
@@ -13,95 +13,120 @@
     <div
       v-show="!isMobile || isOpen"
       :class="[
-        'flex flex-col h-full bg-gradient-to-b from-gray-800 via-gray-800 to-gray-900 text-gray-100 transition-all duration-300 ease-in-out shrink-0',
-        isMobile ? 'fixed inset-y-0 left-0 z-40 w-64 shadow-xl' : (isCollapsed ? 'w-16' : 'w-64')
+        'flex flex-col h-full bg-[var(--surface)] border-r-2 border-[var(--border)] transition-all duration-300 ease-in-out shrink-0',
+        isMobile ? 'fixed inset-y-0 left-0 z-40 w-64' : (isCollapsed ? 'w-16' : 'w-64')
       ]"
     >
       <!-- Logo and Toggle -->
-      <div class="flex items-center h-16 flex-shrink-0 px-4 border-b border-gray-700 justify-between">
+      <div class="flex items-center h-16 flex-shrink-0 px-4 border-b-2 border-[var(--border)] justify-between">
         <div class="flex items-center">
-          <img class="h-8 w-auto" src="/logo-placeholder.png" alt="LaunchCue Logo">
-          <span v-if="!isCollapsed || isMobile" class="ml-3 text-xl font-semibold">LaunchCue</span>
+          <div class="w-8 h-8 bg-[var(--accent-primary)] flex items-center justify-center flex-shrink-0">
+            <span class="text-white font-heading font-bold text-sm">LC</span>
+          </div>
+          <span v-if="!isCollapsed || isMobile" class="ml-3 font-heading text-lg font-bold text-[var(--text-primary)]">LaunchCue</span>
         </div>
         <button
           v-if="!isMobile"
           @click="toggleSidebar"
-          class="p-1 rounded-md text-gray-400 hover:text-white hover:bg-gray-700 focus:outline-none"
+          class="p-1 border-2 border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--border)] focus:outline-none"
           aria-label="Toggle sidebar"
         >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            class="h-6 w-6"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              v-if="isCollapsed"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M13 5l7 7-7 7M5 5l7 7-7 7"
-            />
-            <path
-              v-else
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M11 19l-7-7 7-7m8 14l-7-7 7-7"
-            />
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path v-if="isCollapsed" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7" />
+            <path v-else stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
           </svg>
         </button>
         <button
           v-else
           @click="closeMobile"
-          class="p-1 rounded-md text-gray-400 hover:text-white hover:bg-gray-700 focus:outline-none"
+          class="p-1 border-2 border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--border)] focus:outline-none"
           aria-label="Close menu"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
           </svg>
         </button>
       </div>
 
       <!-- Navigation -->
-      <nav class="flex-1 px-2 py-4 space-y-1 overflow-y-auto">
-        <router-link
-          v-for="item in navigation"
-          :key="item.name"
-          :to="item.href"
-          :class="[
-            item.current ? 'bg-gray-900/80 text-white border-l-2 border-primary-400' : 'text-gray-300 hover:bg-gray-700 hover:text-white border-l-2 border-transparent',
-            'group flex items-center px-2 py-2 text-sm font-medium rounded-md',
-            isCollapsed && !isMobile ? 'justify-center' : ''
-          ]"
-          :title="item.name"
-          @click="isMobile && closeMobile()"
-        >
-          <component :is="item.icon" class="flex-shrink-0 h-6 w-6" aria-hidden="true" />
-          <span v-if="!isCollapsed || isMobile" class="ml-3">{{ item.name }}</span>
-        </router-link>
+      <nav class="flex-1 px-2 py-3 overflow-y-auto">
+        <template v-for="group in navGroups" :key="group.label">
+          <!-- Group header (expanded sidebar) -->
+          <div v-if="!isCollapsed || isMobile">
+            <button
+              class="w-full flex items-center justify-between px-2 py-1.5 mt-3 first:mt-0 cursor-pointer group"
+              @click="toggleGroup(group.label)"
+            >
+              <span class="overline text-[var(--text-secondary)] group-hover:text-[var(--text-primary)]">{{ group.label }}</span>
+              <ChevronDownIcon
+                :class="[
+                  'h-3.5 w-3.5 text-[var(--text-secondary)] transition-transform duration-200',
+                  collapsedGroups[group.label] ? '-rotate-90' : ''
+                ]"
+              />
+            </button>
+            <Transition name="nav-group">
+              <div v-show="!collapsedGroups[group.label]" class="space-y-0.5">
+                <router-link
+                  v-for="item in group.items"
+                  :key="item.name"
+                  :to="item.href"
+                  :class="[
+                    'group flex items-center px-2 py-2 text-body-sm font-medium transition-colors',
+                    item.current
+                      ? 'bg-[var(--accent-primary-wash)] text-[var(--accent-primary)] border-l-4 border-[var(--accent-primary)]'
+                      : 'text-[var(--text-secondary)] hover:bg-[var(--surface)] hover:text-[var(--text-primary)] border-l-4 border-transparent'
+                  ]"
+                  :title="item.name"
+                  @click="isMobile && closeMobile()"
+                >
+                  <component :is="item.icon" class="flex-shrink-0 h-5 w-5" aria-hidden="true" />
+                  <span class="ml-3">{{ item.name }}</span>
+                </router-link>
+              </div>
+            </Transition>
+          </div>
+
+          <!-- Collapsed sidebar: dividers between groups, icon-only -->
+          <div v-else>
+            <div v-if="group.label !== 'CORE'" class="mx-2 my-2 border-t border-[var(--border-light)]"></div>
+            <router-link
+              v-for="item in group.items"
+              :key="item.name"
+              :to="item.href"
+              :class="[
+                'group flex items-center justify-center py-2 transition-colors relative',
+                item.current
+                  ? 'bg-[var(--accent-primary-wash)] text-[var(--accent-primary)] border-l-4 border-[var(--accent-primary)]'
+                  : 'text-[var(--text-secondary)] hover:bg-[var(--surface)] hover:text-[var(--text-primary)] border-l-4 border-transparent'
+              ]"
+              :title="item.name"
+            >
+              <component :is="item.icon" class="flex-shrink-0 h-5 w-5" aria-hidden="true" />
+            </router-link>
+          </div>
+        </template>
       </nav>
 
       <!-- User Info / Logout -->
-      <div class="mt-auto p-4 border-t border-gray-700">
-        <div v-if="authStore.user" class="flex items-center mb-3" :class="{'justify-center': isCollapsed && !isMobile}">
-          <div class="w-8 h-8 rounded-full bg-primary-500 text-white flex items-center justify-center text-sm font-semibold flex-shrink-0">
+      <div class="mt-auto p-3 border-t-2 border-[var(--border)]">
+        <div v-if="authStore.user" class="flex items-center mb-2" :class="{'justify-center': isCollapsed && !isMobile}">
+          <div class="w-8 h-8 bg-[var(--accent-primary)] text-white flex items-center justify-center text-xs font-heading font-bold flex-shrink-0">
             {{ userInitials }}
           </div>
           <div v-if="!isCollapsed || isMobile" class="ml-3 flex-1 min-w-0">
-            <p class="text-sm font-medium text-gray-100 truncate">{{ authStore.user.name }}</p>
-            <p class="text-xs text-gray-400 truncate">{{ authStore.user.email }}</p>
+            <p class="text-body-sm font-medium text-[var(--text-primary)] truncate">{{ authStore.user.name }}</p>
+            <p class="text-xs text-[var(--text-secondary)] truncate mono">{{ authStore.user.email }}</p>
           </div>
         </div>
         <button
           @click="handleLogout"
-          class="w-full flex items-center px-4 py-2 text-sm font-medium rounded-md text-gray-300 hover:bg-gray-700 hover:text-white transition-colors"
+          class="w-full flex items-center px-3 py-2 text-body-sm font-medium text-[var(--text-secondary)] hover:bg-[var(--accent-primary-wash)] hover:text-[var(--accent-primary)] transition-colors border-2 border-transparent hover:border-[var(--accent-primary)]"
           :class="{'justify-center': isCollapsed && !isMobile}"
           title="Logout"
         >
            <LogoutIcon class="h-5 w-5" aria-hidden="true" />
-           <span v-if="!isCollapsed || isMobile" class="ml-2">Logout</span>
+           <span v-if="!isCollapsed || isMobile" class="ml-2">LOGOUT</span>
         </button>
       </div>
     </div>
@@ -109,7 +134,7 @@
 </template>
 
 <script setup>
-import { computed, ref, watch } from 'vue'
+import { computed, ref, watch, reactive, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { useResponsive } from '@/composables/useResponsive'
@@ -117,6 +142,7 @@ import { getInitials } from '@/utils/formatters'
 import {
     HomeIcon,
     UsersIcon,
+    UserGroupIcon,
     BriefcaseIcon,
     CalendarIcon,
     SparklesIcon,
@@ -126,7 +152,10 @@ import {
     ChartBarSquareIcon,
     ClipboardDocumentListIcon,
     CurrencyDollarIcon,
-    ArrowLeftOnRectangleIcon as LogoutIcon
+    FolderOpenIcon,
+    LightBulbIcon,
+    ArrowLeftOnRectangleIcon as LogoutIcon,
+    ChevronDownIcon
 } from '@heroicons/vue/24/outline'
 
 const route = useRoute()
@@ -134,7 +163,25 @@ const authStore = useAuthStore()
 const { isMobile } = useResponsive()
 
 const isCollapsed = ref(false)
-const isOpen = ref(false) // mobile drawer state
+const isOpen = ref(false)
+
+// Persisted collapsed groups
+const STORAGE_KEY = 'launchcue-sidebar-groups'
+const collapsedGroups = reactive(loadGroupState())
+
+function loadGroupState() {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY)
+    return saved ? JSON.parse(saved) : {}
+  } catch {
+    return {}
+  }
+}
+
+function toggleGroup(label) {
+  collapsedGroups[label] = !collapsedGroups[label]
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(collapsedGroups))
+}
 
 const emit = defineEmits(['collapsed-changed'])
 
@@ -155,7 +202,6 @@ function emitState() {
   emit('collapsed-changed', isCollapsed.value, isMobile.value)
 }
 
-// When transitioning between mobile/desktop, sync states
 watch(isMobile, (mobile) => {
   if (mobile) {
     isCollapsed.value = true
@@ -164,20 +210,40 @@ watch(isMobile, (mobile) => {
   emitState()
 }, { immediate: true })
 
-const navigation = computed(() => [
-  { name: 'Dashboard', href: '/', icon: HomeIcon, current: route.name === 'dashboard' },
-  { name: 'Clients', href: '/clients', icon: UsersIcon, current: route.name === 'clients' || route.name === 'client-detail' },
-  { name: 'Projects', href: '/projects', icon: BriefcaseIcon, current: route.name === 'projects' || route.name === 'project-detail' },
-  { name: 'Tasks', href: '/tasks', icon: ChartBarSquareIcon, current: route.name === 'tasks' },
-  { name: 'Calendar', href: '/calendar', icon: CalendarIcon, current: route.name === 'calendar' },
-  { name: 'Campaigns', href: '/campaigns', icon: SparklesIcon, current: route.name?.startsWith('campaign') },
-  { name: 'Brain Dump', href: '/brain-dump', icon: AnnotationIcon, current: route.name === 'braindump' },
-  { name: 'Team', href: '/team', icon: UsersIcon, current: route.name === 'team' },
-  { name: 'Notes', href: '/notes', icon: DocumentTextIcon, current: route.name === 'notes' },
-  { name: 'Scopes', href: '/scopes', icon: ClipboardDocumentListIcon, current: route.name?.toString().startsWith('scope') },
-  { name: 'Invoices', href: '/invoices', icon: CurrencyDollarIcon, current: route.name?.toString().startsWith('invoice') },
-  { name: 'Resources', href: '/resources', icon: DocumentTextIcon, current: route.name === 'resources' },
-  { name: 'Settings', href: '/settings', icon: CogIcon, current: route.name === 'settings' },
+const navGroups = computed(() => [
+  {
+    label: 'CORE',
+    items: [
+      { name: 'Dashboard', href: '/', icon: HomeIcon, current: route.name === 'dashboard' },
+      { name: 'Tasks', href: '/tasks', icon: ChartBarSquareIcon, current: route.name === 'tasks' },
+      { name: 'Calendar', href: '/calendar', icon: CalendarIcon, current: route.name === 'calendar' },
+    ]
+  },
+  {
+    label: 'WORK',
+    items: [
+      { name: 'Clients', href: '/clients', icon: UsersIcon, current: route.name === 'clients' || route.name === 'client-detail' },
+      { name: 'Projects', href: '/projects', icon: BriefcaseIcon, current: route.name === 'projects' || route.name === 'project-detail' },
+      { name: 'Campaigns', href: '/campaigns', icon: SparklesIcon, current: route.name?.startsWith('campaign') },
+      { name: 'Scopes', href: '/scopes', icon: ClipboardDocumentListIcon, current: route.name?.toString().startsWith('scope') },
+      { name: 'Invoices', href: '/invoices', icon: CurrencyDollarIcon, current: route.name?.toString().startsWith('invoice') },
+    ]
+  },
+  {
+    label: 'KNOWLEDGE',
+    items: [
+      { name: 'Notes', href: '/notes', icon: DocumentTextIcon, current: route.name === 'notes' },
+      { name: 'Brain Dump', href: '/brain-dump', icon: LightBulbIcon, current: route.name === 'braindump' },
+      { name: 'Resources', href: '/resources', icon: FolderOpenIcon, current: route.name === 'resources' },
+    ]
+  },
+  {
+    label: 'ADMIN',
+    items: [
+      { name: 'Team', href: '/team', icon: UserGroupIcon, current: route.name === 'team' },
+      { name: 'Settings', href: '/settings', icon: CogIcon, current: route.name === 'settings' },
+    ]
+  }
 ])
 
 const userInitials = computed(() => getInitials(authStore.user?.name))
@@ -212,5 +278,22 @@ defineExpose({
 .sidebar-slide-enter-from,
 .sidebar-slide-leave-to {
   transform: translateX(-100%);
+}
+
+/* Nav group collapse animation */
+.nav-group-enter-active,
+.nav-group-leave-active {
+  transition: all 0.2s ease;
+  overflow: hidden;
+}
+.nav-group-enter-from,
+.nav-group-leave-to {
+  opacity: 0;
+  max-height: 0;
+}
+.nav-group-enter-to,
+.nav-group-leave-from {
+  opacity: 1;
+  max-height: 500px;
 }
 </style>

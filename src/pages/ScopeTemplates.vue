@@ -15,7 +15,7 @@
           :class="[
             'py-3 px-1 text-sm font-medium border-b-2 transition-colors',
             activeTab === 'scopes'
-              ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400'
+              ? 'border-[var(--accent-primary)] text-[var(--accent-primary)]'
               : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400'
           ]"
         >
@@ -26,7 +26,7 @@
           :class="[
             'py-3 px-1 text-sm font-medium border-b-2 transition-colors',
             activeTab === 'templates'
-              ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400'
+              ? 'border-[var(--accent-primary)] text-[var(--accent-primary)]'
               : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400'
           ]"
         >
@@ -124,7 +124,7 @@
         <template #actions="{ row }">
           <button
             @click.stop="createFromTemplate(row)"
-            class="text-indigo-600 hover:text-indigo-800 text-sm mr-3"
+            class="text-[var(--accent-primary)] hover:text-[var(--accent-primary-hover)] text-sm mr-3"
           >
             Use
           </button>

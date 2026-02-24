@@ -2,15 +2,15 @@
   <div>
     <!-- View Toggle -->
     <div v-if="allowToggle" class="flex justify-end mb-3">
-      <div class="inline-flex rounded-md shadow-sm">
+      <div class="inline-flex">
         <button
-          :class="['btn btn-sm rounded-r-none', currentView === 'table' ? 'btn-primary' : 'btn-outline']"
+          :class="['btn btn-sm', currentView === 'table' ? 'btn-primary' : 'btn-outline']"
           @click="currentView = 'table'"
         >
           <TableCellsIcon class="h-4 w-4" />
         </button>
         <button
-          :class="['btn btn-sm rounded-l-none -ml-px', currentView === 'card' ? 'btn-primary' : 'btn-outline']"
+          :class="['btn btn-sm -ml-[2px]', currentView === 'card' ? 'btn-primary' : 'btn-outline']"
           @click="currentView = 'card'"
         >
           <Squares2X2Icon class="h-4 w-4" />
@@ -19,7 +19,7 @@
     </div>
 
     <!-- Table View -->
-    <div v-if="currentView === 'table'" class="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
+    <div v-if="currentView === 'table'" class="overflow-x-auto border-2 border-[var(--border)]">
       <table>
         <thead>
           <tr>
@@ -34,7 +34,7 @@
             <th
               v-for="col in columns"
               :key="col.key"
-              :class="[col.class || '', col.sortable ? 'cursor-pointer select-none hover:text-gray-900 dark:hover:text-white' : '']"
+              :class="[col.class || '', col.sortable ? 'cursor-pointer select-none hover:text-[var(--text-primary)]' : '']"
               @click="col.sortable && toggleSort(col.key)"
             >
               <span class="inline-flex items-center gap-1">
@@ -45,14 +45,14 @@
                 </template>
               </span>
             </th>
-            <th v-if="$slots.actions" class="w-20">Actions</th>
+            <th v-if="$slots.actions" class="w-20">ACTIONS</th>
           </tr>
         </thead>
         <tbody>
           <tr
             v-for="(row, index) in sortedData"
             :key="rowKey ? row[rowKey] : index"
-            class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+            class="hover:bg-[var(--surface)] transition-colors"
             :class="{ 'cursor-pointer': clickable }"
             @click="clickable && $emit('row-click', row)"
           >
@@ -82,14 +82,13 @@
       <div
         v-for="(row, index) in sortedData"
         :key="rowKey ? row[rowKey] : index"
-        class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 hover:shadow-lg transition-shadow"
-        :class="{ 'cursor-pointer': clickable }"
+        class="card card-interactive"
         @click="clickable && $emit('row-click', row)"
       >
         <slot name="card" :row="row">
           <div v-for="col in columns" :key="col.key" class="mb-2 last:mb-0">
-            <span class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">{{ col.label }}</span>
-            <div class="text-sm text-gray-900 dark:text-gray-100">
+            <span class="overline">{{ col.label }}</span>
+            <div class="text-body-sm mt-0.5">
               <slot :name="`cell-${col.key}`" :row="row" :value="row[col.key]">
                 {{ row[col.key] }}
               </slot>
@@ -121,7 +120,6 @@ const props = defineProps({
   columns: {
     type: Array,
     required: true
-    // { key: string, label: string, sortable?: boolean, class?: string, tdClass?: string }
   },
   data: {
     type: Array,
@@ -162,11 +160,11 @@ const emit = defineEmits(['row-click', 'selection-change'])
 
 const currentView = ref(props.defaultView)
 
-// Auto-switch to card view on mobile
 watch(isMobile, (mobile) => {
   if (mobile) currentView.value = 'card'
   else currentView.value = props.defaultView
 }, { immediate: true })
+
 const sortKey = ref('')
 const sortDirection = ref('asc')
 const selectedIds = ref(new Set())
@@ -217,7 +215,6 @@ const toggleSelectAll = () => {
 }
 
 watch(() => props.data, () => {
-  // Clear selections that no longer exist in data
   const validIds = new Set(props.data.map(row => row[props.rowKey]))
   const cleaned = new Set([...selectedIds.value].filter(id => validIds.has(id)))
   if (cleaned.size !== selectedIds.value.size) {

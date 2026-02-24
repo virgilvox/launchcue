@@ -1,145 +1,154 @@
 # LaunchCue
 
-LaunchCue is a comprehensive platform for developer relations teams to manage clients, projects, tasks, and campaigns effectively.
+[![Netlify Status](https://api.netlify.com/api/v1/badges/placeholder/deploy-status)](https://launchcue.netlify.app/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-E8503A.svg)](LICENSE)
+
+**The command center for freelance & agency DevRel.** LaunchCue is a full-stack platform purpose-built for developer relations practitioners who juggle clients, projects, campaigns, content, and invoices — all in one place.
+
+## Why LaunchCue?
+
+Most project management tools are built for generic software teams. DevRel practitioners — especially freelancers and small agencies — need something that understands their workflow: client relationships, campaign tracking, scope management, invoicing, and AI-powered brain dumps for processing meeting notes into action items.
+
+| | LaunchCue | Generic PM Tools | Spreadsheets |
+|---|---|---|---|
+| Client + Project hierarchy | Built-in | Workarounds | Manual |
+| Scope & deliverables builder | Built-in | No | Manual |
+| Invoice generation | Built-in | Add-on | Manual |
+| AI brain dump processing | Claude-powered | No | No |
+| Campaign tracking | Built-in | No | Manual |
+| Keyboard-first workflow | `Cmd+K`, shortcuts | Varies | No |
+| Self-hosted / own your data | Yes | No | Partial |
+
+## Quick Start
+
+```bash
+# 1. Clone and install
+git clone https://github.com/yourusername/launchcue.git
+cd launchcue && npm install
+
+# 2. Configure environment
+cp .env.example .env   # Then fill in your MongoDB URI, JWT secret, and Anthropic API key
+
+# 3. Run locally with Netlify Functions
+npm run dev
+```
+
+**First steps after registering:**
+1. Create your team (Settings → Team)
+2. Add your first client
+3. Create a project under that client
+4. Add tasks to the project
+5. Try Brain Dump — paste meeting notes and let Claude AI extract action items
 
 ## Features
 
-- **Team Management**: Create and manage multiple teams for your organization
-- **Client Management**: Organize client information and projects
-- **Project Tracking**: Track project details, progress, and deadlines
-- **Task Management**: Manage tasks with customizable statuses and priorities
-- **Calendar**: Schedule events and view project deadlines
-- **Brain Dump**: Use AI (Claude) to process and organize your thoughts and meeting notes
-- **Resources**: Store and categorize important resources for your team
-- **Notes**: Create, edit, and organize markdown notes
+### Core Workflow
+- **Client Management** — Organize client info, contacts, and project history. Client health dashboard shows overdue/blocked status at a glance.
+- **Project Tracking** — Track deliverables, deadlines, and progress per client. Status workflow from planning through completion.
+- **Task Management** — Kanban board and list views. Assign tasks, set priorities, track with checklists. Keyboard shortcut `C` to create from anywhere.
+- **Calendar** — Unified view of deadlines, meetings, and events. Recurring event support.
 
-## Live Demo
+### DevRel-Specific
+- **Campaign Management** — Plan and track developer campaigns with structured workflows and metrics.
+- **Scope & Deliverables Builder** — Template-based scope documents. Draft → Sent → Approved workflow. Import scopes directly into invoices.
+- **Invoice Builder** — Auto-incrementing invoice numbers, scope import, client billing. Outstanding invoice dashboard widget.
+- **Brain Dump** — Paste unstructured meeting notes, and Claude AI extracts summaries, action items, and meeting recaps.
+- **Resources** — Categorized link/document library for reference materials.
+- **Notes** — Rich text notes with Tiptap editor, tagging, and organization.
 
-Access the live application at [https://launchcue.netlify.app/](https://launchcue.netlify.app/)
+### Platform
+- **Global Search** — `Cmd+K` to search across everything. Type `>` for command palette (navigate, create, toggle dark mode).
+- **Keyboard Shortcuts** — `G → D` dashboard, `G → T` tasks, `G → P` projects, `?` for help overlay.
+- **Dark Mode** — Full dark theme with warm ink/charcoal palette.
+- **Team Collaboration** — RBAC (owner/admin/member/viewer), team invitations, activity feed.
+- **Client Portal** — Read-only portal for clients to view project status and onboarding.
+- **Notifications** — In-app notification system for team activity.
+- **Getting Started Checklist** — Guided onboarding for new users.
 
-## Screenshots and Features
+## Screenshots
 
 ### Dashboard
 ![Dashboard](screenshots/dashboard.png)
 
-The Dashboard provides a comprehensive overview of your projects, tasks, and upcoming events. It's designed to give you a quick snapshot of your most important work items and priorities at a glance.
+Command center with stats grid, recent tasks, activity feed, upcoming items, client health, and outstanding invoices.
 
-### Brain Dump - AI-Powered Note Processing
+### Brain Dump — AI-Powered Processing
 ![Brain Dump](screenshots/braindump.png)
 
-The Brain Dump feature leverages Claude AI to help you process unstructured notes and meeting information. Simply paste your notes, and Claude will help organize them.
+Paste meeting notes → Claude AI extracts action items, summaries, and structured recaps.
 
-#### Generate Actionable Items
-![Generate Actionable Items](screenshots/generate-actionable-items.png)
-
-Convert your notes into structured, actionable tasks with AI assistance. This feature extracts key action items from your notes and turns them into trackable tasks.
-
-#### Summarize Content
-![Summarize Content](screenshots/summarize.png)
-
-Get concise summaries of lengthy notes or meeting transcripts to quickly capture the essential points.
-
-#### Meeting Recap
-![Meeting Recap](screenshots/recap.png)
-
-Create structured meeting recaps from your notes, including key decisions, action items, and discussion points.
-
-### Tasks Management
+### Tasks
 ![Tasks](screenshots/tasks.png)
 
-The Tasks view gives you a comprehensive list of all tasks across projects. Filter, sort, and manage your team's workload effectively.
+List and Kanban views with inline status badges, priority indicators, and assignees.
 
-#### Project Tasks
-![Tasks on Project](screenshots/tasks-on-project.png)
+### Clients
+![Clients](screenshots/clients.png)
 
-View and manage tasks specifically assigned to individual projects, helping you track progress on project-specific deliverables.
-
-#### Task Checklists
-![Checklist](screenshots/checklist.png)
-
-Break down complex tasks into manageable checklist items, making it easier to track progress on multi-step tasks.
-
-### Client Management
-![Clients List](screenshots/clients.png)
-
-Manage all your clients in one place with a clean, organized interface. See key information at a glance and access client details easily.
-
-#### Client Details
-![Client Detail](screenshots/client.png)
-
-Access comprehensive client information, including contacts, projects, and communication history all in one view.
-
-### Project Resources
-![Resources](screenshots/resources.png)
-
-Store and organize important resources related to your projects, such as documents, links, and reference materials. Categorize resources for easy retrieval.
-
-### Team Management
-![Team Management](screenshots/team%20management.png)
-
-Manage team members, permissions, and roles to ensure everyone has the right level of access to relevant projects and information.
-
-### Campaign Management
-![Campaign](screenshots/campaign.png)
-
-Plan and execute marketing campaigns with structured workflows. Track campaign progress and measure results.
+Client cards with project counts, health indicators, and quick navigation.
 
 ### Calendar
 ![Calendar](screenshots/calendar.png)
 
-View all your project deadlines, meetings, and important dates in a unified calendar view. Schedule new events and manage your team's time effectively.
+Month/week/day views with project deadlines and recurring events.
 
-### Notes
-![Notes](screenshots/notes.png)
+### Campaign Management
+![Campaign](screenshots/campaign.png)
 
-Create, organize, and share rich markdown notes related to your projects, clients, or general information. Tag notes for easy filtering and retrieval.
-
-### User Profile
-![Profile](screenshots/profile.png)
-
-Manage your user profile, preferences, and personal settings to customize your LaunchCue experience.
-
-### API Keys and Settings
-![Settings API Keys](screenshots/settings-api-keys.png)
-
-Generate and manage API keys for external integrations. Configure system-wide settings to customize LaunchCue for your team's needs.
+Structured campaign planning with status tracking.
 
 ## Tech Stack
 
-- Vue 3 with Composition API
-- Vite for development and building
-- Tailwind CSS for styling
-- MongoDB for data storage
-- Netlify Functions for serverless backend API
-- Vue Router for navigation
-- Pinia for state management
-- JWT for authentication
-- Anthropic Claude API for AI processing
+| Layer | Technology |
+|-------|-----------|
+| Frontend | Vue 3 (Composition API) + TypeScript |
+| Styling | Tailwind CSS — print-first brutalist design system |
+| Build | Vite |
+| State | Pinia |
+| Routing | Vue Router |
+| Backend | Netlify Functions (serverless) |
+| Database | MongoDB Atlas |
+| Auth | JWT (session-based) + RBAC |
+| AI | Anthropic Claude API |
+| Rich Text | Tiptap |
+| Charts | Chart.js + vue-chartjs |
 
-## Getting Started
+## Design System
+
+LaunchCue uses a **print-first brutalist** design language:
+
+- `border-radius: 0` on all elements — cards, buttons, inputs, badges
+- `border: 2px solid` as the structural backbone
+- Hard offset shadows (no blur) — elements feel physical
+- **Space Grotesk** for headings, **Inter** for body, **JetBrains Mono** for data
+- ALL-CAPS overline labels for section headers and metadata
+- Coral (`#E8503A`) + chartreuse (`#C8E840`) accent pair on warm parchment (`#FAF8F5`)
+- Dark mode: warm ink (`#141210`) base with chalk borders
+
+## Getting Started (Development)
 
 ### Prerequisites
 
-- Node.js 18+ recommended
-- npm or yarn
+- Node.js 18+
+- npm
 - MongoDB Atlas account
-- Anthropic API key for Claude integration
-- Netlify CLI for local development
+- Anthropic API key (for Brain Dump)
+- Netlify CLI (`npm i -g netlify-cli`)
 
 ### Installation
 
 1. Clone the repository:
-   ```
+   ```bash
    git clone https://github.com/yourusername/launchcue.git
    cd launchcue
    ```
 
 2. Install dependencies:
-   ```
+   ```bash
    npm install
    ```
 
-3. Create a `.env` file in the root directory with the following variables:
+3. Create a `.env` file:
    ```
    MONGODB_URI=your_mongodb_connection_string
    JWT_SECRET=your_jwt_secret_at_least_64_characters
@@ -147,18 +156,18 @@ Generate and manage API keys for external integrations. Configure system-wide se
    ALLOWED_ORIGINS=https://your-site.netlify.app
    ```
 
-4. Run the development server with Netlify Functions:
-   ```
+4. Run the development server:
+   ```bash
    npm run dev
    ```
 
 5. Build for production:
-   ```
+   ```bash
    npm run build
    ```
 
 6. Deploy to Netlify:
-   ```
+   ```bash
    netlify deploy --prod
    ```
 
@@ -173,52 +182,55 @@ Generate and manage API keys for external integrations. Configure system-wide se
 
 ```
 launchcue/
-├── docs/                    # Documentation (architecture, deployment, API, etc.)
-├── netlify/
-│   └── functions/           # Serverless backend (flat file structure)
-│       ├── utils/           # Shared utilities (db, auth, rateLimit, etc.)
-│       ├── tasks.js, clients.js, projects.js, ...  # CRUD endpoints
-│       ├── auth-login.js, auth-register.js, ...     # Auth endpoints
-│       └── ai-process.js, search.js, ...            # Feature endpoints
+├── netlify/functions/        # Serverless backend (33 endpoints)
+│   ├── utils/                # Shared: db, auth, rateLimit, validation
+│   ├── auth-*.js             # Auth endpoints (login, register, reset, verify)
+│   ├── tasks.js, clients.js  # CRUD endpoints
+│   ├── invoices.js            # Invoice management
+│   ├── scopes.js              # Scope builder
+│   └── ai-process.js          # Claude AI integration
 ├── src/
-│   ├── assets/              # CSS (main.css with Tailwind)
-│   ├── components/          # Reusable Vue components
-│   │   ├── ui/              # UI primitives (Badge, Card, DataTable, etc.)
-│   │   ├── dashboard/       # Dashboard widgets
-│   │   └── tasks/           # Task-specific (TaskForm, TaskList, TaskKanban)
-│   ├── layouts/             # Page layouts (DefaultLayout)
-│   ├── pages/               # Route-level page components
-│   ├── router/index.ts      # Vue Router configuration
-│   ├── services/*.ts        # API service layer
-│   ├── stores/*.ts          # Pinia stores
-│   ├── types/               # TypeScript type definitions
-│   ├── App.vue              # Root component
-│   └── main.ts              # Entry point
-├── index.html               # HTML template
-├── vite.config.ts           # Vite configuration
-├── netlify.toml             # Netlify configuration
-└── tailwind.config.js       # Tailwind CSS configuration
+│   ├── assets/main.css       # Design system (CSS custom properties + Tailwind)
+│   ├── components/
+│   │   ├── ui/               # Primitives (Card, Badge, DataTable, Modal, Form*)
+│   │   ├── dashboard/        # Dashboard widgets (StatsGrid, ActivityFeed, etc.)
+│   │   ├── tasks/            # TaskForm, TaskList, TaskKanban
+│   │   ├── scope/            # Scope builder components
+│   │   └── invoice/          # Invoice builder components
+│   ├── composables/          # useKeyboardShortcuts, useModalState, useTooltips, etc.
+│   ├── layouts/              # DefaultLayout (sidebar + header + shortcuts)
+│   ├── pages/                # Route-level components (33 pages)
+│   ├── services/*.ts         # API service layer
+│   ├── stores/*.ts           # Pinia stores
+│   └── types/                # TypeScript definitions
+├── tailwind.config.js        # Brutalist design tokens
+├── vite.config.ts            # Vite configuration
+└── netlify.toml              # Netlify deployment config
 ```
 
 ## Documentation
 
-For detailed documentation, see the [docs/](docs/) folder:
+See the [docs/](docs/) folder for detailed guides:
 
-- **[Architecture](docs/architecture.md)** — System design, data flow, and key decisions
-- **[Deployment](docs/deployment.md)** — Production deployment guide for Netlify + MongoDB Atlas
+- **[Architecture](docs/architecture.md)** — System design, data flow, key decisions
+- **[Deployment](docs/deployment.md)** — Production deployment (Netlify + MongoDB Atlas)
 - **[API Reference](docs/api-reference.md)** — Complete endpoint documentation
 - **[Database](docs/database.md)** — Schema documentation and relationships
-- **[Security](docs/security.md)** — Auth flows, RBAC, rate limiting, security headers
-- **[Development](docs/development.md)** — Developer setup, conventions, and checklists
+- **[Security](docs/security.md)** — Auth flows, RBAC, rate limiting
+- **[Development](docs/development.md)** — Developer setup and conventions
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+MIT — see [LICENSE](LICENSE) for details.
 
 ## Acknowledgements
 
 - [Vue.js](https://vuejs.org/)
 - [Tailwind CSS](https://tailwindcss.com/)
 - [MongoDB](https://www.mongodb.com/)
-- [Netlify Functions](https://www.netlify.com/products/functions/)
+- [Netlify](https://www.netlify.com/)
 - [Anthropic Claude](https://www.anthropic.com/)
+- [Space Grotesk](https://fonts.google.com/specimen/Space+Grotesk)
+- [JetBrains Mono](https://www.jetbrains.com/lp/mono/)
+- [Tiptap](https://tiptap.dev/)
+- [Chart.js](https://www.chartjs.org/)

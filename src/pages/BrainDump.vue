@@ -3,20 +3,20 @@
     <!-- Header -->
     <div class="mb-6 flex justify-between items-start">
       <div>
-        <h2 class="text-2xl font-bold text-gray-800 dark:text-white">Brain Dump</h2>
-        <p class="text-gray-600 dark:text-gray-400 mt-1">
+        <h2 class="heading-page">Brain Dump</h2>
+        <p class="text-caption mt-1">
           Use AI to help brainstorm and organize your thoughts.
         </p>
       </div>
       <!-- Tab Toggle -->
-      <div class="flex bg-gray-200 dark:bg-gray-700 rounded-lg p-0.5">
+      <div class="inline-flex border-2 border-[var(--border)]">
         <button
           @click="activeTab = 'new'"
           :class="[
-            'px-4 py-1.5 rounded-md text-sm font-medium transition-colors',
+            'px-4 py-1.5 text-body-sm font-medium transition-colors font-heading uppercase',
             activeTab === 'new'
-              ? 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white shadow-sm'
-              : 'text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200'
+              ? 'bg-[var(--accent-primary)] text-white'
+              : 'bg-[var(--surface)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
           ]"
         >
           New
@@ -24,10 +24,10 @@
         <button
           @click="activeTab = 'history'; loadHistory()"
           :class="[
-            'px-4 py-1.5 rounded-md text-sm font-medium transition-colors',
+            'px-4 py-1.5 text-body-sm font-medium transition-colors font-heading uppercase border-l-2 border-[var(--border)]',
             activeTab === 'history'
-              ? 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white shadow-sm'
-              : 'text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200'
+              ? 'bg-[var(--accent-primary)] text-white'
+              : 'bg-[var(--surface)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
           ]"
         >
           History

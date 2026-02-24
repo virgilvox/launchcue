@@ -9,7 +9,7 @@
       >
         <div
           ref="modalRef"
-          class="modal-container bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+          class="modal-container"
           :class="sizeClass"
           role="dialog"
           aria-modal="true"
@@ -17,10 +17,10 @@
           tabindex="-1"
           @click.stop
         >
-          <div class="modal-header border-b border-gray-200 dark:border-gray-700">
-            <h3 :id="titleId" class="modal-title text-gray-900 dark:text-gray-100">{{ title }}</h3>
+          <div class="modal-header">
+            <h3 :id="titleId" class="modal-title">{{ title }}</h3>
             <button
-              class="modal-close-btn text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700"
+              class="modal-close-btn"
               @click="close"
               aria-label="Close modal"
             >
@@ -32,7 +32,7 @@
             <slot></slot>
           </div>
 
-          <div v-if="$slots.footer" class="modal-footer border-t border-gray-200 dark:border-gray-700">
+          <div v-if="$slots.footer" class="modal-footer">
             <slot name="footer"></slot>
           </div>
         </div>
@@ -70,7 +70,6 @@ const emit = defineEmits(['update:modelValue'])
 const modalRef = ref(null)
 const previousActiveElement = ref(null)
 
-// Unique ID for aria-labelledby
 const titleId = computed(() => `modal-title-${Math.random().toString(36).slice(2, 9)}`)
 
 const sizeClass = computed(() => ({
@@ -84,7 +83,6 @@ const close = () => {
   emit('update:modelValue', false)
 }
 
-// Focus management
 const onAfterEnter = () => {
   previousActiveElement.value = document.activeElement
   nextTick(() => {
@@ -99,14 +97,12 @@ const onAfterLeave = () => {
   previousActiveElement.value = null
 }
 
-// Keyboard handling: Escape to close + focus trap
 const onKeydown = (e) => {
   if (e.key === 'Escape') {
     close()
     return
   }
 
-  // Focus trap: keep Tab/Shift+Tab within the modal
   if (e.key === 'Tab' && modalRef.value) {
     const focusable = modalRef.value.querySelectorAll(
       'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])'
@@ -138,7 +134,7 @@ const onKeydown = (e) => {
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5);
+  background-color: rgba(0, 0, 0, 0.6);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -153,19 +149,20 @@ const onKeydown = (e) => {
 }
 
 .modal-container {
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  background-color: var(--surface-elevated);
+  border: 2px solid var(--border);
+  box-shadow: 6px 6px 0 0 var(--shadow-color);
   width: 100%;
   height: 100%;
   max-height: 100%;
   overflow-y: auto;
-  border-radius: 0;
+  color: var(--text-primary);
 }
 
 @media (min-width: 640px) {
   .modal-container {
     height: auto;
     max-height: 85vh;
-    border-radius: 0.5rem;
   }
 }
 
@@ -174,20 +171,29 @@ const onKeydown = (e) => {
   justify-content: space-between;
   align-items: center;
   padding: 1rem 1.5rem;
+  border-bottom: 2px solid var(--border);
 }
 
 .modal-title {
-  font-size: 1.125rem;
+  font-family: 'Space Grotesk', ui-sans-serif, system-ui, sans-serif;
+  font-size: 1.25rem;
   font-weight: 600;
+  color: var(--text-primary);
 }
 
 .modal-close-btn {
   background: transparent;
-  border: none;
+  border: 2px solid transparent;
   padding: 0.375rem;
   cursor: pointer;
-  border-radius: 0.375rem;
+  color: var(--text-secondary);
   transition: all 0.15s ease;
+}
+
+.modal-close-btn:hover {
+  border-color: var(--border);
+  color: var(--text-primary);
+  background-color: var(--surface);
 }
 
 .modal-body {
@@ -199,9 +205,9 @@ const onKeydown = (e) => {
   display: flex;
   justify-content: flex-end;
   gap: 0.5rem;
+  border-top: 2px solid var(--border);
 }
 
-/* Transition animations */
 .modal-fade-enter-active,
 .modal-fade-leave-active {
   transition: opacity 0.15s ease;

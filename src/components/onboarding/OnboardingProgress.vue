@@ -15,7 +15,7 @@
         <button
           @click="$emit('select', index)"
           class="relative flex items-start gap-3 w-full text-left py-3 px-2 rounded-md transition-colors hover:bg-gray-50 dark:hover:bg-gray-700/50"
-          :class="index === currentIndex ? 'bg-indigo-50 dark:bg-indigo-900/20' : ''"
+          :class="index === currentIndex ? 'bg-[var(--accent-primary-wash)]' : ''"
         >
           <!-- Circle indicator -->
           <div class="flex-shrink-0 relative z-10">
@@ -32,7 +32,7 @@
             <!-- Current: indigo filled -->
             <div
               v-else-if="index === currentIndex"
-              class="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center"
+              class="w-8 h-8 rounded-full bg-[var(--accent-primary)] flex items-center justify-center"
             >
               <span class="text-xs font-bold text-white">{{ index + 1 }}</span>
             </div>
@@ -54,7 +54,7 @@
                 step.completedAt
                   ? 'text-green-700 dark:text-green-400'
                   : index === currentIndex
-                    ? 'text-indigo-700 dark:text-indigo-300'
+                    ? 'text-[var(--accent-primary)]'
                     : 'text-gray-700 dark:text-gray-300'
               ]"
             >

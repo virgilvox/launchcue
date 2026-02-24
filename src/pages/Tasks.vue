@@ -1,38 +1,38 @@
 <template>
-  <div class="tasks-page p-6 bg-gray-100 dark:bg-gray-900 min-h-screen">
+  <div class="tasks-page">
     <div class="page-header flex justify-between items-center mb-6">
       <div>
-        <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">Tasks</h1>
-        <p class="text-gray-500 dark:text-gray-400">Manage your tasks and track their progress</p>
+        <h1 class="heading-page">Tasks</h1>
+        <p class="text-caption mt-1">Manage your tasks and track their progress</p>
       </div>
       <div class="flex items-center gap-2">
         <!-- View Toggle -->
-        <div class="flex items-center bg-gray-200 dark:bg-gray-700 rounded-lg p-0.5">
+        <div class="inline-flex border-2 border-[var(--border)]">
           <button
             @click="viewMode = 'list'"
             :class="[
-              'flex items-center gap-1 px-3 py-1.5 rounded-md text-sm font-medium transition-colors',
+              'flex items-center gap-1 px-3 py-1.5 text-body-sm font-medium transition-colors',
               viewMode === 'list'
-                ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-gray-100 shadow-sm'
-                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                ? 'bg-[var(--accent-primary)] text-white'
+                : 'bg-[var(--surface)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
             ]"
             title="List view"
           >
             <TableCellsIcon class="h-4 w-4" />
-            <span class="hidden sm:inline">List</span>
+            <span class="hidden sm:inline">LIST</span>
           </button>
           <button
             @click="viewMode = 'kanban'"
             :class="[
-              'flex items-center gap-1 px-3 py-1.5 rounded-md text-sm font-medium transition-colors',
+              'flex items-center gap-1 px-3 py-1.5 text-body-sm font-medium transition-colors border-l-2 border-[var(--border)]',
               viewMode === 'kanban'
-                ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-gray-100 shadow-sm'
-                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                ? 'bg-[var(--accent-primary)] text-white'
+                : 'bg-[var(--surface)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
             ]"
             title="Kanban view"
           >
             <ViewColumnsIcon class="h-4 w-4" />
-            <span class="hidden sm:inline">Kanban</span>
+            <span class="hidden sm:inline">KANBAN</span>
           </button>
         </div>
 
@@ -75,23 +75,14 @@
     />
 
     <!-- Empty State -->
-    <div v-else class="text-center my-12 p-6 bg-white dark:bg-gray-800 rounded-lg shadow">
-      <div class="mx-auto h-16 w-16 text-gray-400">
-        <ClipboardDocumentIcon class="h-16 w-16" />
-      </div>
-      <h3 class="mt-4 text-lg font-medium text-gray-900 dark:text-gray-100">No tasks found</h3>
-      <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
-        {{ tasks.length > 0 ? 'Try adjusting your filters.' : 'Get started by creating your first task.' }}
-      </p>
-      <button 
-        v-if="tasks.length === 0" 
-        @click="openNewTaskModal" 
-        class="mt-4 btn btn-primary"
-      >
-        <PlusIcon class="h-5 w-5 mr-1" />
-        Add Task
-      </button>
-    </div>
+    <EmptyState
+      v-else
+      :icon="ClipboardDocumentIcon"
+      :title="tasks.length > 0 ? 'No tasks match filters' : 'No tasks yet'"
+      :description="tasks.length > 0 ? 'Try adjusting your filters.' : 'Break work into trackable tasks with status, priority, and deadlines.'"
+      :actionLabel="tasks.length === 0 ? 'ADD TASK' : ''"
+      @action="openNewTaskModal"
+    />
 
     <!-- New/Edit Task Modal -->
     <Modal v-model="showTaskFormModal" :title="isEditing ? 'Edit Task' : 'New Task'">
@@ -159,6 +150,7 @@ import TaskList from '../components/tasks/TaskList.vue'
 import TaskForm from '../components/tasks/TaskForm.vue'
 import TaskKanban from '../components/tasks/TaskKanban.vue'
 import TaskChecklistModal from '../components/tasks/TaskChecklistModal.vue'
+import EmptyState from '../components/ui/EmptyState.vue'
 
 // Stores & Toast
 const taskStore = useTaskStore()

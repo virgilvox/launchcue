@@ -65,9 +65,9 @@
                   <label class="label">Tags</label>
                   <input v-model="tagsInput" type="text" class="input" placeholder="Comma-separated tags" @blur="parseTags" />
                   <div class="flex flex-wrap gap-1 mt-2">
-                    <span v-for="(tag, i) in formData.tags" :key="i" class="inline-flex items-center bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 text-xs px-2 py-0.5 rounded">
+                    <span v-for="(tag, i) in formData.tags" :key="i" class="inline-flex items-center bg-[var(--accent-primary-wash)] text-[var(--accent-primary)] text-xs px-2 py-0.5 rounded">
                       {{ tag }}
-                      <button @click="removeTag(i)" class="ml-1 text-indigo-500 hover:text-indigo-700">&times;</button>
+                      <button @click="removeTag(i)" class="ml-1 text-[var(--accent-primary)] hover:text-[var(--accent-primary-hover)]">&times;</button>
                     </span>
                   </div>
                 </div>

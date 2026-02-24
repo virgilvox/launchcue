@@ -62,7 +62,7 @@
             :id="`field-${field.id}`"
             v-model="formData[field.id]"
             type="checkbox"
-            class="h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-indigo-600 focus:ring-indigo-500 dark:bg-gray-700"
+            class="h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-[var(--accent-primary)] focus:ring-[var(--accent-primary)] dark:bg-gray-700"
             :disabled="disabled"
           />
           <label :for="`field-${field.id}`" class="text-sm text-gray-700 dark:text-gray-300">
@@ -84,9 +84,9 @@
           class="block w-full text-sm text-gray-500 dark:text-gray-400
                  file:mr-3 file:py-2 file:px-4 file:rounded-md file:border-0
                  file:text-sm file:font-medium
-                 file:bg-indigo-50 file:text-indigo-700
-                 dark:file:bg-indigo-900/30 dark:file:text-indigo-400
-                 hover:file:bg-indigo-100 dark:hover:file:bg-indigo-900/50
+                 file:bg-[var(--accent-primary-wash)] file:text-[var(--accent-primary)]
+                 dark:file:bg-[var(--accent-primary-wash)] dark:file:text-[var(--accent-primary)]
+                 hover:file:bg-[var(--accent-primary-wash)]
                  file:cursor-pointer file:transition-colors"
           :required="field.required"
           :disabled="disabled"

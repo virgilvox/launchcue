@@ -1,17 +1,17 @@
 <template>
   <div class="flex flex-col items-center justify-center py-12 px-4 text-center">
-    <div class="w-12 h-12 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center mb-4">
-      <component :is="icon" v-if="icon" class="h-6 w-6 text-gray-400 dark:text-gray-500" />
+    <div class="w-14 h-14 border-2 border-[var(--border)] bg-[var(--surface)] flex items-center justify-center mb-4">
+      <component :is="icon" v-if="icon" class="h-7 w-7 text-[var(--text-secondary)]" />
     </div>
-    <h3 class="text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">{{ title }}</h3>
-    <p v-if="description" class="text-sm text-gray-500 dark:text-gray-400 max-w-sm mb-4">{{ description }}</p>
+    <h3 class="heading-card mb-1">{{ title }}</h3>
+    <p v-if="description" class="text-body max-w-md mb-6">{{ description }}</p>
     <slot name="action">
       <button
         v-if="actionLabel"
-        class="btn btn-primary btn-sm"
+        class="btn btn-primary"
         @click="$emit('action')"
       >
-        <PlusIcon class="h-4 w-4 mr-1" />
+        <PlusIcon class="h-4 w-4 mr-2" />
         {{ actionLabel }}
       </button>
     </slot>

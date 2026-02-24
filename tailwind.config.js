@@ -6,21 +6,61 @@ module.exports = {
   ],
   darkMode: 'class',
   theme: {
+    borderRadius: {
+      none: '0px',
+      DEFAULT: '0px',
+      sm: '0px',
+      md: '0px',
+      lg: '0px',
+      xl: '0px',
+      '2xl': '0px',
+      '3xl': '0px',
+      full: '9999px', // keep for avatar circles
+    },
     extend: {
       colors: {
+        // Primary brand → purple
         primary: {
-          50: '#eef2ff',
-          100: '#e0e7ff',
-          200: '#c7d2fe',
-          300: '#a5b4fc',
-          400: '#818cf8',
-          500: '#6366f1',
-          600: '#4f46e5',
-          700: '#4338ca',
-          800: '#3730a3',
-          900: '#312e81',
-          950: '#1e1b4b',
+          50: '#F5F3FF',
+          100: '#EDE9FE',
+          200: '#DDD6FE',
+          300: '#C4B5FD',
+          400: '#A78BFA',
+          500: '#8B5CF6',
+          600: '#7C3AED',
+          700: '#6D28D9',
+          800: '#5B21B6',
+          900: '#4C1D95',
+          950: '#2E1065',
         },
+        coral: {
+          50: '#FDE8E4',
+          100: '#FBD5CF',
+          200: '#F7ABA0',
+          300: '#F28070',
+          400: '#EE5641',
+          500: '#E8503A',
+          600: '#D4402B',
+          700: '#B3331F',
+          800: '#8C2718',
+          900: '#661C11',
+        },
+        parchment: '#FAF8F5',
+        cream: '#F5F0EB',
+        ink: '#141210',
+        charcoal: '#1E1C19',
+        graphite: '#1A1A1A',
+        chalk: '#E8E4DF',
+        stone: {
+          DEFAULT: '#6B6560',
+          light: '#8A847E',
+          dark: '#4A453F',
+        },
+        // Semantic status colors
+        danger: '#DC2626',
+        warning: '#F59E0B',
+        success: '#0D9488',
+        // Secondary grays (keep for compatibility)
         secondary: {
           50: '#f8fafc',
           100: '#f1f5f9',
@@ -37,12 +77,40 @@ module.exports = {
       },
       fontFamily: {
         sans: ['Inter', 'ui-sans-serif', 'system-ui', '-apple-system', 'sans-serif'],
+        heading: ['Space Grotesk', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        mono: ['JetBrains Mono', 'ui-monospace', 'SFMono-Regular', 'monospace'],
+      },
+      fontSize: {
+        'display': ['2.5rem', { lineHeight: '1.1', fontWeight: '700' }],
+        'h1': ['1.75rem', { lineHeight: '1.2', fontWeight: '700' }],
+        'h2': ['1.25rem', { lineHeight: '1.3', fontWeight: '600' }],
+        'h3': ['1rem', { lineHeight: '1.4', fontWeight: '600' }],
+        'body': ['0.9375rem', { lineHeight: '1.6', fontWeight: '400' }],
+        'body-sm': ['0.8125rem', { lineHeight: '1.5', fontWeight: '400' }],
+        'overline': ['0.6875rem', { lineHeight: '1.4', fontWeight: '700', letterSpacing: '0.08em' }],
+        'stat': ['2rem', { lineHeight: '1', fontWeight: '700' }],
       },
       spacing: {
-        'page': '1.5rem',   /* 24px — standard page horizontal padding */
-        'section': '2rem',   /* 32px — spacing between major sections */
+        'page': '1.5rem',
+        'section': '2rem',
+      },
+      borderWidth: {
+        DEFAULT: '2px',
+        '0': '0',
+        '1': '1px',
+        '2': '2px',
+        '3': '3px',
+        '4': '4px',
+        '6': '6px',
       },
       boxShadow: {
+        'none': 'none',
+        'brutal-sm': '2px 2px 0 0 var(--shadow-color, #1A1A1A)',
+        'brutal': '3px 3px 0 0 var(--shadow-color, #1A1A1A)',
+        'brutal-md': '4px 4px 0 0 var(--shadow-color, #1A1A1A)',
+        'brutal-lg': '6px 6px 0 0 var(--shadow-color, #1A1A1A)',
+        'brutal-accent': '4px 4px 0 0 #7C3AED',
+        // Keep legacy shadows for charts etc
         DEFAULT: '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)',
         md: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
         lg: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
@@ -55,4 +123,3 @@ module.exports = {
     require('@tailwindcss/forms'),
   ],
 }
-

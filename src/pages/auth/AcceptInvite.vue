@@ -70,7 +70,7 @@
       </div>
 
       <p class="mt-4 text-center text-sm text-gray-600 dark:text-gray-400">
-        Already have an account? <router-link to="/login" class="text-indigo-600 hover:text-indigo-500">Sign in</router-link>
+        Already have an account? <router-link to="/login" class="text-[var(--accent-primary)] hover:text-[var(--accent-primary-hover)]">Sign in</router-link>
       </p>
     </div>
   </div>

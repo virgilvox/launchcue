@@ -9,14 +9,14 @@
         :key="day.dateStr"
         :class="[
           'py-2 text-center border-r dark:border-gray-700 last:border-r-0',
-          day.isToday ? 'bg-purple-50 dark:bg-purple-900/20' : ''
+          day.isToday ? 'bg-[var(--accent-primary-wash)]' : ''
         ]"
       >
         <div class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">{{ day.dayName }}</div>
         <div
           :class="[
             'text-lg font-semibold mt-0.5',
-            day.isToday ? 'text-purple-600 dark:text-purple-400' : 'text-gray-800 dark:text-white'
+            day.isToday ? 'text-[var(--accent-primary)]' : 'text-gray-800 dark:text-white'
           ]"
         >
           {{ day.dayNum }}
@@ -58,7 +58,7 @@
             :key="day.dateStr + '-' + hour"
             :class="[
               'h-14 border-b border-r dark:border-gray-700 last:border-r-0 relative',
-              day.isToday ? 'bg-purple-50/30 dark:bg-purple-900/10' : ''
+              day.isToday ? 'bg-[var(--accent-primary-wash)]' : ''
             ]"
           >
             <!-- Events positioned by time -->

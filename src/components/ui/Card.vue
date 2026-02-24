@@ -1,14 +1,14 @@
 <template>
-  <div :class="['bg-white dark:bg-gray-800 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-200', padding, className]">
+  <div :class="['card', { 'card-interactive': interactive, 'card-featured': featured }, className]">
     <div v-if="title || $slots.header" class="flex items-center justify-between mb-4">
       <div>
-        <h3 v-if="title" class="text-lg font-semibold text-gray-800 dark:text-gray-100">{{ title }}</h3>
-        <p v-if="subtitle" class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{{ subtitle }}</p>
+        <h3 v-if="title" class="heading-card">{{ title }}</h3>
+        <p v-if="subtitle" class="text-caption mt-0.5">{{ subtitle }}</p>
       </div>
       <slot name="header"></slot>
     </div>
     <slot></slot>
-    <div v-if="$slots.footer" class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+    <div v-if="$slots.footer" class="mt-4 pt-4 border-t border-[var(--border-light)]">
       <slot name="footer"></slot>
     </div>
   </div>
@@ -30,11 +30,17 @@ const props = defineProps({
     type: Boolean,
     default: false
   },
+  interactive: {
+    type: Boolean,
+    default: false
+  },
+  featured: {
+    type: Boolean,
+    default: false
+  },
   className: {
     type: String,
     default: ''
   }
 })
-
-const padding = computed(() => props.compact ? 'p-3 sm:p-4' : 'p-4 sm:p-6')
 </script>

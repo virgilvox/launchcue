@@ -21,7 +21,7 @@
           <div class="flex items-center space-x-2">
             <button
               @click="navigatePrev"
-              class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors text-purple-500"
+              class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors text-[var(--accent-primary)]"
             >
               <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                 <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" />
@@ -30,14 +30,14 @@
 
             <button
               @click="goToToday"
-              class="px-3 py-1.5 text-sm font-medium rounded-md bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 hover:bg-purple-200 dark:hover:bg-purple-800 transition-colors"
+              class="px-3 py-1.5 text-sm font-medium rounded-md bg-[var(--accent-primary-wash)] text-[var(--accent-primary)] hover:bg-[var(--accent-primary-wash)] transition-colors"
             >
               Today
             </button>
 
             <button
               @click="navigateNext"
-              class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors text-purple-500"
+              class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors text-[var(--accent-primary)]"
             >
               <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                 <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
@@ -54,7 +54,7 @@
               :class="[
                 'px-4 py-1.5 text-sm font-medium transition-colors',
                 calendarView === 'month'
-                  ? 'bg-purple-600 text-white'
+                  ? 'bg-[var(--accent-primary)] text-white'
                   : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
               ]"
             >
@@ -65,7 +65,7 @@
               :class="[
                 'px-4 py-1.5 text-sm font-medium transition-colors border-l border-r border-gray-300 dark:border-gray-600',
                 calendarView === 'week'
-                  ? 'bg-purple-600 text-white'
+                  ? 'bg-[var(--accent-primary)] text-white'
                   : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
               ]"
             >
@@ -76,7 +76,7 @@
               :class="[
                 'px-4 py-1.5 text-sm font-medium transition-colors',
                 calendarView === 'day'
-                  ? 'bg-purple-600 text-white'
+                  ? 'bg-[var(--accent-primary)] text-white'
                   : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
               ]"
             >

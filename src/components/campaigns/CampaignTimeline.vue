@@ -9,7 +9,7 @@
                 class="relative pl-8 pb-1 group"
             >
                 <!-- Timeline Dot -->
-                <div class="absolute left-0 top-1 w-4 h-4 rounded-full bg-indigo-500 border-2 border-white dark:border-gray-800"></div>
+                <div class="absolute left-0 top-1 w-4 h-4 rounded-full bg-[var(--accent-primary)] border-2 border-white dark:border-gray-800"></div>
                 <!-- Timeline Line -->
                 <div v-if="index < localSteps.length - 1" class="absolute left-[7px] top-5 w-0.5 h-full bg-gray-300 dark:bg-gray-600"></div>
                 

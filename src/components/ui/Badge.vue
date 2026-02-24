@@ -11,7 +11,7 @@ const props = defineProps({
   variant: {
     type: String,
     default: 'gray',
-    validator: (v) => ['blue', 'green', 'yellow', 'red', 'purple', 'gray', 'primary'].includes(v)
+    validator: (v) => ['blue', 'green', 'yellow', 'red', 'purple', 'gray', 'primary', 'coral'].includes(v)
   }
 })
 
@@ -23,7 +23,8 @@ const variantClass = computed(() => {
     red: 'badge-red',
     purple: 'badge-purple',
     gray: 'badge-gray',
-    primary: 'bg-primary-100 text-primary-800 dark:bg-primary-900/50 dark:text-primary-300',
+    primary: 'badge-coral',
+    coral: 'badge-coral',
   }
   return map[props.variant] || map.gray
 })

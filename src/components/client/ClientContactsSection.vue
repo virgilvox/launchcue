@@ -23,7 +23,7 @@
       >
         <div class="flex items-center">
           <!-- Placeholder Avatar -->
-          <div class="w-10 h-10 rounded-full bg-indigo-100 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-300 flex items-center justify-center mr-3 flex-shrink-0">
+          <div class="w-10 h-10 rounded-full bg-[var(--accent-primary-wash)] text-[var(--accent-primary)] flex items-center justify-center mr-3 flex-shrink-0">
             <span class="text-lg font-medium">{{ getInitials(contact.name) }}</span>
           </div>
           <div>
