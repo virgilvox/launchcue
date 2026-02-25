@@ -17,7 +17,7 @@
       <div class="md:col-span-3 space-y-8">
          <!-- Profile Section (Placeholder - Link to existing Profile page) -->
         <section id="profile" class="card">
-          <h3 class="text-lg font-semibold mb-4">Profile</h3>
+          <h3 class="heading-card mb-4">Profile</h3>
           <p class="text-[var(--text-secondary)] mb-4">Manage your personal information and password.</p>
           <router-link to="/profile" class="btn btn-secondary">Go to Profile Page</router-link>
         </section>
@@ -33,14 +33,14 @@
 
         <!-- Billing Section -->
         <section id="billing" class="card">
-          <h3 class="text-lg font-semibold mb-4">Billing</h3>
+          <h3 class="heading-card mb-4">Billing</h3>
           <p class="text-[var(--text-secondary)]">You are currently on the <span class="font-semibold text-[var(--accent-primary)]">Free Plan</span>.</p>
           <!-- Add upgrade options later if needed -->
         </section>
 
         <!-- Integrations Section -->
         <section id="integrations" class="card">
-          <h3 class="text-lg font-semibold mb-4">Integrations</h3>
+          <h3 class="heading-card mb-4">Integrations</h3>
           <p class="text-[var(--text-secondary)]">Connect LaunchCue with other tools.</p>
           <div class="mt-4 p-4 bg-[var(--surface)] text-center">
             <p class="font-medium text-[var(--text-primary)]">Coming Soon!</p>

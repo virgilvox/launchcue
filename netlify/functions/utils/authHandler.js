@@ -205,11 +205,18 @@ function deriveRequiredScopes(resourceType, method) {
 
 /**
  * Require that the authenticated user has one of the allowed roles.
- * Throws a 403 error response if the user's role is not in the allowedRoles list.
- * @param {Object} authContext - The authentication context (must contain `role`)
+ * For API key auth, checks scopes instead of roles.
+ * @param {Object} authContext - The authentication context
  * @param {string[]} allowedRoles - Array of acceptable roles, e.g. ['owner', 'admin']
  */
 function requireRole(authContext, allowedRoles) {
+  // API keys don't have roles — they have scopes. Scope checks are done during
+  // authentication (authenticateWithApiKey). If we reach here with an API key,
+  // the request already passed scope validation, so allow it through.
+  if (authContext.authType === 'apiKey') {
+    return;
+  }
+
   if (!authContext.role || !allowedRoles.includes(authContext.role)) {
     throw createErrorResponse(403, 'Insufficient permissions. Required role: ' + allowedRoles.join(' or '));
   }

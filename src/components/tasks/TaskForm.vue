@@ -2,13 +2,14 @@
   <form @submit.prevent="submitForm" class="space-y-4">
     <div class="form-group">
       <label for="task-title" class="form-label">Title</label>
-      <input 
-        id="task-title" 
-        v-model="editableTask.title" 
-        type="text" 
-        class="form-input" 
+      <input
+        id="task-title"
+        v-model="editableTask.title"
+        type="text"
+        class="form-input"
         required
       />
+      <p v-if="submitted && validationErrors.title" class="text-xs mt-1" style="color: var(--danger);">{{ validationErrors.title }}</p>
     </div>
     
     <div class="form-group">
@@ -133,7 +134,7 @@
 </template>
 
 <script setup>
-import { ref, watch, computed } from 'vue';
+import { ref, reactive, watch, computed } from 'vue';
 import { useProjectStore } from '../../stores/project';
 import { useTeamStore } from '../../stores/team';
 
@@ -172,6 +173,10 @@ const editableTask = ref({ ...props.task });
 // Tags input as comma-separated string
 const tagsInput = ref('');
 
+// Validation state
+const validationErrors = reactive({ title: '' });
+const submitted = ref(false);
+
 // Computed property to determine if we are editing an existing task
 const isEditing = computed(() => !!props.task?.id);
 
@@ -186,6 +191,9 @@ watch(() => props.task, (newTask) => {
       dueDate: newTask?.dueDate ? new Date(newTask.dueDate).toISOString().split('T')[0] : ''
   };
   tagsInput.value = (newTask?.tags || []).join(', ');
+  // Clear validation state when form resets
+  validationErrors.title = '';
+  submitted.value = false;
 }, { deep: true, immediate: true });
 
 // Fetch team members if not already loaded
@@ -195,6 +203,17 @@ if (teamMembers.value.length === 0) {
 
 
 const submitForm = () => {
+  submitted.value = true;
+
+  // Validate required fields
+  validationErrors.title = '';
+  if (!editableTask.value.title || !editableTask.value.title.trim()) {
+    validationErrors.title = 'Task title is required.';
+  }
+  if (validationErrors.title) {
+    return;
+  }
+
   // Create a copy of the task to avoid mutating the original
   const taskToSave = {
     ...editableTask.value,

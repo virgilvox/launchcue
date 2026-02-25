@@ -35,7 +35,7 @@
           <div
             v-for="event in getEventsForDay(day.date)"
             :key="event.id"
-            :class="[getEventBg(event.color), 'text-white text-xs py-1 px-2 truncate cursor-pointer hover:opacity-80']"
+            :class="[getEventBg(event.color), 'text-xs py-1 px-2 truncate cursor-pointer hover:opacity-80']"
             @click="$emit('select-event', event)"
           >
             {{ getEventTitle(event) }}
@@ -76,15 +76,18 @@ defineEmits<{
   (e: 'select-event', event: CalendarEvent): void;
 }>();
 
-const colorMap: Record<string, string> = {
-  blue: 'bg-[#3B82F6]',
-  green: 'bg-[#22C55E]',
-  red: 'bg-[#EF4444]',
-  orange: 'bg-[#F97316]',
-  purple: 'bg-[#8B5CF6]',
-  yellow: 'bg-[#EAB308]',
-  pink: 'bg-[#EC4899]',
-  indigo: 'bg-[#6366F1]',
+const colorMap: Record<string, { bg: string; text: string }> = {
+  blue: { bg: 'bg-[#3B82F6]', text: 'text-white' },
+  green: { bg: 'bg-[#22C55E]', text: 'text-white' },
+  red: { bg: 'bg-[#EF4444]', text: 'text-white' },
+  orange: { bg: 'bg-[#F97316]', text: 'text-white' },
+  purple: { bg: 'bg-[#8B5CF6]', text: 'text-white' },
+  yellow: { bg: 'bg-[#EAB308]', text: 'text-[#1A1A1A]' },
+  pink: { bg: 'bg-[#EC4899]', text: 'text-white' },
+  indigo: { bg: 'bg-[#6366F1]', text: 'text-white' },
 };
-const getEventBg = (color: string) => colorMap[color] || 'bg-[var(--accent-primary)]';
+const getEventBg = (color: string) => {
+  const entry = colorMap[color];
+  return entry ? `${entry.bg} ${entry.text}` : 'bg-[var(--accent-primary)] text-white';
+};
 </script>

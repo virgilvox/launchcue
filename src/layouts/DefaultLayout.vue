@@ -126,16 +126,18 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import Sidebar from '../components/Sidebar.vue'
 import GlobalSearch from '../components/GlobalSearch.vue'
 import NotificationBell from '../components/ui/NotificationBell.vue'
 import { useAuthStore } from '../stores/auth'
+import { useNotificationStore } from '../stores/notification'
 import { useToast } from 'vue-toastification';
 import { MagnifyingGlassIcon, XMarkIcon } from '@heroicons/vue/24/outline'
 import { useKeyboardShortcuts } from '@/composables/useKeyboardShortcuts'
 
 const authStore = useAuthStore()
+const notificationStore = useNotificationStore()
 const toast = useToast();
 const isSwitchingTeam = ref(false);
 const sidebar = ref(null);
@@ -161,6 +163,13 @@ onMounted(() => {
       isMobile.value = sidebar.value.isMobile;
     }
   }, 0);
+
+  // Start notification polling (every 60s)
+  notificationStore.startPolling(60000)
+});
+
+onUnmounted(() => {
+  notificationStore.stopPolling()
 });
 
 const handleTeamSwitch = async (teamId) => {

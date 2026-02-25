@@ -6,6 +6,7 @@ const { z } = require('zod');
 const logger = require('./utils/logger');
 const { createAuditLog } = require('./utils/auditLog');
 const { rateLimitCheck } = require('./utils/rateLimit');
+const { notDeleted, softDelete } = require('./utils/softDelete');
 const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
@@ -494,7 +495,7 @@ exports.handler = async (event, context) => {
       return createResponse(200, responseBody);
     }
 
-    // DELETE: Hard delete an invitation
+    // DELETE: Soft delete an invitation
     else if (event.httpMethod === 'DELETE' && specificInvitationId) {
       logger.debug(`Deleting invitation: ${specificInvitationId}`);
 
@@ -502,6 +503,7 @@ exports.handler = async (event, context) => {
       const existingInvitation = await invitationsCollection.findOne({
         _id: new ObjectId(specificInvitationId),
         teamId: teamId,
+        ...notDeleted,
       });
 
       if (!existingInvitation) {
@@ -509,10 +511,11 @@ exports.handler = async (event, context) => {
         return createErrorResponse(404, 'Invitation not found');
       }
 
-      await invitationsCollection.deleteOne({
+      await softDelete(invitationsCollection, {
         _id: new ObjectId(specificInvitationId),
         teamId: teamId,
-      });
+        ...notDeleted,
+      }, userId);
 
       await createAuditLog(db, {
         userId,

@@ -6,6 +6,7 @@ export const useNotificationStore = defineStore('notification', () => {
   const notifications = ref([])
   const isLoading = ref(false)
   const error = ref(null)
+  let pollInterval = null
 
   const unreadCount = computed(() => notifications.value.filter(n => !n.read).length)
 
@@ -58,6 +59,22 @@ export const useNotificationStore = defineStore('notification', () => {
     }
   }
 
+  const startPolling = (intervalMs = 60000) => {
+    stopPolling()
+    // Initial fetch
+    fetchNotifications().catch(() => {})
+    pollInterval = setInterval(() => {
+      fetchNotifications().catch(() => {})
+    }, intervalMs)
+  }
+
+  const stopPolling = () => {
+    if (pollInterval) {
+      clearInterval(pollInterval)
+      pollInterval = null
+    }
+  }
+
   return {
     notifications,
     isLoading,
@@ -66,6 +83,8 @@ export const useNotificationStore = defineStore('notification', () => {
     fetchNotifications,
     markAsRead,
     markAllAsRead,
-    deleteNotification
+    deleteNotification,
+    startPolling,
+    stopPolling
   }
 })

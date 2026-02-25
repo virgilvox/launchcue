@@ -213,7 +213,7 @@ exports.handler = async (event, context) => {
       const result = await collection.insertOne(newChecklist);
 
       // Get the newly created checklist
-      const createdChecklist = await collection.findOne({ _id: result.insertedId });
+      const createdChecklist = await collection.findOne({ _id: result.insertedId, teamId });
       createdChecklist.id = createdChecklist._id.toString();
       delete createdChecklist._id;
 

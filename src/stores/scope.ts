@@ -105,8 +105,32 @@ export const useScopeStore = defineStore('scope', () => {
     }
   }
 
+  // Valid status transitions for scopes
+  const validTransitions: Record<string, string[]> = {
+    draft: ['sent'],
+    sent: ['approved', 'revised'],
+    revised: ['sent'],
+    approved: []
+  }
+
+  const validateStatusTransition = (currentStatus: string, newStatus: string): boolean => {
+    const allowed = validTransitions[currentStatus]
+    return allowed ? allowed.includes(newStatus) : false
+  }
+
   const updateScope = async (id: string, data: Partial<ScopeCreateRequest>): Promise<Scope> => {
     if (!id) throw new Error('Scope ID is required for updates')
+
+    // Validate status transition if status is being changed
+    if (data.status) {
+      const existing = scopes.value.find(s => s.id === id)
+      if (existing && existing.status && data.status !== existing.status) {
+        if (!validateStatusTransition(existing.status, data.status)) {
+          throw new Error(`Cannot transition scope from "${existing.status}" to "${data.status}". Allowed: ${validTransitions[existing.status]?.join(', ') || 'none'}`)
+        }
+      }
+    }
+
     isLoading.value = true
     try {
       const updated: Scope = await scopeService.updateScope(id, data)

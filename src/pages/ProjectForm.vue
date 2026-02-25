@@ -304,8 +304,7 @@ async function loadProject() {
         projectForm.value.title = `${client.name} - `;
       }
     } catch (err) {
-      // silently handled
-      // Not critical, so we don't set error state
+      toast.error('Failed to load client details. Please try again.');
     }
   }
   
@@ -439,7 +438,7 @@ onMounted(async () => {
           projectForm.value.title = `${client.name} Project`;
         }
       } catch (err) {
-        // silently handled
+        toast.error('Failed to load client details. Please try again.');
       }
     }
   } catch (error) {

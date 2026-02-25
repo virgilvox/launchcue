@@ -75,7 +75,8 @@ exports.handler = async function(event, context) {
       }
     );
 
-    // Delete the verification record
+    // Hard delete intentional: email verification tokens are single-use ephemeral records.
+    // Once consumed they have no audit value and should be permanently removed.
     await db.collection('emailVerifications').deleteOne({ _id: matchingRecord._id });
 
     logger.info(`Email verified for user ${matchingRecord.userId}`);

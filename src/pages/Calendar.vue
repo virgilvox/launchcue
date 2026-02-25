@@ -705,7 +705,6 @@ async function fetchTasks() {
       tasks.value = [];
     }
   } catch (err) {
-    // silently handled
     toast.error('Failed to load tasks');
     tasks.value = [];
   } finally {
@@ -772,12 +771,10 @@ async function selectEvent(event) {
             }
           }
         } catch (apiError) {
-          // silently handled
           toast.error('Failed to load event details');
         }
       }
     } catch (err) {
-      // silently handled
       toast.error('Failed to load event details');
     }
   }
@@ -837,11 +834,10 @@ onMounted(async () => {
     ]);
     results.forEach((result, i) => {
       if (result.status === 'rejected') {
-        // silently handled
+        toast.error('Failed to load calendar data. Please try again.');
       }
     });
   } catch (err) {
-    // silently handled
     toast.error('Failed to load calendar');
   } finally {
     loading.value = false;

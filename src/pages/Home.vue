@@ -440,7 +440,7 @@ nav .nav-inner {
 .logo-icon {
   width: 32px;
   height: 32px;
-  border-radius: 8px;
+  border-radius: 0;
   overflow: hidden;
 }
 
@@ -472,7 +472,7 @@ nav .nav-inner {
   background: transparent !important;
   color: var(--text) !important;
   padding: 8px 20px;
-  border-radius: 8px;
+  border-radius: 0;
   font-weight: 500 !important;
   transition: all 0.2s !important;
 }
@@ -487,7 +487,7 @@ nav .nav-inner {
   background: var(--accent) !important;
   color: #fff !important;
   padding: 8px 20px;
-  border-radius: 8px;
+  border-radius: 0;
   font-weight: 600 !important;
   transition: transform 0.2s, box-shadow 0.2s !important;
 }
@@ -545,7 +545,7 @@ nav .nav-inner {
   padding: 6px 14px;
   background: var(--surface-2);
   border: 1px solid var(--border);
-  border-radius: 100px;
+  border-radius: 0;
   font-family: 'Space Mono', monospace;
   font-size: 0.75rem;
   color: var(--accent-light);
@@ -605,7 +605,7 @@ nav .nav-inner {
   background: var(--accent);
   color: #fff;
   border: none;
-  border-radius: 10px;
+  border-radius: 0;
   font-size: 1rem;
   font-weight: 600;
   font-family: inherit;
@@ -627,7 +627,7 @@ nav .nav-inner {
   background: transparent;
   color: var(--text);
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: 0;
   font-size: 1rem;
   font-weight: 500;
   font-family: inherit;
@@ -647,7 +647,7 @@ nav .nav-inner {
 
 .hero-screenshot img {
   width: 100%;
-  border-radius: 12px;
+  border-radius: 0;
   border: 1px solid var(--border);
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255,255,255,0.03);
   transition: transform 0.4s;
@@ -657,7 +657,7 @@ nav .nav-inner {
   content: '';
   position: absolute;
   inset: -1px;
-  border-radius: 13px;
+  border-radius: 0;
   background: linear-gradient(135deg, var(--accent), transparent 50%);
   z-index: -1;
   opacity: 0.3;
@@ -704,7 +704,7 @@ nav .nav-inner {
 .feature-card {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 16px;
+  border-radius: 0;
   padding: 32px;
   transition: all 0.3s;
   position: relative;
@@ -735,7 +735,7 @@ nav .nav-inner {
   height: 48px;
   background: var(--accent-glow);
   border: 1px solid rgba(124, 92, 252, 0.2);
-  border-radius: 12px;
+  border-radius: 0;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -798,7 +798,7 @@ nav .nav-inner {
   color: var(--accent-light);
   background: var(--accent-glow);
   padding: 4px 12px;
-  border-radius: 4px;
+  border-radius: 0;
   display: inline-block;
   margin-bottom: 16px;
 }
@@ -847,7 +847,7 @@ nav .nav-inner {
 
 .showcase-img img {
   width: 100%;
-  border-radius: 12px;
+  border-radius: 0;
   border: 1px solid var(--border);
   box-shadow: 0 16px 48px rgba(0, 0, 0, 0.4);
 }
@@ -863,7 +863,7 @@ nav .nav-inner {
 
 .showcase-img-stack img:first-child {
   width: 100%;
-  border-radius: 12px;
+  border-radius: 0;
   border: 1px solid var(--border);
   box-shadow: 0 16px 48px rgba(0, 0, 0, 0.4);
 }
@@ -873,7 +873,7 @@ nav .nav-inner {
   bottom: -30px;
   right: -20px;
   width: 60%;
-  border-radius: 10px;
+  border-radius: 0;
   border: 1px solid var(--border);
   box-shadow: 0 12px 36px rgba(0, 0, 0, 0.6);
 }
@@ -924,7 +924,7 @@ nav .nav-inner {
 .code-block {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: 0;
   overflow: hidden;
 }
 

@@ -63,6 +63,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useToast } from 'vue-toastification'
 import { formatDistanceToNow } from 'date-fns'
 import {
   ClipboardDocumentCheckIcon,
@@ -74,6 +75,7 @@ import {
 import commentService from '../../services/comment.service'
 
 const router = useRouter()
+const toast = useToast()
 
 const activities = ref([])
 const isLoading = ref(false)
@@ -121,7 +123,7 @@ async function fetchActivity() {
     const data = await commentService.getRecentComments()
     activities.value = Array.isArray(data) ? data : []
   } catch (error) {
-    // silently handled
+    toast.error('Failed to load activity feed. Please try again.')
     activities.value = []
   } finally {
     isLoading.value = false

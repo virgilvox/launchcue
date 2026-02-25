@@ -207,12 +207,6 @@ const routes: RouteRecordRaw[] = [
         props: true
       },
       {
-        path: 'scope-templates',
-        name: 'scope-templates',
-        component: () => import('../pages/ScopeTemplates.vue'),
-        meta: { requiresAuth: true, breadcrumbs: [{ label: 'Dashboard', to: '/dashboard' }, { label: 'Scopes', to: '/scopes' }, { label: 'Templates' }] }
-      },
-      {
         path: 'scope-templates/new',
         name: 'scope-template-new',
         component: () => import('../pages/ScopeBuilder.vue'),

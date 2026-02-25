@@ -64,7 +64,7 @@ async function syncProjectWithCalendar(db, project, operation) {
         await calendarCollection.insertOne(eventData);
       }
     } else if (operation === 'delete') {
-      await calendarCollection.deleteOne({ projectId: project.id, taskId: null });
+      await softDelete(calendarCollection, { projectId: project.id, taskId: null, ...notDeleted }, project.createdBy || 'system');
     }
   } catch (error) {
     logger.error('Error syncing project with calendar:', error.message);

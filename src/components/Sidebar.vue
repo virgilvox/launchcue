@@ -55,10 +55,10 @@
               class="w-full flex items-center justify-between px-2 py-1.5 mt-3 first:mt-0 cursor-pointer group"
               @click="toggleGroup(group.label)"
             >
-              <span class="text-[10px] font-bold uppercase tracking-[0.1em] text-[var(--sidebar-text)] opacity-60 group-hover:opacity-100">{{ group.label }}</span>
+              <span class="text-[10px] font-bold uppercase tracking-[0.1em] text-[var(--sidebar-text)] opacity-80 group-hover:opacity-100">{{ group.label }}</span>
               <ChevronDownIcon
                 :class="[
-                  'h-3.5 w-3.5 text-[var(--sidebar-text)] opacity-40 transition-transform duration-200',
+                  'h-3.5 w-3.5 text-[var(--sidebar-text)] opacity-60 transition-transform duration-200',
                   collapsedGroups[group.label] ? '-rotate-90' : ''
                 ]"
               />
@@ -70,7 +70,7 @@
                   :key="item.name"
                   :to="item.href"
                   :class="[
-                    'group flex items-center px-2 py-2 text-sm font-medium transition-colors rounded-sm',
+                    'group flex items-center px-2 py-2 text-sm font-medium transition-colors',
                     item.current
                       ? 'bg-white/10 text-[var(--sidebar-text-active)] border-l-[3px] border-[var(--accent-primary)]'
                       : 'text-[var(--sidebar-text)] hover:bg-[var(--sidebar-hover)] hover:text-[var(--sidebar-text-active)] border-l-[3px] border-transparent'
@@ -97,7 +97,7 @@
               :key="item.name"
               :to="item.href"
               :class="[
-                'group flex items-center justify-center py-2 transition-colors relative rounded-sm',
+                'group flex items-center justify-center py-2 transition-colors relative',
                 item.current
                   ? 'bg-white/10 text-[var(--sidebar-text-active)] border-l-[3px] border-[var(--accent-primary)]'
                   : 'text-[var(--sidebar-text)] hover:bg-[var(--sidebar-hover)] hover:text-[var(--sidebar-text-active)] border-l-[3px] border-transparent'
@@ -113,7 +113,7 @@
       <!-- User Info / Logout -->
       <div class="mt-auto p-3 border-t border-[var(--sidebar-border)]">
         <div v-if="authStore.user" class="flex items-center mb-2" :class="{'justify-center': isCollapsed && !isMobile}">
-          <div class="w-8 h-8 bg-[var(--accent-primary)] text-white flex items-center justify-center text-xs font-heading font-bold flex-shrink-0 rounded-sm">
+          <div class="w-8 h-8 bg-[var(--accent-primary)] text-white flex items-center justify-center text-xs font-heading font-bold flex-shrink-0">
             {{ userInitials }}
           </div>
           <div v-if="!isCollapsed || isMobile" class="ml-3 flex-1 min-w-0">
@@ -123,7 +123,7 @@
         </div>
         <button
           @click="handleLogout"
-          class="w-full flex items-center px-3 py-2 text-sm font-medium text-[var(--sidebar-text)] hover:bg-[var(--sidebar-hover)] hover:text-[var(--sidebar-text-active)] transition-colors rounded-sm"
+          class="w-full flex items-center px-3 py-2 text-sm font-medium text-[var(--sidebar-text)] hover:bg-[var(--sidebar-hover)] hover:text-[var(--sidebar-text-active)] transition-colors"
           :class="{'justify-center': isCollapsed && !isMobile}"
           title="Logout"
         >

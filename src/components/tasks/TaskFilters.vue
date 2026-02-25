@@ -1,5 +1,16 @@
 <template>
   <div class="card mb-6">
+    <div class="flex items-center gap-3 mb-3">
+      <button
+        @click="toggleMyTasks"
+        :class="[
+          'btn btn-sm',
+          isMyTasks ? 'btn-primary' : 'btn-outline'
+        ]"
+      >
+        {{ isMyTasks ? 'SHOWING MY TASKS' : 'MY TASKS' }}
+      </button>
+    </div>
     <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
       <div>
         <label for="status-filter" class="label">STATUS</label>
@@ -115,6 +126,7 @@ import { computed } from 'vue';
 import { useProjectStore } from '../../stores/project';
 import { useClientStore } from '../../stores/client';
 import { useTeamStore } from '../../stores/team';
+import { useAuthStore } from '../../stores/auth';
 
 const props = defineProps({
   modelValue: {
@@ -137,6 +149,17 @@ const emit = defineEmits(['update:modelValue']);
 const projectStore = useProjectStore();
 const clientStore = useClientStore();
 const teamStore = useTeamStore();
+const authStore = useAuthStore();
+
+const isMyTasks = computed(() => props.modelValue.assigneeId === authStore.user?.id);
+
+const toggleMyTasks = () => {
+  if (isMyTasks.value) {
+    updateFilter('assigneeId', null);
+  } else {
+    updateFilter('assigneeId', authStore.user?.id || null);
+  }
+};
 
 const projects = computed(() => projectStore.projects);
 const clients = computed(() => clientStore.clients);

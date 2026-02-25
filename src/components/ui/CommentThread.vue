@@ -152,6 +152,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { formatDistanceToNow } from 'date-fns'
+import { useToast } from 'vue-toastification'
 import { useAuthStore } from '../../stores/auth'
 import commentService from '../../services/comment.service'
 
@@ -167,6 +168,7 @@ const props = defineProps({
 })
 
 const authStore = useAuthStore()
+const toast = useToast()
 
 const comments = ref([])
 const isLoading = ref(false)
@@ -218,7 +220,7 @@ async function fetchComments() {
     const data = await commentService.getComments(props.resourceType, props.resourceId)
     comments.value = Array.isArray(data) ? data : []
   } catch (error) {
-    // silently handled
+    toast.error('Failed to load comments. Please try again.')
     comments.value = []
   } finally {
     isLoading.value = false
@@ -238,7 +240,7 @@ async function submitComment() {
     comments.value.push(created)
     newComment.value = ''
   } catch (error) {
-    // silently handled
+    toast.error('Failed to post comment. Please try again.')
   } finally {
     isSaving.value = false
   }
@@ -269,7 +271,7 @@ async function saveEdit(id) {
     editingId.value = null
     editContent.value = ''
   } catch (error) {
-    // silently handled
+    toast.error('Failed to update comment. Please try again.')
   } finally {
     isSaving.value = false
   }
@@ -282,7 +284,7 @@ async function deleteComment(id) {
     await commentService.deleteComment(id)
     comments.value = comments.value.filter(c => c.id !== id)
   } catch (error) {
-    // silently handled
+    toast.error('Failed to delete comment. Please try again.')
   }
 }
 

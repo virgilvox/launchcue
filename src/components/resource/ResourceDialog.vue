@@ -1,5 +1,6 @@
 <script setup>
-import { ref, watch } from 'vue';
+import { ref, watch, computed } from 'vue';
+import Modal from '@/components/Modal.vue';
 
 const props = defineProps({
   show: {
@@ -112,137 +113,118 @@ function removeTag(tagToRemove) {
 </script>
 
 <template>
-  <div v-if="show" class="fixed inset-0 flex items-center justify-center z-50">
-    <!-- Backdrop -->
-    <div
-      class="fixed inset-0 bg-black/50"
-      @click="closeDialog"
-    ></div>
-
-    <!-- Dialog -->
-    <div class="bg-[var(--surface-elevated)] border-2 border-[var(--border-light)] p-6 w-full max-w-lg z-10 relative max-h-[90vh] overflow-y-auto">
-      <div class="flex items-center justify-between mb-6">
-        <h2 class="heading-section">
-          {{ resource ? 'Edit Resource' : 'Add Resource' }}
-        </h2>
-        <button
-          @click="closeDialog"
-          class="p-1 text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface)] transition-colors"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 20 20" fill="currentColor">
-            <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
-          </svg>
-        </button>
-      </div>
-
-      <form @submit.prevent="submitForm" class="space-y-4">
-        <!-- Name & Type in a row -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <!-- Name -->
-          <div>
-            <label for="res-name" class="label">Name *</label>
-            <input
-              id="res-name"
-              v-model="form.name"
-              type="text"
-              class="input"
-              placeholder="Resource name"
-              required
-            />
-          </div>
-
-          <!-- Type / Category -->
-          <div>
-            <label for="res-type" class="label">Type *</label>
-            <select
-              id="res-type"
-              v-model="form.type"
-              class="input"
-              required
-            >
-              <option value="" disabled>Select a type</option>
-              <optgroup v-for="group in resourceTypeGroups" :key="group.label" :label="group.label">
-                <option v-for="type in group.types" :key="type" :value="type">
-                  {{ type }}
-                </option>
-              </optgroup>
-            </select>
-          </div>
-        </div>
-
-        <!-- URL -->
+  <Modal
+    :model-value="show"
+    @update:model-value="$emit('update:show', $event)"
+    :title="resource ? 'Edit Resource' : 'Add Resource'"
+  >
+    <form @submit.prevent="submitForm" class="space-y-4">
+      <!-- Name & Type in a row -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <!-- Name -->
         <div>
-          <label for="res-url" class="label">URL *</label>
+          <label for="res-name" class="label">Name *</label>
           <input
-            id="res-url"
-            v-model="form.url"
-            type="url"
+            id="res-name"
+            v-model="form.name"
+            type="text"
             class="input"
-            placeholder="https://example.com"
+            placeholder="Resource name"
             required
           />
         </div>
 
-        <!-- Description -->
+        <!-- Type / Category -->
         <div>
-          <label for="res-description" class="label">Description</label>
-          <textarea
-            id="res-description"
-            v-model="form.description"
+          <label for="res-type" class="label">Type *</label>
+          <select
+            id="res-type"
+            v-model="form.type"
             class="input"
-            rows="3"
-            placeholder="Brief description of the resource"
-          ></textarea>
+            required
+          >
+            <option value="" disabled>Select a type</option>
+            <optgroup v-for="group in resourceTypeGroups" :key="group.label" :label="group.label">
+              <option v-for="type in group.types" :key="type" :value="type">
+                {{ type }}
+              </option>
+            </optgroup>
+          </select>
         </div>
+      </div>
 
-        <!-- Tags -->
-        <div>
-          <label for="res-tags" class="label">Tags (comma separated)</label>
-          <input
-            id="res-tags"
-            v-model="tagsInput"
-            type="text"
-            class="input"
-            placeholder="e.g., frontend, react, docs"
-          />
-          <div v-if="form.tags.length > 0" class="mt-2 flex flex-wrap gap-2">
-            <span
-              v-for="tag in form.tags"
-              :key="tag"
-              class="inline-flex items-center gap-1 px-2 py-1 text-xs badge badge-blue"
+      <!-- URL -->
+      <div>
+        <label for="res-url" class="label">URL *</label>
+        <input
+          id="res-url"
+          v-model="form.url"
+          type="url"
+          class="input"
+          placeholder="https://example.com"
+          required
+        />
+      </div>
+
+      <!-- Description -->
+      <div>
+        <label for="res-description" class="label">Description</label>
+        <textarea
+          id="res-description"
+          v-model="form.description"
+          class="input"
+          rows="3"
+          placeholder="Brief description of the resource"
+        ></textarea>
+      </div>
+
+      <!-- Tags -->
+      <div>
+        <label for="res-tags" class="label">Tags (comma separated)</label>
+        <input
+          id="res-tags"
+          v-model="tagsInput"
+          type="text"
+          class="input"
+          placeholder="e.g., frontend, react, docs"
+        />
+        <div v-if="form.tags.length > 0" class="mt-2 flex flex-wrap gap-2">
+          <span
+            v-for="tag in form.tags"
+            :key="tag"
+            class="inline-flex items-center gap-1 px-2 py-1 text-xs badge badge-blue"
+          >
+            {{ tag }}
+            <button
+              type="button"
+              @click="removeTag(tag)"
+              class="hover:opacity-80 transition-colors"
             >
-              {{ tag }}
-              <button
-                type="button"
-                @click="removeTag(tag)"
-                class="hover:opacity-80 transition-colors"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" viewBox="0 0 20 20" fill="currentColor">
-                  <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
-                </svg>
-              </button>
-            </span>
-          </div>
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+              </svg>
+            </button>
+          </span>
         </div>
+      </div>
 
-        <!-- Buttons -->
-        <div class="flex justify-end space-x-3 pt-4 border-t border-[var(--border-light)]">
-          <button
-            type="button"
-            class="btn btn-secondary"
-            @click="closeDialog"
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            class="btn btn-primary"
-            :disabled="isSubmitting"
-          >
-            {{ isSubmitting ? 'Saving...' : (resource ? 'Update Resource' : 'Add Resource') }}
-          </button>
-        </div>
-      </form>
-    </div>
-  </div>
+      <!-- Buttons -->
+      <div class="flex justify-end space-x-3 pt-4 border-t border-[var(--border-light)]">
+        <button
+          type="button"
+          class="btn btn-secondary"
+          @click="closeDialog"
+        >
+          Cancel
+        </button>
+        <button
+          type="submit"
+          class="btn btn-primary"
+          :disabled="isSubmitting"
+        >
+          {{ isSubmitting ? 'Saving...' : (resource ? 'Update Resource' : 'Add Resource') }}
+        </button>
+      </div>
+    </form>
+  </Modal>
 </template>

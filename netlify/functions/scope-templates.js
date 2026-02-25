@@ -165,7 +165,7 @@ exports.handler = async (event, context) => {
       const result = await scopeTemplatesCollection.insertOne(newTemplate);
 
       // Get the newly created template
-      const createdTemplate = await scopeTemplatesCollection.findOne({ _id: result.insertedId });
+      const createdTemplate = await scopeTemplatesCollection.findOne({ _id: result.insertedId, teamId });
       createdTemplate.id = createdTemplate._id.toString();
       delete createdTemplate._id;
 

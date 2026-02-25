@@ -78,8 +78,8 @@ async function syncTaskWithCalendar(db, task, operation) {
         await calendarCollection.insertOne(eventData);
       }
     } else if (operation === 'delete') {
-      // Delete the calendar event when the task is deleted
-      await calendarCollection.deleteOne({ taskId: task.id });
+      // Soft delete the calendar event when the task is deleted
+      await softDelete(calendarCollection, { taskId: task.id, ...notDeleted }, task.createdBy || 'system');
     }
   } catch (error) {
     logger.error('Error syncing task with calendar:', error);

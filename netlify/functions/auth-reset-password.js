@@ -39,28 +39,28 @@ exports.handler = async function(event, context) {
       return createErrorResponse(400, 'Validation failed', validationResult.error.format());
     }
     const { token, newPassword } = validationResult.data;
+    const tokenPrefix = token.substring(0, 8);
 
     const { db } = await connectToDb();
 
-    // Find all non-expired, unused reset records
-    const resetRecords = await db.collection('passwordResets').find({
+    // Narrow lookup by token prefix to avoid scanning all records
+    const resetRecord = await db.collection('passwordResets').findOne({
+      tokenPrefix,
       used: false,
       expiresAt: { $gt: new Date() },
-    }).toArray();
+    });
 
-    // Find the matching record by comparing token against each hash
-    let matchingRecord = null;
-    for (const record of resetRecords) {
-      const isMatch = await bcrypt.compare(token, record.tokenHash);
-      if (isMatch) {
-        matchingRecord = record;
-        break;
-      }
-    }
-
-    if (!matchingRecord) {
+    if (!resetRecord) {
       return createErrorResponse(400, 'Invalid or expired reset token');
     }
+
+    // Verify full token with bcrypt
+    const isMatch = await bcrypt.compare(token, resetRecord.tokenHash);
+    if (!isMatch) {
+      return createErrorResponse(400, 'Invalid or expired reset token');
+    }
+
+    const matchingRecord = resetRecord;
 
     // Hash the new password
     const salt = await bcrypt.genSalt(10);

@@ -292,7 +292,6 @@ async function loadUpcomingItems() {
       upcomingItems.value = result.items;
     }
   } catch (error) {
-    // silently handled
     toast.error('Failed to load upcoming items');
   } finally {
     isLoadingUpcoming.value = false;
@@ -369,11 +368,11 @@ onMounted(async () => {
     const results = await Promise.allSettled(fetches);
     results.forEach((result, i) => {
       if (result.status === 'rejected') {
-        // silently handled
+        toast.error('Failed to load dashboard data. Please try again.');
       }
     });
   } catch (error) {
-    // silently handled
+    toast.error('Failed to load dashboard data. Please try again.');
   } finally {
     tasksLoading.value = false;
   }

@@ -8,10 +8,9 @@ import './assets/main.css';
 </template>
 
 <style>
-/* Ensure dark mode is always applied */
 html, body {
-  background-color: #111827;
-  color: #f3f4f6;
+  background-color: var(--page-bg);
+  color: var(--page-text);
   margin: 0;
   padding: 0;
   min-height: 100vh;

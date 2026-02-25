@@ -12,7 +12,7 @@
   --border: #1A1A1A;
   --border-light: #D6D0C8;
   --text-primary: #1A1A1A;
-  --text-secondary: #6B6560;
+  --text-secondary: #5C564F;
   --accent-primary: #7C3AED;
   --accent-primary-hover: #6D28D9;
   --accent-primary-wash: #EDE9FE;
@@ -27,6 +27,8 @@
   --warning: #F59E0B;
   --success: #0D9488;
   --shadow-color: #1A1A1A;
+  --page-bg: #111827;
+  --page-text: #f3f4f6;
 }
 
 .dark {
@@ -131,6 +133,7 @@ body {
 .card {
   background-color: var(--surface);
   border: 2px solid var(--border);
+  color: var(--text-primary);
   padding: 1rem;
   transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
@@ -203,7 +206,7 @@ body {
 .form-select::placeholder,
 .form-textarea::placeholder {
   color: var(--text-secondary);
-  opacity: 0.6;
+  opacity: 0.75;
 }
 
 .input:focus,
@@ -252,7 +255,7 @@ body {
 
 select.input,
 select.form-select {
-  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236B6560' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%235C564F' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
   background-position: right 0.5rem center;
   background-repeat: no-repeat;
   background-size: 1.5em 1.5em;
@@ -416,7 +419,7 @@ th {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: var(--text-secondary);
+  color: var(--text-primary);
   border-bottom: 2px solid var(--border);
 }
 

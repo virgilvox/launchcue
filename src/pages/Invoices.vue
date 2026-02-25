@@ -2,7 +2,7 @@
   <PageContainer>
     <PageHeader title="Invoices" :breadcrumbs="breadcrumbs">
       <template #actions>
-        <button @click="router.push('/invoices/new')" class="btn btn-primary">New Invoice</button>
+        <button v-if="authStore.canEdit" @click="router.push('/invoices/new')" class="btn btn-primary">New Invoice</button>
       </template>
     </PageHeader>
 
@@ -75,7 +75,7 @@
         {{ value ? formatDate(value) : '—' }}
       </template>
       <template #actions="{ row }">
-        <button @click.stop="confirmDelete(row)" class="text-[var(--danger)] hover:opacity-80 text-sm">Delete</button>
+        <button v-if="authStore.canEdit" @click.stop="confirmDelete(row)" class="text-[var(--danger)] hover:opacity-80 text-sm">Delete</button>
       </template>
     </DataTable>
 
@@ -112,10 +112,12 @@ import ClientColorDot from '@/components/ui/ClientColorDot.vue';
 import EmptyState from '@/components/ui/EmptyState.vue';
 import { DocumentTextIcon } from '@heroicons/vue/24/outline';
 
+import { useAuthStore } from '@/stores/auth';
 const router = useRouter();
 const toast = useToast();
 const invoiceStore = useInvoiceStore();
 const clientStore = useClientStore();
+const authStore = useAuthStore();
 const { getClientName, getClientColorId } = useEntityLookup();
 
 // --- State ---
@@ -212,7 +214,7 @@ onMounted(async () => {
     ]);
     results.forEach((result, i) => {
       if (result.status === 'rejected') {
-        // silently handled
+        toast.error('Failed to load invoices. Please try again.');
       }
     });
   } catch (err) {

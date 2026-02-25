@@ -37,7 +37,7 @@
         <div
           v-for="event in getAllDayEventsForDay(day.date)"
           :key="event.id"
-          :class="[getEventBg(event.color), 'text-white text-xs py-0.5 px-1.5 truncate cursor-pointer hover:opacity-80 mb-0.5']"
+          :class="[getEventBg(event.color), 'text-xs py-0.5 px-1.5 truncate cursor-pointer hover:opacity-80 mb-0.5']"
           @click="$emit('select-event', event)"
         >
           {{ getEventTitle(event) }}
@@ -65,7 +65,7 @@
             <div
               v-for="event in getTimedEventsForDayHour(day.date, hour)"
               :key="event.id"
-              :class="[getEventBg(event.color), 'absolute inset-x-0.5 text-white text-xs py-0.5 px-1 cursor-pointer hover:opacity-80 z-10 overflow-hidden']"
+              :class="[getEventBg(event.color), 'absolute inset-x-0.5 text-xs py-0.5 px-1 cursor-pointer hover:opacity-80 z-10 overflow-hidden']"
               :style="getWeekEventStyle(event, hour)"
               @click="$emit('select-event', event)"
             >
@@ -115,15 +115,18 @@ defineEmits<{
   (e: 'select-event', event: CalendarEvent): void;
 }>();
 
-const colorMap: Record<string, string> = {
-  blue: 'bg-[#3B82F6]',
-  green: 'bg-[#22C55E]',
-  red: 'bg-[#EF4444]',
-  orange: 'bg-[#F97316]',
-  purple: 'bg-[#8B5CF6]',
-  yellow: 'bg-[#EAB308]',
-  pink: 'bg-[#EC4899]',
-  indigo: 'bg-[#6366F1]',
+const colorMap: Record<string, { bg: string; text: string }> = {
+  blue: { bg: 'bg-[#3B82F6]', text: 'text-white' },
+  green: { bg: 'bg-[#22C55E]', text: 'text-white' },
+  red: { bg: 'bg-[#EF4444]', text: 'text-white' },
+  orange: { bg: 'bg-[#F97316]', text: 'text-white' },
+  purple: { bg: 'bg-[#8B5CF6]', text: 'text-white' },
+  yellow: { bg: 'bg-[#EAB308]', text: 'text-[#1A1A1A]' },
+  pink: { bg: 'bg-[#EC4899]', text: 'text-white' },
+  indigo: { bg: 'bg-[#6366F1]', text: 'text-white' },
 };
-const getEventBg = (color: string) => colorMap[color] || 'bg-[var(--accent-primary)]';
+const getEventBg = (color: string) => {
+  const entry = colorMap[color];
+  return entry ? `${entry.bg} ${entry.text}` : 'bg-[var(--accent-primary)] text-white';
+};
 </script>

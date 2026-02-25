@@ -97,6 +97,12 @@ class ApiService {
           return Promise.reject(error);
         }
 
+        // 403 Forbidden — surface a clear permission error
+        if (error.response?.status === 403) {
+          const message = (error.response?.data as Record<string, unknown>)?.message as string || 'You do not have permission to perform this action';
+          return Promise.reject(new Error(message));
+        }
+
         // Retry on transient server errors and rate limiting
         const retryableStatuses = [429, 502, 503, 504];
         const status = error.response?.status;
@@ -162,8 +168,6 @@ class ApiService {
 
   async logout(): Promise<void> {
     this.setAuthToken(null);
-    // Optional: call logout endpoint if it did something server-side
-    // try { await this.axiosInstance.post(AUTH_LOGOUT_ENDPOINT); } catch(e) {}
     return Promise.resolve();
   }
 

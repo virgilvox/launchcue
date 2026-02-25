@@ -78,7 +78,7 @@ exports.handler = async function(event, context) {
       const users = userIds.length > 0
         ? await db.collection('users').find(
             { _id: { $in: userIds.map(id => new ObjectId(id)) } },
-            { projection: { _id: 1, name: 1 } }
+            { projection: { password: 0, emailVerificationToken: 0 } }
           ).toArray()
         : [];
       const userMap = {};

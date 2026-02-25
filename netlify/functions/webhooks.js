@@ -7,6 +7,7 @@ const { z } = require('zod');
 const logger = require('./utils/logger');
 const { createAuditLog } = require('./utils/auditLog');
 const { rateLimitCheck } = require('./utils/rateLimit');
+const { notDeleted, softDelete } = require('./utils/softDelete');
 
 const AVAILABLE_EVENTS = [
   'task.created', 'task.updated', 'task.deleted',
@@ -71,7 +72,7 @@ exports.handler = async function(event, context) {
 
     // GET: List webhooks for team
     if (event.httpMethod === 'GET') {
-      const webhooks = await collection.find({ teamId }).sort({ createdAt: -1 }).toArray();
+      const webhooks = await collection.find({ teamId, ...notDeleted }).sort({ createdAt: -1 }).toArray();
 
       const formattedWebhooks = webhooks.map(w => ({
         id: w._id.toString(),
@@ -154,7 +155,7 @@ exports.handler = async function(event, context) {
       delete updateFields.userId;
 
       const result = await collection.updateOne(
-        { _id: new ObjectId(webhookId), teamId },
+        { _id: new ObjectId(webhookId), teamId, ...notDeleted },
         { $set: updateFields }
       );
 
@@ -162,7 +163,7 @@ exports.handler = async function(event, context) {
         return createErrorResponse(404, 'Webhook not found or user unauthorized');
       }
 
-      const updatedWebhook = await collection.findOne({ _id: new ObjectId(webhookId), teamId });
+      const updatedWebhook = await collection.findOne({ _id: new ObjectId(webhookId), teamId, ...notDeleted });
       await createAuditLog(db, { userId, teamId, action: 'update', resourceType: 'webhook', resourceId: webhookId });
       return createResponse(200, {
         id: updatedWebhook._id.toString(),
@@ -175,14 +176,15 @@ exports.handler = async function(event, context) {
       });
     }
 
-    // DELETE: Hard delete webhook
+    // DELETE: Soft delete webhook
     else if (event.httpMethod === 'DELETE' && webhookId) {
-      const result = await collection.deleteOne({
+      const result = await softDelete(collection, {
         _id: new ObjectId(webhookId),
         teamId,
-      });
+        ...notDeleted,
+      }, userId);
 
-      if (result.deletedCount === 0) {
+      if (result.matchedCount === 0) {
         return createErrorResponse(404, 'Webhook not found or user unauthorized');
       }
 

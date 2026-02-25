@@ -2,7 +2,7 @@
   <PageContainer>
     <PageHeader title="Projects">
       <template #actions>
-        <button @click="openAddProjectModal" class="btn btn-primary">
+        <button v-if="authStore.canEdit" @click="openAddProjectModal" class="btn btn-primary">
           <PlusIcon class="h-4 w-4 mr-2" />
           ADD PROJECT
         </button>
@@ -76,21 +76,23 @@
               </button>
               
               <div v-if="activeMenu === project.id" class="absolute right-0 mt-1 w-48 bg-[var(--surface-elevated)] border-2 border-[var(--border)] shadow-brutal-sm z-10 py-1">
-                <button 
+                <button
+                  v-if="authStore.canEdit"
                   @click="openEditProjectModal(project)"
-                  class="block w-full text-left px-4 py-2 text-body-sm hover:bg-[var(--surface)]"
+                  class="block w-full text-left px-4 py-2 text-sm text-[var(--text-primary)] hover:bg-[var(--surface)]"
                 >
                   Edit Project
                 </button>
-                <router-link 
+                <router-link
                   :to="`/projects/${project.id}`"
-                  class="block w-full text-left px-4 py-2 text-body-sm hover:bg-[var(--surface)]"
+                  class="block w-full text-left px-4 py-2 text-sm text-[var(--text-primary)] hover:bg-[var(--surface)]"
                 >
                   View Details
                 </router-link>
-                <button 
+                <button
+                  v-if="authStore.canEdit"
                   @click="confirmDeleteProject(project)"
-                  class="block w-full text-left px-4 py-2 text-body-sm text-[var(--danger)] hover:bg-[var(--accent-primary-wash)]"
+                  class="block w-full text-left px-4 py-2 text-sm text-[var(--danger)] hover:bg-[var(--accent-primary-wash)]"
                 >
                   Delete Project
                 </button>
@@ -139,7 +141,7 @@
       <form @submit.prevent="saveProject" class="space-y-4">
         <div class="form-group">
           <label for="projectTitle" class="label">PROJECT TITLE</label>
-          <input 
+          <input
             id="projectTitle"
             v-model="projectForm.title"
             type="text"
@@ -147,6 +149,7 @@
             placeholder="Website Redesign"
             required
           />
+          <p v-if="submitted && validationErrors.title" class="text-xs mt-1" style="color: var(--danger);">{{ validationErrors.title }}</p>
         </div>
         
         <div class="form-group">
@@ -199,7 +202,7 @@
           
           <div class="form-group">
             <label for="projectDeadline" class="label">DEADLINE</label>
-            <input 
+            <input
               id="projectDeadline"
               v-model="projectForm.dueDate"
               type="date"
@@ -207,6 +210,7 @@
             />
           </div>
         </div>
+        <p v-if="submitted && validationErrors.dates" class="text-xs mt-1" style="color: var(--danger);">{{ validationErrors.dates }}</p>
         
         <div class="form-group">
           <label for="projectStatus" class="label">STATUS</label>
@@ -252,7 +256,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue';
+import { ref, reactive, computed, onMounted, onBeforeUnmount, watch } from 'vue';
 import { useToast } from 'vue-toastification';
 import { useProjectStore } from '../stores/project';
 import { useClientStore } from '../stores/client';
@@ -267,9 +271,11 @@ import LoadingSpinner from '../components/LoadingSpinner.vue';
 import EmptyState from '../components/ui/EmptyState.vue';
 import ClientColorDot from '../components/ui/ClientColorDot.vue';
 
+import { useAuthStore } from '@/stores/auth';
 const projectStore = useProjectStore();
 const clientStore = useClientStore();
 const toast = useToast();
+const authStore = useAuthStore();
 const { getClientName, getClientColorId } = useEntityLookup();
 
 const loading = ref(false);
@@ -300,6 +306,10 @@ const projectForm = ref({
 });
 
 const projectTagsInput = ref('');
+
+// Validation state
+const validationErrors = reactive({ title: '', dates: '' });
+const submitted = ref(false);
 
 const filteredProjects = computed(() => {
   if (!Array.isArray(projects.value)) return [];
@@ -338,7 +348,7 @@ onMounted(async () => {
   ]);
   results.forEach((result, i) => {
     if (result.status === 'rejected') {
-      // silently handled
+      toast.error('Failed to load projects data. Please try again.');
     }
   });
   loading.value = false;
@@ -373,7 +383,7 @@ function toggleProjectMenu(projectId) {
 function openAddProjectModal() {
   editingProject.value = null;
   const today = new Date().toISOString().split('T')[0];
-  
+
   projectForm.value = {
     title: '',
     description: '',
@@ -384,6 +394,9 @@ function openAddProjectModal() {
     status: 'To Do'
   };
   projectTagsInput.value = '';
+  validationErrors.title = '';
+  validationErrors.dates = '';
+  submitted.value = false;
   showModal.value = true;
 }
 
@@ -414,6 +427,9 @@ function openEditProjectModal(project) {
   };
   
   projectTagsInput.value = project.tags.join(', ');
+  validationErrors.title = '';
+  validationErrors.dates = '';
+  submitted.value = false;
   activeMenu.value = null;
   showModal.value = true;
 }
@@ -423,8 +439,26 @@ function closeModal() {
 }
 
 async function saveProject() {
+  submitted.value = true;
+
+  // Validate required fields
+  validationErrors.title = '';
+  validationErrors.dates = '';
+
+  if (!projectForm.value.title || !projectForm.value.title.trim()) {
+    validationErrors.title = 'Project name is required.';
+  }
+  if (projectForm.value.startDate && projectForm.value.dueDate) {
+    if (new Date(projectForm.value.dueDate) < new Date(projectForm.value.startDate)) {
+      validationErrors.dates = 'Deadline must be on or after the start date.';
+    }
+  }
+  if (validationErrors.title || validationErrors.dates) {
+    return;
+  }
+
   saving.value = true;
-  
+
   try {
     const formattedProject = {
       ...projectForm.value
@@ -446,8 +480,7 @@ async function saveProject() {
     
     closeModal();
   } catch (error) {
-    // silently handled
-    toast.error('Failed to save project');
+    toast.error('Failed to save project. Please try again.');
   } finally {
     saving.value = false;
   }
@@ -473,8 +506,7 @@ async function deleteProject() {
     await projectStore.deleteProject(projectToDelete.value.id);
     closeDeleteModal();
   } catch (error) {
-    // silently handled
-    toast.error('Failed to delete project');
+    toast.error('Failed to delete project. Please try again.');
   } finally {
     deleting.value = false;
   }

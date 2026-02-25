@@ -71,5 +71,3 @@ function withErrorHandling(handler, options = {}) {
 }
 
 module.exports = { withErrorHandling, safeErrorDetails };
-
-module.exports = { withErrorHandling };

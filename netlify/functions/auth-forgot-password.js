@@ -50,10 +50,11 @@ exports.handler = async function(event, context) {
     const salt = await bcrypt.genSalt(10);
     const tokenHash = await bcrypt.hash(token, salt);
 
-    // Store the token hash in the passwordResets collection
+    // Store the token hash and prefix in the passwordResets collection
     await db.collection('passwordResets').insertOne({
       userId: user._id.toString(),
       tokenHash,
+      tokenPrefix: token.substring(0, 8),
       expiresAt: new Date(Date.now() + 60 * 60 * 1000), // 1 hour
       used: false,
       createdAt: new Date(),

@@ -234,7 +234,7 @@ watch(() => formData.value.projectId, async (projectId) => {
     try {
       await scopeStore.fetchScopes({ projectId });
     } catch (err) {
-      // silently handled
+      toast.error('Failed to load scopes. Please try again.');
     }
   }
 });
@@ -266,11 +266,11 @@ async function loadClientsAndProjects() {
     ]);
     results.forEach((result, i) => {
       if (result.status === 'rejected') {
-        // silently handled
+        toast.error('Failed to load clients or projects. Please try again.');
       }
     });
   } catch (err) {
-    // silently handled
+    toast.error('Failed to load clients or projects. Please try again.');
   }
 }
 

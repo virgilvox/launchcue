@@ -49,7 +49,9 @@ exports.handler = async function(event, context) {
   try {
     const { db } = await connectToDb();
     const projectsCollection = db.collection('projects');
-    const tasksCollection = db.collection('tasks'); // For deleting related tasks
+    const tasksCollection = db.collection('tasks');
+    const calendarEventsCollection = db.collection('calendarEvents');
+    const commentsCollection = db.collection('comments');
 
     // Find the project, ensuring it belongs to the user's team
     const query = { _id: new ObjectId(projectId), teamId, ...notDeleted };
@@ -144,13 +146,32 @@ exports.handler = async function(event, context) {
         return createErrorResponse(404, 'Project not found or could not be deleted');
       }
 
+      const now = new Date();
+      const cascadeDelete = { $set: { deletedAt: now, deletedBy: userId } };
+
       // Cascade soft-delete associated tasks
       await tasksCollection.updateMany(
         { projectId: projectId, teamId: teamId, ...notDeleted },
-        { $set: { deletedAt: new Date(), deletedBy: userId } }
+        cascadeDelete
       );
 
-      return createResponse(200, { message: 'Project and associated tasks deleted successfully' });
+      // Cascade soft-delete associated calendar events
+      await calendarEventsCollection.updateMany(
+        { projectId: projectId, teamId: teamId, ...notDeleted },
+        cascadeDelete
+      );
+
+      // Cascade soft-delete comments on this project's tasks
+      const projectTaskIds = await tasksCollection.distinct('_id', { projectId: projectId, teamId: teamId });
+      if (projectTaskIds.length > 0) {
+        const taskIdStrings = projectTaskIds.map(id => id.toString());
+        await commentsCollection.updateMany(
+          { taskId: { $in: taskIdStrings }, ...notDeleted },
+          cascadeDelete
+        );
+      }
+
+      return createResponse(200, { message: 'Project and associated data deleted successfully' });
     }
 
     // Method Not Allowed

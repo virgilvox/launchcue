@@ -2,7 +2,7 @@
   <PageContainer>
     <PageHeader title="Campaigns">
       <template #actions>
-        <router-link to="/campaigns/new" class="btn btn-primary">New Campaign</router-link>
+        <router-link v-if="authStore.canEdit" to="/campaigns/new" class="btn btn-primary">New Campaign</router-link>
       </template>
     </PageHeader>
 
@@ -106,9 +106,11 @@ import ClientColorDot from '../components/ui/ClientColorDot.vue';
 import EmptyState from '@/components/ui/EmptyState.vue';
 import { MegaphoneIcon } from '@heroicons/vue/24/outline';
 
+import { useAuthStore } from '@/stores/auth';
 const clientStore = useClientStore();
 const projectStore = useProjectStore();
 const toast = useToast();
+const authStore = useAuthStore();
 const { getClientName, getProjectName, getClientColorId } = useEntityLookup();
 
 const campaigns = ref([]);
@@ -146,7 +148,7 @@ async function loadInitialData() {
         ]);
         results.forEach((result, i) => {
             if (result.status === 'rejected') {
-                // silently handled
+                toast.error('Failed to load campaign data. Please try again.');
             }
         });
     } catch (err) {

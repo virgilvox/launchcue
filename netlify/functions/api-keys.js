@@ -7,6 +7,8 @@ const { createResponse, createErrorResponse, handleOptionsRequest } = require('.
 const { z } = require('zod');
 const logger = require('./utils/logger');
 const { createAuditLog } = require('./utils/auditLog');
+const { notDeleted, softDelete } = require('./utils/softDelete');
+const { rateLimitCheck } = require('./utils/rateLimit');
 
 const API_KEY_PREFIX = 'lc_sk_';
 const KEY_BYTE_LENGTH = 32;
@@ -63,6 +65,11 @@ exports.handler = async function(event, context) {
   }
   const { userId, teamId } = authResult;
 
+  // Use stricter 'auth' rate limiting for API key creation (POST), general for others
+  const rateCategory = event.httpMethod === 'POST' ? 'auth' : 'general';
+  const rateLimited = await rateLimitCheck(event, rateCategory, userId);
+  if (rateLimited) return rateLimited;
+
   let keyPrefixToDelete = null;
   const pathParts = event.path.split('/');
   const keysIndex = pathParts.indexOf('api-keys');
@@ -76,7 +83,7 @@ exports.handler = async function(event, context) {
 
     if (event.httpMethod === 'GET') {
       const keys = await collection.find(
-        { userId, teamId },
+        { userId, teamId, ...notDeleted },
         { projection: { hashedKey: 0 } }
       ).toArray();
 
@@ -137,13 +144,14 @@ exports.handler = async function(event, context) {
     }
 
     else if (event.httpMethod === 'DELETE' && keyPrefixToDelete) {
-      const result = await collection.deleteOne({
+      const result = await softDelete(collection, {
         prefix: keyPrefixToDelete,
         userId,
-        teamId
-      });
+        teamId,
+        ...notDeleted
+      }, userId);
 
-      if (result.deletedCount === 0) {
+      if (result.matchedCount === 0) {
         return createErrorResponse(404, 'API Key not found or user unauthorized');
       }
       await createAuditLog(db, { userId, teamId, action: 'delete', resourceType: 'apiKey', resourceId: keyPrefixToDelete });

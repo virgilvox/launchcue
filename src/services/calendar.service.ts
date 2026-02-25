@@ -97,44 +97,25 @@ const calendarService: CalendarServiceInterface = {
     }
   },
 
-  // Method to fetch tasks with due dates within a range (for calendar view)
+  // Fetch tasks with due dates within a range (for calendar view)
   async getTaskDeadlines(start: string, end: string): Promise<Task[]> {
-    try {
-      // Fetch tasks with due dates between start and end
-      // Assuming backend /tasks supports filtering by dueDate range
-      const params = {
-        dueDate_gte: start, // Example: Greater than or equal to start date
-        dueDate_lte: end    // Example: Less than or equal to end date
-      };
+    const params = {
+      dueDate_gte: start,
+      dueDate_lte: end
+    };
 
-      // Use TASK_ENDPOINT constant for consistency
-      const response = await api.get<Task[] | { data: Task[] } | string>(TASK_ENDPOINT, params);
+    const response = await api.get<Task[]>(TASK_ENDPOINT, params);
 
-      // Handle different response types
-      if (!response) {
-        return [];
-      }
-
-      // Handle HTML response (error page) or string responses
-      if (typeof response === 'string' || (response && response.toString && response.toString().includes('<!DOCTYPE html>'))) {
-        return [];
-      }
-
-      // Handle non-array responses
-      if (!Array.isArray(response)) {
-        // If response is an object with data property that's an array, use that
-        if (response && typeof response === 'object' && 'data' in response && Array.isArray(response.data)) {
-          return response.data;
-        }
-        // Otherwise return empty array
-        return [];
-      }
-
+    if (Array.isArray(response)) {
       return response;
-    } catch (error) {
-      // Return empty array instead of throwing to prevent app crashes
-      return [];
     }
+
+    // Handle {data: Task[]} wrapper format
+    if (response && typeof response === 'object' && 'data' in (response as any) && Array.isArray((response as any).data)) {
+      return (response as any).data;
+    }
+
+    return [];
   }
 };
 

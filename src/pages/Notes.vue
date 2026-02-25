@@ -2,7 +2,7 @@
   <PageContainer>
     <PageHeader title="Notes">
       <template #actions>
-        <button @click="openAddNoteModal" class="btn btn-primary">
+        <button v-if="authStore.canEdit" @click="openAddNoteModal" class="btn btn-primary">
           <PlusIcon class="h-4 w-4 mr-2" />
           ADD NOTE
         </button>
@@ -81,8 +81,8 @@
                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M10 6a2 2 0 110-4 2 2 0 010 4zm0 6a2 2 0 110-4 2 2 0 010 4zm0 6a2 2 0 110-4 2 2 0 010 4z" /></svg>
             </button>
             <div v-if="activeMenu === note.id" @click.stop class="absolute right-0 mt-1 w-40 bg-[var(--surface-elevated)] border-2 border-[var(--border-light)] z-20 py-1">
-              <button @click="editNote(note)" class="context-menu-item">Edit Note</button>
-              <button @click="confirmDeleteNote(note)" class="context-menu-item text-[var(--danger)]">Delete Note</button>
+              <button v-if="authStore.canEdit" @click="editNote(note)" class="context-menu-item">Edit Note</button>
+              <button v-if="authStore.canEdit" @click="confirmDeleteNote(note)" class="context-menu-item text-[var(--danger)]">Delete Note</button>
             </div>
           </div>
         </div>
@@ -197,9 +197,11 @@ import PageHeader from '../components/ui/PageHeader.vue';
 import EmptyState from '../components/ui/EmptyState.vue';
 import { PlusIcon, DocumentTextIcon } from '@heroicons/vue/24/outline';
 
+import { useAuthStore } from '@/stores/auth';
 const clientStore = useClientStore();
 const projectStore = useProjectStore();
 const toast = useToast();
+const authStore = useAuthStore();
 const { getClientName, getProjectName } = useEntityLookup();
 
 const loading = ref(false);
@@ -308,7 +310,7 @@ async function loadDependencies() {
         ]);
         results.forEach((result, i) => {
           if (result.status === 'rejected') {
-            // silently handled
+            toast.error('Failed to load filter options. Please try again.');
           }
         });
     } catch (err) {
@@ -432,7 +434,7 @@ async function deleteNote() {
 
     closeDeleteModal();
   } catch (err) {
-    alert('Failed to delete note. Please try again.');
+    toast.error('Failed to delete note. Please try again.');
   } finally {
     deleting.value = false;
   }

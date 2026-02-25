@@ -209,6 +209,7 @@
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
+import { useToast } from 'vue-toastification'
 import apiService from '../services/api.service'
 import {
   MagnifyingGlassIcon,
@@ -229,6 +230,7 @@ import {
 } from '@heroicons/vue/24/outline'
 
 const router = useRouter()
+const toast = useToast()
 
 const isOpen = ref(false)
 const searchQuery = ref('')
@@ -395,7 +397,7 @@ async function performSearch(query) {
     results.value = response.results || []
     hasSearched.value = true
   } catch (error) {
-    // silently handled
+    toast.error('Search failed. Please try again.')
     results.value = []
     hasSearched.value = true
   } finally {

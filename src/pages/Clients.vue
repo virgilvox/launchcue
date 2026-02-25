@@ -10,7 +10,7 @@
         >
           {{ migratingContacts ? 'FIXING...' : 'FIX CONTACTS' }}
         </button>
-        <button @click="openAddClientModal" class="btn btn-primary">
+        <button v-if="authStore.canEdit" @click="openAddClientModal" class="btn btn-primary">
           <PlusIcon class="h-4 w-4 mr-2" />
           ADD CLIENT
         </button>
@@ -59,8 +59,8 @@
                 <EllipsisVerticalIcon class="h-5 w-5" />
               </button>
               <div v-if="activeMenu === client.id" class="absolute right-0 mt-1 w-48 bg-[var(--surface-elevated)] border-2 border-[var(--border)] shadow-brutal-sm z-20 py-1" @click.stop>
-                <button @click.stop.prevent="editClient(client)" class="block w-full text-left px-4 py-2 text-body-sm hover:bg-[var(--surface)]">Edit Client</button>
-                <button @click.stop.prevent="confirmDeleteClient(client)" class="block w-full text-left px-4 py-2 text-body-sm text-[var(--danger)] hover:bg-[var(--accent-primary-wash)]">Delete Client</button>
+                <button v-if="authStore.canEdit" @click.stop.prevent="editClient(client)" class="block w-full text-left px-4 py-2 text-sm text-[var(--text-primary)] hover:bg-[var(--surface)]">Edit Client</button>
+                <button v-if="authStore.canEdit" @click.stop.prevent="confirmDeleteClient(client)" class="block w-full text-left px-4 py-2 text-sm text-[var(--danger)] hover:bg-[var(--accent-primary-wash)]">Delete Client</button>
               </div>
             </div>
           </div>
@@ -120,6 +120,7 @@
         <div class="form-group">
           <label for="clientName" class="label">CLIENT NAME</label>
           <input id="clientName" v-model="clientForm.name" type="text" class="input" placeholder="Client name" required />
+          <p v-if="submitted && validationErrors.name" class="text-xs mt-1" style="color: var(--danger);">{{ validationErrors.name }}</p>
         </div>
         
         <div class="form-group">
@@ -165,7 +166,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
+import { ref, reactive, computed, onMounted, onBeforeUnmount } from 'vue';
 import { useClientStore } from '../stores/client';
 import { useProjectStore } from '../stores/project';
 import clientService from '@/services/client.service';
@@ -180,9 +181,11 @@ import EmptyState from '../components/ui/EmptyState.vue';
 import ClientColorPicker from '../components/ui/ClientColorPicker.vue';
 import { getNextClientColor, getClientColor } from '@/constants/clientColors';
 
+import { useAuthStore } from '@/stores/auth';
 const toast = useToast();
 const clientStore = useClientStore();
 const projectStore = useProjectStore();
+const authStore = useAuthStore();
 
 const loading = ref(false);
 const error = ref(null);
@@ -206,6 +209,10 @@ const clientForm = ref({
   description: '',
   color: 'slate'
 });
+
+// Validation state
+const validationErrors = reactive({ name: '' });
+const submitted = ref(false);
 
 async function loadClients() {
   loading.value = true;
@@ -250,6 +257,8 @@ function toggleClientMenu(clientId) {
 function openAddClientModal() {
   editingClient.value = null;
   clientForm.value = { name: '', industry: '', website: '', description: '', color: getNextClientColor(clients.value) };
+  validationErrors.name = '';
+  submitted.value = false;
   showClientModal.value = true;
 }
 
@@ -262,6 +271,8 @@ function editClient(client) {
     description: client.description || '',
     color: client.color || 'slate'
   };
+  validationErrors.name = '';
+  submitted.value = false;
   activeMenu.value = null;
   showClientModal.value = true;
 }
@@ -271,9 +282,20 @@ function closeClientModal() {
 }
 
 async function saveClient() {
+  submitted.value = true;
+
+  // Validate required fields
+  validationErrors.name = '';
+  if (!clientForm.value.name || !clientForm.value.name.trim()) {
+    validationErrors.name = 'Client name is required.';
+  }
+  if (validationErrors.name) {
+    return;
+  }
+
   saving.value = true;
   error.value = null;
-  
+
   try {
     if (editingClient.value) {
       const updatedClient = await clientService.updateClient(editingClient.value.id, clientForm.value);

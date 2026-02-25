@@ -103,6 +103,10 @@ exports.handler = async function (event, context) {
     return createErrorResponse(400, 'Search query must be at least 2 characters');
   }
 
+  if (query.length > 100) {
+    return createErrorResponse(400, 'Search query too long (max 100 characters)');
+  }
+
   // Determine which collections to search
   let typesToSearch = VALID_TYPES;
   if (params.types) {

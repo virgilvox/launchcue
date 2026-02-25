@@ -65,6 +65,7 @@
                   {{ expandedItems.has(item.id) ? 'Collapse' : 'View' }}
                 </button>
                 <button
+                  v-if="authStore.canEdit"
                   @click="deleteHistoryItem(item.id)"
                   class="text-[var(--text-secondary)] hover:text-[var(--danger)] transition-colors"
                   title="Delete"
@@ -225,9 +226,11 @@ import LoadingSpinner from '@/components/LoadingSpinner.vue';
 import EmptyState from '@/components/ui/EmptyState.vue';
 import { LightBulbIcon } from '@heroicons/vue/24/outline';
 
+import { useAuthStore } from '@/stores/auth';
 const toast = useToast();
 const clientStore = useClientStore();
 const projectStore = useProjectStore();
+const authStore = useAuthStore();
 
 // State for tabs and history
 const activeTab = ref('new');
@@ -343,7 +346,7 @@ onMounted(async () => {
     ]);
     results.forEach((result, i) => {
       if (result.status === 'rejected') {
-        // silently handled
+        toast.error('Failed to load client or project data. Please try again.');
       }
     });
   } catch(err) {

@@ -145,6 +145,8 @@ exports.handler = async function (event, context) {
 
     // ------------------------------------------------------------------ DELETE
     if (event.httpMethod === 'DELETE' && notificationId) {
+      // Hard delete intentional: notifications are ephemeral, user-facing records
+      // with no audit trail value. Soft delete would bloat the collection unnecessarily.
       const result = await collection.deleteOne({ _id: new ObjectId(notificationId), userId });
 
       if (result.deletedCount === 0) {

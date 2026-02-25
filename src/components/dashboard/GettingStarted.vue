@@ -1,5 +1,5 @@
 <template>
-  <div v-if="!dismissed" class="card card-featured mb-8">
+  <div v-if="!dismissed && !allComplete" class="card card-featured mb-8">
     <div class="flex justify-between items-start mb-4">
       <div>
         <span class="overline text-[var(--accent-hot)]">GETTING STARTED</span>
@@ -83,5 +83,6 @@ const steps = computed(() => [
 ])
 
 const completedCount = computed(() => steps.value.filter(s => s.completed).length)
+const allComplete = computed(() => completedCount.value === steps.value.length)
 const progressPercent = computed(() => Math.round((completedCount.value / steps.value.length) * 100))
 </script>

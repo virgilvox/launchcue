@@ -32,7 +32,7 @@
           </button>
         </div>
 
-        <button @click="openNewTaskModal" class="btn btn-primary">
+        <button v-if="authStore.canEdit" @click="openNewTaskModal" class="btn btn-primary">
           <PlusIcon class="h-5 w-5 mr-1" />
           Add Task
         </button>
@@ -156,6 +156,10 @@ const projectStore = useProjectStore()
 const clientStore = useClientStore()
 const teamStore = useTeamStore()
 const toast = useToast()
+
+// Auth
+import { useAuthStore } from '@/stores/auth'
+const authStore = useAuthStore()
 
 // State
 const viewMode = ref('list')
@@ -286,7 +290,7 @@ const fetchSupportData = async () => {
   ]);
   results.forEach((result, i) => {
     if (result.status === 'rejected') {
-      // silently handled
+      toast.error('Failed to load filter data. Please try again.');
     }
   });
 }

@@ -2,7 +2,7 @@
   <PageContainer>
     <PageHeader title="Resources">
       <template #actions>
-        <button class="btn btn-primary" @click="openResourceDialog()">
+        <button v-if="authStore.canEdit" class="btn btn-primary" @click="openResourceDialog()">
           Add Resource
         </button>
       </template>
@@ -132,6 +132,7 @@
             </button>
             <!-- Edit -->
             <button
+              v-if="authStore.canEdit"
               @click="openResourceDialog(resource)"
               class="p-1 text-[var(--text-secondary)] hover:text-[var(--accent-primary)] hover:bg-[var(--surface)] transition-colors"
               title="Edit"
@@ -142,6 +143,7 @@
             </button>
             <!-- Delete -->
             <button
+              v-if="authStore.canEdit"
               @click="deleteResource(resource)"
               class="p-1 text-[var(--text-secondary)] hover:text-[var(--danger)] hover:bg-[var(--surface)] transition-colors"
               title="Delete"
@@ -216,8 +218,10 @@ const ResourceDialog = defineAsyncComponent({
   }
 });
 
+import { useAuthStore } from '@/stores/auth';
 const toast = useToast();
 const resourceStore = useResourceStore();
+const authStore = useAuthStore();
 const showDialog = ref(false);
 const editResource = ref(null);
 const filterText = ref('');
@@ -302,7 +306,7 @@ onMounted(async () => {
   try {
     await resourceStore.fetchResources();
   } catch (error) {
-    // silently handled
+    toast.error('Failed to load resources. Please try again.');
   }
 });
 

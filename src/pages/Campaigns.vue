@@ -4,6 +4,7 @@
       <header class="mb-6 flex justify-between items-center">
         <h2 class="heading-page">Campaign Builder</h2>
         <button
+          v-if="authStore.canEdit"
           @click="saveCampaign"
           class="btn btn-primary"
           :disabled="savingCampaign"
@@ -259,7 +260,7 @@ async function loadTimelineEvents(campaignId) {
   try {
     timelineEvents.value = await campaignService.getCampaignSteps(campaignId);
   } catch (err) {
-    // silently handled
+    toast.error('Failed to load timeline events. Please try again.');
   }
 }
 
@@ -282,7 +283,7 @@ async function loadTeamMembers() {
       teamMembers.value = [];
     }
   } catch (err) {
-    // silently handled
+    toast.error('Failed to load team members. Please try again.');
     teamMembers.value = [];
   } finally {
     loadingTeam.value = false;
@@ -299,11 +300,11 @@ async function loadClientsAndProjects() {
     ]);
     results.forEach((result, i) => {
       if (result.status === 'rejected') {
-        // silently handled
+        toast.error('Failed to load clients or projects. Please try again.');
       }
     });
   } catch (err) {
-    // silently handled
+    toast.error('Failed to load clients or projects. Please try again.');
   } finally {
     loadingClients.value = false;
     loadingProjects.value = false;
@@ -399,7 +400,7 @@ onMounted(async () => {
     ]);
     initResults.forEach((result, i) => {
       if (result.status === 'rejected') {
-        // silently handled
+        toast.error('Failed to initialize campaign data. Please try again.');
       }
     });
 

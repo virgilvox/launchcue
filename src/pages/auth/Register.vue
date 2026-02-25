@@ -182,7 +182,7 @@ const handleRegister = async () => {
     await authStore.register(email.value, password.value, name.value);
     
     toast.success('Account created successfully!');
-    router.push('/');
+    router.push('/dashboard');
   } catch (err) {
     error.value = err.message || 'Failed to create account. Please try again.';
     toast.error(error.value);

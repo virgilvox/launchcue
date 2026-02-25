@@ -2,8 +2,8 @@
   <PageContainer>
     <PageHeader title="Scopes" :breadcrumbs="breadcrumbs">
       <template #actions>
-        <button @click="router.push('/scopes/new')" class="btn btn-primary">New Scope</button>
-        <button @click="router.push('/scope-templates/new')" class="btn btn-secondary">New Template</button>
+        <button v-if="authStore.canEdit" @click="router.push('/scopes/new')" class="btn btn-primary">New Scope</button>
+        <button v-if="authStore.canEdit" @click="router.push('/scope-templates/new')" class="btn btn-secondary">New Template</button>
       </template>
     </PageHeader>
 
@@ -90,6 +90,7 @@
         </template>
         <template #actions="{ row }">
           <button
+            v-if="authStore.canEdit"
             @click.stop="confirmDelete(row, 'scope')"
             class="text-[var(--danger)] hover:opacity-80 text-sm"
           >
@@ -129,6 +130,7 @@
             Use
           </button>
           <button
+            v-if="authStore.canEdit"
             @click.stop="confirmDelete(row, 'template')"
             class="text-[var(--danger)] hover:opacity-80 text-sm"
           >
@@ -179,8 +181,10 @@ import PageHeader from '@/components/ui/PageHeader.vue';
 import DataTable from '@/components/ui/DataTable.vue';
 import Modal from '@/components/Modal.vue';
 
+import { useAuthStore } from '@/stores/auth';
 const router = useRouter();
 const toast = useToast();
+const authStore = useAuthStore();
 const scopeStore = useScopeStore();
 const clientStore = useClientStore();
 const projectStore = useProjectStore();
@@ -291,7 +295,7 @@ onMounted(async () => {
     ]);
     results.forEach((result, i) => {
       if (result.status === 'rejected') {
-        // silently handled
+        toast.error('Failed to load scopes data. Please try again.');
       }
     });
   } catch (err) {

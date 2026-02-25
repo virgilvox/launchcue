@@ -5,6 +5,7 @@ const { authenticate, requireRole } = require('./utils/authHandler');
 const { createResponse, createErrorResponse, handleOptionsRequest } = require('./utils/response');
 const { createAuditLog } = require('./utils/auditLog');
 const logger = require('./utils/logger');
+const { notDeleted, softDelete } = require('./utils/softDelete');
 
 const TeamCreateSchema = z.object({
   name: z.string().min(1, 'Team name is required').max(100),
@@ -318,23 +319,53 @@ exports.handler = async function(event, context) {
         return createResponse(200, updatedTeam);
     }
     
-    // DELETE: Delete a team - Requires team ID in path
+    // DELETE: Soft delete a team and cascade to child resources - Requires team ID in path
     else if (event.httpMethod === 'DELETE' && effectiveTeamId) {
         // Ensure user is owner to delete team
-        const deleteResult = await teamsCollection.deleteOne(
-            { _id: new ObjectId(effectiveTeamId), owner: userId } // Only owner can delete
-        );
-        
-        if (deleteResult.deletedCount === 0) {
+        const team = await teamsCollection.findOne({
+            _id: new ObjectId(effectiveTeamId),
+            owner: userId,
+            ...notDeleted,
+        });
+
+        if (!team) {
             return createErrorResponse(404, 'Team not found or user is not the owner');
         }
+
+        // Soft delete the team itself
+        await softDelete(teamsCollection, {
+            _id: new ObjectId(effectiveTeamId),
+            ...notDeleted,
+        }, userId);
+
+        // Cascade soft delete all child resources belonging to this team
+        const now = new Date();
+        const cascadeUpdate = { $set: { deletedAt: now, deletedBy: userId } };
+        const cascadeFilter = { teamId: effectiveTeamId, deletedAt: null };
+
+        await Promise.all([
+            db.collection('projects').updateMany(cascadeFilter, cascadeUpdate),
+            db.collection('tasks').updateMany(cascadeFilter, cascadeUpdate),
+            db.collection('clients').updateMany(cascadeFilter, cascadeUpdate),
+            db.collection('calendarEvents').updateMany(cascadeFilter, cascadeUpdate),
+            db.collection('notes').updateMany(cascadeFilter, cascadeUpdate),
+            db.collection('campaigns').updateMany(cascadeFilter, cascadeUpdate),
+            db.collection('invoices').updateMany(cascadeFilter, cascadeUpdate),
+            db.collection('scopes').updateMany(cascadeFilter, cascadeUpdate),
+            db.collection('resources').updateMany(cascadeFilter, cascadeUpdate),
+            db.collection('apiKeys').updateMany(cascadeFilter, cascadeUpdate),
+            db.collection('webhooks').updateMany(cascadeFilter, cascadeUpdate),
+            db.collection('comments').updateMany(cascadeFilter, cascadeUpdate),
+            db.collection('scopeTemplates').updateMany(cascadeFilter, cascadeUpdate),
+            db.collection('onboarding').updateMany(cascadeFilter, cascadeUpdate),
+        ]);
 
         await createAuditLog(db, {
             userId, teamId: effectiveTeamId, action: 'delete',
             resourceType: 'team', resourceId: effectiveTeamId,
         });
 
-        return createResponse(200, { message: 'Team deleted successfully' });
+        return createResponse(200, { message: 'Team and all associated resources deleted successfully' });
     }
 
     // GET /teams/{teamId}/invites - List pending invites for a team

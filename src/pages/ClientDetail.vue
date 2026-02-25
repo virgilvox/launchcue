@@ -67,79 +67,75 @@
     </template>
 
     <!-- Edit Client Modal -->
-    <div v-if="showClientModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div class="bg-[var(--surface-elevated)] border-2 border-[var(--border-light)] p-6 w-full max-w-md">
-        <h3 class="heading-section mb-4">Edit Client</h3>
+    <Modal v-model="showClientModal" title="Edit Client" size="sm">
+      <form @submit.prevent="saveClient" class="space-y-4">
+        <div>
+          <label for="clientName" class="label">Client Name</label>
+          <input
+            id="clientName"
+            v-model="clientForm.name"
+            type="text"
+            class="input"
+            placeholder="Client name"
+            required
+          />
+        </div>
 
-        <form @submit.prevent="saveClient">
-          <div class="mb-4">
-            <label for="clientName" class="label">Client Name</label>
-            <input
-              id="clientName"
-              v-model="clientForm.name"
-              type="text"
-              class="input"
-              placeholder="Client name"
-              required
-            />
-          </div>
+        <div>
+          <label for="clientIndustry" class="label">Industry</label>
+          <input
+            id="clientIndustry"
+            v-model="clientForm.industry"
+            type="text"
+            class="input"
+            placeholder="Industry"
+          />
+        </div>
 
-          <div class="mb-4">
-            <label for="clientIndustry" class="label">Industry</label>
-            <input
-              id="clientIndustry"
-              v-model="clientForm.industry"
-              type="text"
-              class="input"
-              placeholder="Industry"
-            />
-          </div>
+        <div>
+          <label for="clientWebsite" class="label">Website</label>
+          <input
+            id="clientWebsite"
+            v-model="clientForm.website"
+            type="url"
+            class="input"
+            placeholder="https://example.com"
+          />
+        </div>
 
-          <div class="mb-4">
-            <label for="clientWebsite" class="label">Website</label>
-            <input
-              id="clientWebsite"
-              v-model="clientForm.website"
-              type="url"
-              class="input"
-              placeholder="https://example.com"
-            />
-          </div>
+        <div>
+          <label for="clientDescription" class="label">Description</label>
+          <textarea
+            id="clientDescription"
+            v-model="clientForm.description"
+            class="input"
+            placeholder="Client description"
+            rows="3"
+          ></textarea>
+        </div>
 
-          <div class="mb-4">
-            <label for="clientDescription" class="label">Description</label>
-            <textarea
-              id="clientDescription"
-              v-model="clientForm.description"
-              class="input"
-              placeholder="Client description"
-              rows="3"
-            ></textarea>
-          </div>
+        <div>
+          <ClientColorPicker v-model="clientForm.color" />
+        </div>
 
-          <div class="mb-6">
-            <ClientColorPicker v-model="clientForm.color" />
-          </div>
-
-          <div class="flex justify-end space-x-3">
-            <button
-              type="button"
-              @click="closeClientModal"
-              class="btn btn-secondary"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              class="btn btn-primary"
-              :disabled="saving"
-            >
-              {{ saving ? 'Saving...' : 'Save Client' }}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+        <div class="flex justify-end space-x-3 pt-4 border-t border-[var(--border)]">
+          <button
+            type="button"
+            @click="closeClientModal"
+            class="btn btn-secondary"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            class="btn btn-primary"
+            :disabled="saving"
+          >
+            {{ saving ? 'Saving...' : 'Save Client' }}
+          </button>
+        </div>
+      </form>
+    </Modal>
 
     <!-- Add/Edit Contact Modal -->
     <Modal v-model="showContactModal" :title="editingContact ? 'Edit Contact' : 'Add Contact'">

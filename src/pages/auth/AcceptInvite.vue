@@ -131,11 +131,7 @@ async function handleSubmit() {
       authStore.setSession(userData, result.token)
 
       accepted.value = true
-
-      // Redirect to portal after brief delay
-      setTimeout(() => {
-        router.push('/portal')
-      }, 1500)
+      router.push('/portal')
     } else {
       formError.value = 'Unexpected response. Please try again.'
     }

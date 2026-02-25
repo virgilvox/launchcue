@@ -9,7 +9,7 @@
         <div class="flex gap-3">
           <button @click="showPreview = true" class="btn btn-ghost">Preview</button>
           <button @click="printScope" class="btn btn-secondary">Print / PDF</button>
-          <button @click="save" class="btn btn-primary" :disabled="saving">
+          <button v-if="authStore.canEdit" @click="save" class="btn btn-primary" :disabled="saving">
             {{ saving ? 'Saving...' : (formData.id ? 'Save Changes' : (isTemplate ? 'Save Template' : 'Save Scope')) }}
           </button>
         </div>
@@ -156,9 +156,11 @@ import Modal from '@/components/Modal.vue';
 import ClientColorDot from '@/components/ui/ClientColorDot.vue';
 import { useEntityLookup } from '@/composables/useEntityLookup';
 
+import { useAuthStore } from '@/stores/auth';
 const toast = useToast();
 const route = useRoute();
 const router = useRouter();
+const authStore = useAuthStore();
 const scopeStore = useScopeStore();
 const clientStore = useClientStore();
 const projectStore = useProjectStore();
@@ -233,11 +235,11 @@ async function loadClientsAndProjects() {
     ]);
     results.forEach((result, i) => {
       if (result.status === 'rejected') {
-        // silently handled
+        toast.error('Failed to load clients or projects. Please try again.');
       }
     });
   } catch (err) {
-    // silently handled
+    toast.error('Failed to load clients or projects. Please try again.');
   }
 }
 

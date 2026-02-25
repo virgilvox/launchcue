@@ -1,11 +1,7 @@
 import { ref, computed } from 'vue'
-import { defineStore } from 'pinia'
+import { defineStore, getActivePinia } from 'pinia'
 import router from '../router'
 import apiService, { TEAM_ENDPOINT } from '../services/api.service'
-// Import other stores needed for data reloading
-import { useTaskStore } from './task'
-import { useProjectStore } from './project'
-import { useClientStore } from './client'
 import type { User, Team, TeamMember } from '../types/models'
 import type { TeamRole } from '../types/enums'
 
@@ -183,6 +179,18 @@ export const useAuthStore = defineStore('auth', () => {
       sessionStorage.removeItem('teams')
       sessionStorage.removeItem('currentTeam')
 
+      // Reset all other Pinia stores to clear stale data
+      const pinia = getActivePinia()
+      if (pinia) {
+        pinia._s.forEach((store, id) => {
+          if (id !== 'auth') store.$dispose()
+        })
+        // Clear the store registry so they reinitialize fresh on next use
+        pinia._s.forEach((_, id) => {
+          if (id !== 'auth') pinia._s.delete(id)
+        })
+      }
+
       // Redirect to landing page
       router.push('/')
     } catch (error) {
@@ -309,10 +317,7 @@ export const useAuthStore = defineStore('auth', () => {
         setUserData(updatedUser, response.token) // Update token and user role
         setCurrentTeam(response.currentTeam)    // Update team info from response
 
-        // --- Trigger data reload ---
-        await triggerDataReloadForNewTeam()
-        // ---------------------------
-
+        // Data reload is handled by DefaultLayout's window.location.reload() after switchTeam resolves
         return response.currentTeam
       } else {
         throw new Error(response?.message || 'Failed to switch team context on backend')
@@ -322,27 +327,6 @@ export const useAuthStore = defineStore('auth', () => {
       setCurrentTeam(previousTeam) // Restore previous team state
       setUserData(user.value!, previousToken!) // Restore previous token
       throw error // Re-throw for component handling
-    }
-  }
-
-  // Function to trigger data reloads across stores
-  const triggerDataReloadForNewTeam = async (): Promise<void> => {
-    const taskStore = useTaskStore()
-    const projectStore = useProjectStore()
-    const clientStore = useClientStore()
-    // Add other stores here...
-
-    // Trigger fetch actions in parallel (or sequentially if needed)
-    // These fetches will now use the new token containing the correct teamId
-    try {
-      await Promise.all([
-        taskStore.fetchTasks(), // Assumes fetchTasks uses current auth context
-        projectStore.fetchProjects(), // Assumes fetchProjects uses current auth context
-        clientStore.fetchClients(), // Assumes fetchClients uses current auth context
-        // Add fetches for other relevant stores (campaigns, notes, etc.)
-      ])
-    } catch (error) {
-      // Data reload failure is non-fatal; user can manually refresh
     }
   }
 

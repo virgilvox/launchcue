@@ -28,9 +28,13 @@ function validateEnv() {
     }
   }
 
-  // Warn on weak JWT secret
+  // Enforce strong JWT secret
   if (process.env.JWT_SECRET && process.env.JWT_SECRET.length < 64) {
-    logger.warn('JWT_SECRET is shorter than 64 characters — consider using a stronger secret');
+    const msg = 'JWT_SECRET must be at least 64 characters long';
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error(msg);
+    }
+    logger.warn(msg + ' — consider using a stronger secret');
   }
 }
 

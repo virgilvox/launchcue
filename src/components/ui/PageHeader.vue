@@ -1,7 +1,7 @@
 <template>
   <div class="mb-6">
     <!-- Breadcrumbs -->
-    <nav v-if="breadcrumbs?.length" class="flex items-center gap-1 text-sm text-[var(--text-secondary)] mb-2">
+    <nav v-if="breadcrumbs?.length" class="flex items-center gap-1 text-sm text-[var(--text-primary)] opacity-60 mb-2">
       <template v-for="(crumb, i) in breadcrumbs" :key="i">
         <router-link
           v-if="crumb.to"

@@ -5,11 +5,16 @@ import router from './router'
 import './assets/main.css'
 import Toast, { POSITION } from 'vue-toastification'
 import 'vue-toastification/dist/index.css'
+import { useAuthStore } from './stores/auth'
 
 const app = createApp(App)
 
 const pinia = createPinia()
 app.use(pinia)
+
+// Initialize auth state early — checks token expiry before any route navigation
+const authStore = useAuthStore()
+authStore.initAuth()
 
 app.use(router)
 
