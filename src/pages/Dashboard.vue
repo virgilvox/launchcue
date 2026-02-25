@@ -102,7 +102,7 @@
       <!-- Right Column (1/3) — Upcoming sidebar -->
       <div class="space-y-6">
         <!-- Upcoming -->
-        <div class="card lg:sticky lg:top-6">
+        <div class="card">
           <h3 class="heading-card mb-4">Upcoming</h3>
 
           <div v-if="isLoadingUpcoming" class="flex justify-center py-4">
