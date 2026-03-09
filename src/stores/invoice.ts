@@ -1,15 +1,23 @@
 import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
-import invoiceService from '../services/invoice.service'
+import { getContainer } from '@/core/service-container'
+import { getEventBus } from '@/core/event-bus'
+import { INVOICE_REPO } from '@/adapters/repository-keys'
+import type { Repository } from '@/adapters/types'
 import type { Invoice } from '../types/models'
 import type { InvoiceCreateRequest } from '../types/api'
 
+// Keep legacy service for createFromScope (non-standard endpoint)
+import invoiceService from '../services/invoice.service'
+
 export const useInvoiceStore = defineStore('invoice', () => {
-  // State
   const invoices = ref<Invoice[]>([])
   const isLoading = ref(false)
 
-  // Computed
+  function getRepo() {
+    return getContainer().resolve<Repository<Invoice, InvoiceCreateRequest, Partial<InvoiceCreateRequest>>>(INVOICE_REPO)
+  }
+
   const outstandingTotal = computed(() => {
     return invoices.value
       .filter(inv => inv.status === 'sent' || inv.status === 'viewed')
@@ -20,11 +28,10 @@ export const useInvoiceStore = defineStore('invoice', () => {
     return invoices.value.filter(inv => inv.status === 'overdue').length
   })
 
-  // Actions
   const fetchInvoices = async (params?: { clientId?: string; projectId?: string; status?: string; dateFrom?: string; dateTo?: string }): Promise<Invoice[]> => {
     isLoading.value = true
     try {
-      const response: unknown = await invoiceService.getInvoices(params)
+      const response = await getRepo().findAll(params)
       invoices.value = Array.isArray(response) ? response : []
       return invoices.value
     } catch (error) {
@@ -37,9 +44,10 @@ export const useInvoiceStore = defineStore('invoice', () => {
 
   const createInvoice = async (data: InvoiceCreateRequest): Promise<Invoice> => {
     try {
-      const created: Invoice = await invoiceService.createInvoice(data)
+      const created = await getRepo().create(data)
       if (created && created.id) {
         invoices.value.push(created)
+        getEventBus().emit('invoice.created', { invoice: created })
       }
       return created
     } catch (error) {
@@ -52,6 +60,7 @@ export const useInvoiceStore = defineStore('invoice', () => {
       const created: Invoice = await invoiceService.createFromScope(scopeId, overrides)
       if (created && created.id) {
         invoices.value.push(created)
+        getEventBus().emit('invoice.created', { invoice: created })
       }
       return created
     } catch (error) {
@@ -65,11 +74,12 @@ export const useInvoiceStore = defineStore('invoice', () => {
     }
     isLoading.value = true
     try {
-      const updated: Invoice = await invoiceService.updateInvoice(id, data)
+      const updated = await getRepo().update(id, data)
       const index = invoices.value.findIndex(inv => inv.id === id)
       if (index !== -1) {
         invoices.value[index] = updated
       }
+      getEventBus().emit('invoice.updated', { invoice: updated })
       return updated
     } catch (error) {
       throw error
@@ -84,8 +94,9 @@ export const useInvoiceStore = defineStore('invoice', () => {
     }
     isLoading.value = true
     try {
-      await invoiceService.deleteInvoice(id)
+      await getRepo().delete(id)
       invoices.value = invoices.value.filter(inv => inv.id !== id)
+      getEventBus().emit('invoice.deleted', { id })
     } catch (error) {
       throw error
     } finally {
@@ -93,7 +104,6 @@ export const useInvoiceStore = defineStore('invoice', () => {
     }
   }
 
-  // Return state, computed, and actions
   return {
     invoices,
     isLoading,

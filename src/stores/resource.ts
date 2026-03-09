@@ -1,6 +1,9 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import resourceService from '@/services/resource.service'
+import { getContainer } from '@/core/service-container'
+import { getEventBus } from '@/core/event-bus'
+import { RESOURCE_REPO } from '@/adapters/repository-keys'
+import type { Repository } from '@/adapters/types'
 import { useTeamStore } from './team'
 import type { Resource } from '../types/models'
 import type { ResourceCreateRequest } from '../types/api'
@@ -12,6 +15,10 @@ export const useResourceStore = defineStore('resource', () => {
   const error = ref<string | null>(null)
 
   const teamStore = useTeamStore()
+
+  function getRepo() {
+    return getContainer().resolve<Repository<Resource, ResourceCreateRequest, Partial<ResourceCreateRequest>>>(RESOURCE_REPO)
+  }
 
   async function fetchResources(): Promise<Resource[]> {
     try {
@@ -26,7 +33,7 @@ export const useResourceStore = defineStore('resource', () => {
         return []
       }
 
-      const data: Resource[] = await resourceService.getResources(teamId)
+      const data = await getRepo().findAll({ teamId })
       resources.value = data
       return data
     } catch (err: unknown) {
@@ -43,7 +50,7 @@ export const useResourceStore = defineStore('resource', () => {
       isLoading.value = true
       error.value = null
 
-      const data: Resource = await resourceService.getResource(id)
+      const data = await getRepo().findById(id)
       currentResource.value = data
       return data
     } catch (err: unknown) {
@@ -62,13 +69,13 @@ export const useResourceStore = defineStore('resource', () => {
 
       const currentTeam = teamStore.currentTeam
 
-      // Add team ID if not provided
       if (!resourceData.teamId && currentTeam) {
         resourceData.teamId = currentTeam.id
       }
 
-      const data: Resource = await resourceService.createResource(resourceData)
+      const data = await getRepo().create(resourceData)
       resources.value.push(data)
+      getEventBus().emit('resource.created', { resource: data })
       return data
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to create resource'
@@ -84,19 +91,18 @@ export const useResourceStore = defineStore('resource', () => {
       isLoading.value = true
       error.value = null
 
-      const data: Resource = await resourceService.updateResource(id, resourceData)
+      const data = await getRepo().update(id, resourceData)
 
-      // Update in the resources array
       const index = resources.value.findIndex(r => r.id === id)
       if (index !== -1) {
         resources.value[index] = data
       }
 
-      // Update current resource if it's the one being edited
       if (currentResource.value && currentResource.value.id === id) {
         currentResource.value = data
       }
 
+      getEventBus().emit('resource.updated', { resource: data })
       return data
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : `Failed to update resource ${id}`
@@ -112,16 +118,15 @@ export const useResourceStore = defineStore('resource', () => {
       isLoading.value = true
       error.value = null
 
-      await resourceService.deleteResource(id)
+      await getRepo().delete(id)
 
-      // Remove from the resources array
       resources.value = resources.value.filter(r => r.id !== id)
 
-      // Clear current resource if it's the one being deleted
       if (currentResource.value && currentResource.value.id === id) {
         currentResource.value = null
       }
 
+      getEventBus().emit('resource.deleted', { id })
       return true
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : `Failed to delete resource ${id}`

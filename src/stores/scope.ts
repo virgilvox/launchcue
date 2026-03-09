@@ -1,20 +1,32 @@
 import { ref } from 'vue'
 import { defineStore } from 'pinia'
-import scopeService from '../services/scope.service'
+import { getContainer } from '@/core/service-container'
+import { getEventBus } from '@/core/event-bus'
+import { SCOPE_REPO, SCOPE_TEMPLATE_REPO } from '@/adapters/repository-keys'
+import type { Repository } from '@/adapters/types'
 import type { ScopeTemplate, Scope } from '../types/models'
 import type { ScopeTemplateCreateRequest, ScopeCreateRequest } from '../types/api'
 
+// Keep legacy service for createScopeFromTemplate (non-standard endpoint)
+import scopeService from '../services/scope.service'
+
 export const useScopeStore = defineStore('scope', () => {
-  // State
   const templates = ref<ScopeTemplate[]>([])
   const scopes = ref<Scope[]>([])
   const isLoading = ref(false)
 
-  // Actions
+  function getTemplateRepo() {
+    return getContainer().resolve<Repository<ScopeTemplate, ScopeTemplateCreateRequest, Partial<ScopeTemplateCreateRequest>>>(SCOPE_TEMPLATE_REPO)
+  }
+
+  function getScopeRepo() {
+    return getContainer().resolve<Repository<Scope, ScopeCreateRequest, Partial<ScopeCreateRequest>>>(SCOPE_REPO)
+  }
+
   const fetchTemplates = async (): Promise<ScopeTemplate[]> => {
     isLoading.value = true
     try {
-      const response: unknown = await scopeService.getScopeTemplates()
+      const response = await getTemplateRepo().findAll()
       templates.value = Array.isArray(response) ? response : []
       return templates.value
     } catch (error) {
@@ -28,7 +40,7 @@ export const useScopeStore = defineStore('scope', () => {
   const fetchScopes = async (params?: { projectId?: string; clientId?: string; status?: string }): Promise<Scope[]> => {
     isLoading.value = true
     try {
-      const response: unknown = await scopeService.getScopes(params)
+      const response = await getScopeRepo().findAll(params)
       scopes.value = Array.isArray(response) ? response : []
       return scopes.value
     } catch (error) {
@@ -41,9 +53,10 @@ export const useScopeStore = defineStore('scope', () => {
 
   const createTemplate = async (data: ScopeTemplateCreateRequest): Promise<ScopeTemplate> => {
     try {
-      const created: ScopeTemplate = await scopeService.createScopeTemplate(data)
+      const created = await getTemplateRepo().create(data)
       if (created && created.id) {
         templates.value.push(created)
+        getEventBus().emit('scope-template.created', { template: created })
       }
       return created
     } catch (error) {
@@ -55,11 +68,12 @@ export const useScopeStore = defineStore('scope', () => {
     if (!id) throw new Error('Template ID is required for updates')
     isLoading.value = true
     try {
-      const updated: ScopeTemplate = await scopeService.updateScopeTemplate(id, data)
+      const updated = await getTemplateRepo().update(id, data)
       const index = templates.value.findIndex(t => t.id === id)
       if (index !== -1) {
         templates.value[index] = updated
       }
+      getEventBus().emit('scope-template.updated', { template: updated })
       return updated
     } catch (error) {
       throw error
@@ -72,8 +86,9 @@ export const useScopeStore = defineStore('scope', () => {
     if (!id) throw new Error('Template ID is required for deletion')
     isLoading.value = true
     try {
-      await scopeService.deleteScopeTemplate(id)
+      await getTemplateRepo().delete(id)
       templates.value = templates.value.filter(t => t.id !== id)
+      getEventBus().emit('scope-template.deleted', { id })
     } catch (error) {
       throw error
     } finally {
@@ -83,9 +98,10 @@ export const useScopeStore = defineStore('scope', () => {
 
   const createScope = async (data: ScopeCreateRequest): Promise<Scope> => {
     try {
-      const created: Scope = await scopeService.createScope(data)
+      const created = await getScopeRepo().create(data)
       if (created && created.id) {
         scopes.value.push(created)
+        getEventBus().emit('scope.created', { scope: created })
       }
       return created
     } catch (error) {
@@ -98,6 +114,7 @@ export const useScopeStore = defineStore('scope', () => {
       const created: Scope = await scopeService.createScopeFromTemplate(templateId, overrides)
       if (created && created.id) {
         scopes.value.push(created)
+        getEventBus().emit('scope.created', { scope: created })
       }
       return created
     } catch (error) {
@@ -121,7 +138,6 @@ export const useScopeStore = defineStore('scope', () => {
   const updateScope = async (id: string, data: Partial<ScopeCreateRequest>): Promise<Scope> => {
     if (!id) throw new Error('Scope ID is required for updates')
 
-    // Validate status transition if status is being changed
     if (data.status) {
       const existing = scopes.value.find(s => s.id === id)
       if (existing && existing.status && data.status !== existing.status) {
@@ -133,11 +149,12 @@ export const useScopeStore = defineStore('scope', () => {
 
     isLoading.value = true
     try {
-      const updated: Scope = await scopeService.updateScope(id, data)
+      const updated = await getScopeRepo().update(id, data)
       const index = scopes.value.findIndex(s => s.id === id)
       if (index !== -1) {
         scopes.value[index] = updated
       }
+      getEventBus().emit('scope.updated', { scope: updated })
       return updated
     } catch (error) {
       throw error
@@ -150,8 +167,9 @@ export const useScopeStore = defineStore('scope', () => {
     if (!id) throw new Error('Scope ID is required for deletion')
     isLoading.value = true
     try {
-      await scopeService.deleteScope(id)
+      await getScopeRepo().delete(id)
       scopes.value = scopes.value.filter(s => s.id !== id)
+      getEventBus().emit('scope.deleted', { id })
     } catch (error) {
       throw error
     } finally {
@@ -159,7 +177,6 @@ export const useScopeStore = defineStore('scope', () => {
     }
   }
 
-  // Return state and actions
   return {
     templates,
     scopes,

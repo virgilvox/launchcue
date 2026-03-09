@@ -1,11 +1,13 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import teamService from '../services/team.service'
 import { useAuthStore } from './auth'
 import { useToast } from 'vue-toastification'
+import { getEventBus } from '@/core/event-bus'
 import type { Team, TeamMember, TeamInvite } from '../types/models'
 
-// Service response types
+// Team service has a non-standard response wrapper — keep direct import
+import teamService from '../services/team.service'
+
 interface TeamServiceResult<T = undefined> {
   success: boolean
   error?: string
@@ -15,7 +17,6 @@ interface TeamServiceResult<T = undefined> {
   invites?: TeamInvite[]
 }
 
-// User-like object for getUserInitials
 interface UserLike {
   displayName?: string
   email?: string
@@ -32,19 +33,16 @@ export const useTeamStore = defineStore('team', () => {
   const pendingInvites = ref<TeamInvite[]>([])
   const isLoadingInvites = ref<boolean>(false)
 
-  // Computed property for current team
   const currentTeam = computed(() => {
     return authStore.currentTeam
   })
 
-  // Computed property for valid team members (non-null)
   const validTeamMembers = computed<TeamMember[]>(() => {
     return teamMembers.value.filter(member =>
       member && member.userId && (member.email || member.name)
     )
   })
 
-  // Fetch all teams for the current user
   async function fetchTeams(): Promise<TeamServiceResult> {
     if (!authStore.user) {
       return { success: false, error: 'User not authenticated' }
@@ -73,7 +71,6 @@ export const useTeamStore = defineStore('team', () => {
     }
   }
 
-  // Fetch team members for the current team
   async function fetchTeamMembers(): Promise<TeamServiceResult> {
     if (!authStore.currentTeam) {
       return { success: false, error: 'No team selected' }
@@ -85,7 +82,6 @@ export const useTeamStore = defineStore('team', () => {
     try {
       const result: TeamServiceResult = await teamService.getTeamMembers(authStore.currentTeam.id)
       if (result.success) {
-        // Filter out any null or invalid members
         teamMembers.value = (result.members || []).filter(member =>
           member && member.userId && (member.email || member.name)
         )
@@ -105,7 +101,6 @@ export const useTeamStore = defineStore('team', () => {
     }
   }
 
-  // Create a new team
   async function createTeam(teamData: { name: string }): Promise<TeamServiceResult> {
     if (!authStore.user) {
       return { success: false, error: 'User not authenticated' }
@@ -118,8 +113,8 @@ export const useTeamStore = defineStore('team', () => {
       const result: TeamServiceResult = await teamService.createTeam(teamData)
       if (result.success && result.team) {
         teams.value.push(result.team)
-        // Optionally switch to the new team
         await authStore.switchTeam(result.team.id)
+        getEventBus().emit('team.created', { team: result.team })
         toast.success('Team created successfully')
         return { success: true, team: result.team }
       } else {
@@ -137,7 +132,6 @@ export const useTeamStore = defineStore('team', () => {
     }
   }
 
-  // Invite a user to the current team
   async function inviteUser(email: string): Promise<TeamServiceResult> {
     if (!authStore.currentTeam) {
       return { success: false, error: 'No team selected' }
@@ -149,6 +143,7 @@ export const useTeamStore = defineStore('team', () => {
     try {
       const result: TeamServiceResult = await teamService.inviteUser(authStore.currentTeam.id, email)
       if (result.success) {
+        getEventBus().emit('team.member-invited', { email })
         toast.success(`Invitation sent to ${email}`)
         return { success: true }
       } else {
@@ -166,7 +161,6 @@ export const useTeamStore = defineStore('team', () => {
     }
   }
 
-  // Get pending invites for the current team
   async function fetchPendingInvites(): Promise<TeamServiceResult> {
     if (!authStore.currentTeam) {
       return { success: false, error: 'No team selected' }
@@ -193,7 +187,6 @@ export const useTeamStore = defineStore('team', () => {
     }
   }
 
-  // Remove a member from the current team
   async function removeMember(memberId: string): Promise<TeamServiceResult> {
     if (!authStore.currentTeam) {
       return { success: false, error: 'No team selected' }
@@ -205,8 +198,8 @@ export const useTeamStore = defineStore('team', () => {
     try {
       const result: TeamServiceResult = await teamService.removeMember(authStore.currentTeam.id, memberId)
       if (result.success) {
-        // Update the local state
         teamMembers.value = teamMembers.value.filter(member => member.userId !== memberId)
+        getEventBus().emit('team.member-removed', { memberId })
         toast.success('Team member removed successfully')
         return { success: true }
       } else {
@@ -224,7 +217,6 @@ export const useTeamStore = defineStore('team', () => {
     }
   }
 
-  // Get user initials for display
   function getUserInitials(user: UserLike | null | undefined): string {
     if (!user) return '?'
 
