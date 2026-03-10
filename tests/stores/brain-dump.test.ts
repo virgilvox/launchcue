@@ -55,6 +55,12 @@ describe('useBrainDumpStore', () => {
   })
 
   describe('createDump', () => {
+    it('throws when no team selected', async () => {
+      sessionStorage.removeItem('currentTeam')
+      const store = useBrainDumpStore()
+      await expect(store.createDump({ content: 'Test' } as any)).rejects.toThrow('No team context')
+    })
+
     it('creates and pushes to array', async () => {
       const dump = { id: 'd1', content: 'New idea' }
       ;(mockRepo.create as ReturnType<typeof vi.fn>).mockResolvedValue(dump)
@@ -70,6 +76,12 @@ describe('useBrainDumpStore', () => {
     it('throws when id is empty', async () => {
       const store = useBrainDumpStore()
       await expect(store.deleteDump('')).rejects.toThrow('Brain dump ID is required')
+    })
+
+    it('throws when no team selected', async () => {
+      sessionStorage.removeItem('currentTeam')
+      const store = useBrainDumpStore()
+      await expect(store.deleteDump('d1')).rejects.toThrow('No team context')
     })
 
     it('removes dump from array', async () => {
@@ -108,6 +120,12 @@ describe('useBrainDumpStore', () => {
   })
 
   describe('getContextData', () => {
+    it('throws when no team selected', async () => {
+      sessionStorage.removeItem('currentTeam')
+      const store = useBrainDumpStore()
+      await expect(store.getContextData({ projectId: 'p1' })).rejects.toThrow('No team context')
+    })
+
     it('calls repo getContextData', async () => {
       const store = useBrainDumpStore()
       await store.getContextData({ projectId: 'p1' })
@@ -116,6 +134,12 @@ describe('useBrainDumpStore', () => {
   })
 
   describe('createItems', () => {
+    it('throws when no team selected', async () => {
+      sessionStorage.removeItem('currentTeam')
+      const store = useBrainDumpStore()
+      await expect(store.createItems({ items: [] })).rejects.toThrow('No team context')
+    })
+
     it('calls repo createItems', async () => {
       const store = useBrainDumpStore()
       await store.createItems({ items: [] })

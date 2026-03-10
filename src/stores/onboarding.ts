@@ -41,6 +41,7 @@ export const useOnboardingStore = defineStore('onboarding', () => {
   }
 
   const createInvitation = async (data: ClientInvitationCreateRequest): Promise<ClientInvitation & { token: string }> => {
+    if (!useAuthStore().currentTeam) throw new Error('No team context')
     try {
       const result = await getInvitationRepo().create(data) as ClientInvitation & { token: string }
       if (result && result.id) {
@@ -68,6 +69,7 @@ export const useOnboardingStore = defineStore('onboarding', () => {
   }
 
   const deleteInvitation = async (id: string): Promise<void> => {
+    if (!useAuthStore().currentTeam) throw new Error('No team context')
     try {
       await getInvitationRepo().delete(id)
       invitations.value = invitations.value.filter(inv => inv.id !== id)
@@ -95,6 +97,7 @@ export const useOnboardingStore = defineStore('onboarding', () => {
   }
 
   const createChecklist = async (data: OnboardingCreateRequest): Promise<OnboardingChecklist> => {
+    if (!useAuthStore().currentTeam) throw new Error('No team context')
     try {
       const result = await getChecklistRepo().create(data)
       if (result && result.id) {
@@ -108,6 +111,7 @@ export const useOnboardingStore = defineStore('onboarding', () => {
   }
 
   const updateChecklist = async (id: string, data: Partial<OnboardingCreateRequest>): Promise<OnboardingChecklist> => {
+    if (!useAuthStore().currentTeam) throw new Error('No team context')
     isLoading.value = true
     try {
       const updated = await getChecklistRepo().update(id, data)
@@ -125,6 +129,7 @@ export const useOnboardingStore = defineStore('onboarding', () => {
   }
 
   const completeStep = async (checklistId: string, stepId: string, response?: Record<string, unknown>): Promise<OnboardingChecklist> => {
+    if (!useAuthStore().currentTeam) throw new Error('No team context')
     try {
       const updated = await getChecklistRepo().update(checklistId, {
         stepId,
@@ -143,6 +148,7 @@ export const useOnboardingStore = defineStore('onboarding', () => {
   }
 
   const deleteChecklist = async (id: string): Promise<void> => {
+    if (!useAuthStore().currentTeam) throw new Error('No team context')
     try {
       await getChecklistRepo().delete(id)
       checklists.value = checklists.value.filter(c => c.id !== id)

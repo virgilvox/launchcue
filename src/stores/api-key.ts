@@ -32,6 +32,7 @@ export const useApiKeyStore = defineStore('apiKey', () => {
   }
 
   const generateKey = async (data: ApiKeyCreateRequest): Promise<ApiKeyCreateResponse> => {
+    if (!useAuthStore().currentTeam) throw new Error('No team context')
     try {
       const created = await getRepo().create(data)
       // The create response includes the full key (only shown once)
@@ -45,6 +46,7 @@ export const useApiKeyStore = defineStore('apiKey', () => {
 
   const deleteKey = async (prefix: string): Promise<void> => {
     if (!prefix) throw new Error('API key prefix is required for deletion')
+    if (!useAuthStore().currentTeam) throw new Error('No team context')
     try {
       await getRepo().delete(prefix)
       apiKeys.value = apiKeys.value.filter(k => k.prefix !== prefix)

@@ -70,6 +70,12 @@ describe('useScopeStore', () => {
   })
 
   describe('createTemplate', () => {
+    it('throws when no team selected', async () => {
+      sessionStorage.removeItem('currentTeam')
+      const store = useScopeStore()
+      await expect(store.createTemplate({ title: 'Test' } as any)).rejects.toThrow('No team context')
+    })
+
     it('creates template and pushes to array', async () => {
       const newTemplate = { id: 'tpl3', title: 'New Template' }
       ;(mockTemplateRepo.create as ReturnType<typeof vi.fn>).mockResolvedValue(newTemplate)
@@ -121,6 +127,12 @@ describe('useScopeStore', () => {
       await expect(store.deleteTemplate('')).rejects.toThrow('Template ID is required for deletion')
     })
 
+    it('throws when no team selected', async () => {
+      sessionStorage.removeItem('currentTeam')
+      const store = useScopeStore()
+      await expect(store.deleteTemplate('tpl1')).rejects.toThrow('No team context')
+    })
+
     it('removes template from array', async () => {
       ;(mockTemplateRepo.delete as ReturnType<typeof vi.fn>).mockResolvedValue(undefined)
 
@@ -138,6 +150,12 @@ describe('useScopeStore', () => {
   })
 
   describe('createScope', () => {
+    it('throws when no team selected', async () => {
+      sessionStorage.removeItem('currentTeam')
+      const store = useScopeStore()
+      await expect(store.createScope({ title: 'Test' } as any)).rejects.toThrow('No team context')
+    })
+
     it('creates scope and pushes to array', async () => {
       const newScope = { id: 's1', title: 'New Scope', status: 'draft' }
       ;(mockScopeRepo.create as ReturnType<typeof vi.fn>).mockResolvedValue(newScope)
@@ -234,6 +252,12 @@ describe('useScopeStore', () => {
   })
 
   describe('deleteScope', () => {
+    it('throws when no team selected', async () => {
+      sessionStorage.removeItem('currentTeam')
+      const store = useScopeStore()
+      await expect(store.deleteScope('s1')).rejects.toThrow('No team context')
+    })
+
     it('removes scope from array', async () => {
       ;(mockScopeRepo.delete as ReturnType<typeof vi.fn>).mockResolvedValue(undefined)
 

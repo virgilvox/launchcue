@@ -42,6 +42,7 @@ export const useBrainDumpStore = defineStore('brainDump', () => {
   }
 
   const createDump = async (data: BrainDumpCreateRequest): Promise<BrainDump> => {
+    if (!useAuthStore().currentTeam) throw new Error('No team context')
     try {
       const created = await getRepo().create(data)
       if (created && created.id) {
@@ -56,6 +57,7 @@ export const useBrainDumpStore = defineStore('brainDump', () => {
 
   const deleteDump = async (id: string): Promise<void> => {
     if (!id) throw new Error('Brain dump ID is required for deletion')
+    if (!useAuthStore().currentTeam) throw new Error('No team context')
     try {
       await getRepo().delete(id)
       dumps.value = dumps.value.filter(d => d.id !== id)
@@ -77,6 +79,7 @@ export const useBrainDumpStore = defineStore('brainDump', () => {
   }
 
   const getContextData = async (params: Record<string, unknown>): Promise<unknown> => {
+    if (!useAuthStore().currentTeam) throw new Error('No team context')
     isLoading.value = true
     try {
       const repo = getRepo()
@@ -92,6 +95,7 @@ export const useBrainDumpStore = defineStore('brainDump', () => {
   }
 
   const createItems = async (payload: Record<string, unknown>): Promise<unknown> => {
+    if (!useAuthStore().currentTeam) throw new Error('No team context')
     try {
       const repo = getRepo()
       if (repo.createItems) {

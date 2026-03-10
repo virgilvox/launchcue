@@ -33,12 +33,14 @@ export const useCampaignStore = defineStore('campaign', () => {
 
   const getCampaign = async (id: string): Promise<Campaign> => {
     if (!id) throw new Error('Campaign ID is required')
+    if (!useAuthStore().currentTeam) throw new Error('No team context')
     const cached = campaigns.value.find(c => c.id === id)
     if (cached) return cached
     return getRepo().findById(id)
   }
 
   const createCampaign = async (data: CampaignCreateRequest): Promise<Campaign> => {
+    if (!useAuthStore().currentTeam) throw new Error('No team context')
     try {
       const created = await getRepo().create(data)
       if (created && created.id) {
@@ -53,6 +55,7 @@ export const useCampaignStore = defineStore('campaign', () => {
 
   const updateCampaign = async (id: string, data: Partial<CampaignCreateRequest>): Promise<Campaign> => {
     if (!id) throw new Error('Campaign ID is required for updates')
+    if (!useAuthStore().currentTeam) throw new Error('No team context')
     isLoading.value = true
     try {
       const updated = await getRepo().update(id, data)
@@ -71,6 +74,7 @@ export const useCampaignStore = defineStore('campaign', () => {
 
   const deleteCampaign = async (id: string): Promise<void> => {
     if (!id) throw new Error('Campaign ID is required for deletion')
+    if (!useAuthStore().currentTeam) throw new Error('No team context')
     isLoading.value = true
     try {
       await getRepo().delete(id)

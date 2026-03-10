@@ -52,6 +52,7 @@ export const useScopeStore = defineStore('scope', () => {
   }
 
   const createTemplate = async (data: ScopeTemplateCreateRequest): Promise<ScopeTemplate> => {
+    if (!useAuthStore().currentTeam) throw new Error('No team context')
     try {
       const created = await getTemplateRepo().create(data)
       if (created && created.id) {
@@ -66,6 +67,7 @@ export const useScopeStore = defineStore('scope', () => {
 
   const updateTemplate = async (id: string, data: Partial<ScopeTemplateCreateRequest>): Promise<ScopeTemplate> => {
     if (!id) throw new Error('Template ID is required for updates')
+    if (!useAuthStore().currentTeam) throw new Error('No team context')
     isLoading.value = true
     try {
       const updated = await getTemplateRepo().update(id, data)
@@ -84,6 +86,7 @@ export const useScopeStore = defineStore('scope', () => {
 
   const deleteTemplate = async (id: string): Promise<void> => {
     if (!id) throw new Error('Template ID is required for deletion')
+    if (!useAuthStore().currentTeam) throw new Error('No team context')
     isLoading.value = true
     try {
       await getTemplateRepo().delete(id)
@@ -97,6 +100,7 @@ export const useScopeStore = defineStore('scope', () => {
   }
 
   const createScope = async (data: ScopeCreateRequest): Promise<Scope> => {
+    if (!useAuthStore().currentTeam) throw new Error('No team context')
     try {
       const created = await getScopeRepo().create(data)
       if (created && created.id) {
@@ -110,6 +114,7 @@ export const useScopeStore = defineStore('scope', () => {
   }
 
   const createScopeFromTemplate = async (templateId: string, overrides?: Partial<ScopeCreateRequest>): Promise<Scope> => {
+    if (!useAuthStore().currentTeam) throw new Error('No team context')
     try {
       const template = await getTemplateRepo().findById(templateId)
       const merged: ScopeCreateRequest = {
@@ -153,6 +158,7 @@ export const useScopeStore = defineStore('scope', () => {
 
   const updateScope = async (id: string, data: Partial<ScopeCreateRequest>): Promise<Scope> => {
     if (!id) throw new Error('Scope ID is required for updates')
+    if (!useAuthStore().currentTeam) throw new Error('No team context')
 
     if (data.status) {
       const existing = scopes.value.find(s => s.id === id)
@@ -181,6 +187,7 @@ export const useScopeStore = defineStore('scope', () => {
 
   const deleteScope = async (id: string): Promise<void> => {
     if (!id) throw new Error('Scope ID is required for deletion')
+    if (!useAuthStore().currentTeam) throw new Error('No team context')
     isLoading.value = true
     try {
       await getScopeRepo().delete(id)

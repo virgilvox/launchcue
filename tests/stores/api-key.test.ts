@@ -42,6 +42,12 @@ describe('useApiKeyStore', () => {
   })
 
   describe('generateKey', () => {
+    it('throws when no team selected', async () => {
+      sessionStorage.removeItem('currentTeam')
+      const store = useApiKeyStore()
+      await expect(store.generateKey({ name: 'Test' } as any)).rejects.toThrow('No team context')
+    })
+
     it('creates key, pushes to array, and emits event', async () => {
       const created = { id: 'k3', prefix: 'lc_ghi', name: 'New Key', key: 'lc_ghi_full_secret' }
       ;(mockRepo.create as ReturnType<typeof vi.fn>).mockResolvedValue(created)
@@ -59,6 +65,12 @@ describe('useApiKeyStore', () => {
     it('throws when prefix is missing', async () => {
       const store = useApiKeyStore()
       await expect(store.deleteKey('')).rejects.toThrow('API key prefix is required for deletion')
+    })
+
+    it('throws when no team selected', async () => {
+      sessionStorage.removeItem('currentTeam')
+      const store = useApiKeyStore()
+      await expect(store.deleteKey('lc_abc')).rejects.toThrow('No team context')
     })
 
     it('removes key from array by prefix', async () => {

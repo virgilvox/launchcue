@@ -35,6 +35,7 @@ export const useProjectStore = defineStore('project', () => {
     if (!clientId) {
       throw new Error('Client ID is required to fetch client projects.')
     }
+    if (!useAuthStore().currentTeam) return []
     return wrap(async () => {
       try {
         const response = await getRepo().findAll({ clientId })
@@ -47,6 +48,7 @@ export const useProjectStore = defineStore('project', () => {
 
   const getProject = async (id: string): Promise<Project> => {
     if (!id) throw new Error('Project ID is required')
+    if (!useAuthStore().currentTeam) throw new Error('No team context')
     return getRepo().findById(id)
   }
 
@@ -87,6 +89,7 @@ export const useProjectStore = defineStore('project', () => {
     if (!id) {
       throw new Error('Project ID is required for deletion')
     }
+    if (!useAuthStore().currentTeam) throw new Error('No team context')
     return wrap(async () => {
       try {
         await getRepo().delete(id)

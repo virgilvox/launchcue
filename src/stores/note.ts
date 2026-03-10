@@ -33,10 +33,12 @@ export const useNoteStore = defineStore('note', () => {
 
   const getNote = async (id: string): Promise<Note> => {
     if (!id) throw new Error('Note ID is required')
+    if (!useAuthStore().currentTeam) throw new Error('No team context')
     return getRepo().findById(id)
   }
 
   const createNote = async (data: NoteCreateRequest): Promise<Note> => {
+    if (!useAuthStore().currentTeam) throw new Error('No team context')
     try {
       const created = await getRepo().create(data)
       if (created && created.id) {
@@ -51,6 +53,7 @@ export const useNoteStore = defineStore('note', () => {
 
   const updateNote = async (id: string, data: Partial<NoteCreateRequest>): Promise<Note> => {
     if (!id) throw new Error('Note ID is required for updates')
+    if (!useAuthStore().currentTeam) throw new Error('No team context')
     isLoading.value = true
     try {
       const updated = await getRepo().update(id, data)
@@ -69,6 +72,7 @@ export const useNoteStore = defineStore('note', () => {
 
   const deleteNote = async (id: string): Promise<void> => {
     if (!id) throw new Error('Note ID is required for deletion')
+    if (!useAuthStore().currentTeam) throw new Error('No team context')
     isLoading.value = true
     try {
       await getRepo().delete(id)

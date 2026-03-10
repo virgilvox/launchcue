@@ -57,6 +57,13 @@ describe('useProjectStore', () => {
       await expect(store.fetchClientProjects('')).rejects.toThrow('Client ID is required')
     })
 
+    it('returns empty when no team selected', async () => {
+      sessionStorage.removeItem('currentTeam')
+      const store = useProjectStore()
+      const result = await store.fetchClientProjects('c1')
+      expect(result).toEqual([])
+    })
+
     it('fetches projects for a client', async () => {
       const projects = [{ id: 'p1', title: 'Client Project' }]
       ;(mockRepo.findAll as ReturnType<typeof vi.fn>).mockResolvedValue(projects)
@@ -73,6 +80,12 @@ describe('useProjectStore', () => {
     it('throws when id is empty', async () => {
       const store = useProjectStore()
       await expect(store.getProject('')).rejects.toThrow('Project ID is required')
+    })
+
+    it('throws when no team selected', async () => {
+      sessionStorage.removeItem('currentTeam')
+      const store = useProjectStore()
+      await expect(store.getProject('p1')).rejects.toThrow('No team context')
     })
 
     it('fetches from repo', async () => {
@@ -120,6 +133,12 @@ describe('useProjectStore', () => {
     it('throws when id is empty', async () => {
       const store = useProjectStore()
       await expect(store.deleteProject('')).rejects.toThrow('Project ID is required')
+    })
+
+    it('throws when no team selected', async () => {
+      sessionStorage.removeItem('currentTeam')
+      const store = useProjectStore()
+      await expect(store.deleteProject('p1')).rejects.toThrow('No team context')
     })
 
     it('removes project from array', async () => {

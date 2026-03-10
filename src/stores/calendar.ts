@@ -293,6 +293,7 @@ export const useCalendarStore = defineStore('calendar', () => {
   }
 
   async function getTaskDeadlines(startDate: string, endDate: string): Promise<ProcessedTaskDeadline[]> {
+    if (!authStore.currentTeam) return []
     return wrap(async () => {
       error.value = null
       try {

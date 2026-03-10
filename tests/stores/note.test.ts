@@ -50,6 +50,12 @@ describe('useNoteStore', () => {
       await expect(store.getNote('')).rejects.toThrow('Note ID is required')
     })
 
+    it('throws when no team selected', async () => {
+      sessionStorage.removeItem('currentTeam')
+      const store = useNoteStore()
+      await expect(store.getNote('n1')).rejects.toThrow('No team context')
+    })
+
     it('fetches from repo', async () => {
       const note = { id: 'n1', title: 'Note' }
       ;(mockRepo.findById as ReturnType<typeof vi.fn>).mockResolvedValue(note)
@@ -62,6 +68,12 @@ describe('useNoteStore', () => {
   })
 
   describe('createNote', () => {
+    it('throws when no team selected', async () => {
+      sessionStorage.removeItem('currentTeam')
+      const store = useNoteStore()
+      await expect(store.createNote({ title: 'Test' } as any)).rejects.toThrow('No team context')
+    })
+
     it('creates, pushes to array, and emits event', async () => {
       const note = { id: 'n1', title: 'New Note' }
       ;(mockRepo.create as ReturnType<typeof vi.fn>).mockResolvedValue(note)
@@ -80,6 +92,12 @@ describe('useNoteStore', () => {
       await expect(store.updateNote('', { title: 'Updated' })).rejects.toThrow('Note ID is required for updates')
     })
 
+    it('throws when no team selected', async () => {
+      sessionStorage.removeItem('currentTeam')
+      const store = useNoteStore()
+      await expect(store.updateNote('n1', { title: 'Updated' })).rejects.toThrow('No team context')
+    })
+
     it('updates note in array', async () => {
       const updated = { id: 'n1', title: 'Updated' }
       ;(mockRepo.update as ReturnType<typeof vi.fn>).mockResolvedValue(updated)
@@ -96,6 +114,12 @@ describe('useNoteStore', () => {
     it('throws on missing id', async () => {
       const store = useNoteStore()
       await expect(store.deleteNote('')).rejects.toThrow('Note ID is required for deletion')
+    })
+
+    it('throws when no team selected', async () => {
+      sessionStorage.removeItem('currentTeam')
+      const store = useNoteStore()
+      await expect(store.deleteNote('n1')).rejects.toThrow('No team context')
     })
 
     it('removes note from array', async () => {

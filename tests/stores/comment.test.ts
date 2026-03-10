@@ -63,6 +63,12 @@ describe('useCommentStore', () => {
   })
 
   describe('createComment', () => {
+    it('throws when no team selected', async () => {
+      sessionStorage.removeItem('currentTeam')
+      const store = useCommentStore()
+      await expect(store.createComment('task', 't1', { content: 'Test' })).rejects.toThrow('No team context')
+    })
+
     it('creates comment and pushes to array', async () => {
       const comment = { id: 'cm1', content: 'New comment' }
       ;(mockRepo.createComment as ReturnType<typeof vi.fn>).mockResolvedValue(comment)
@@ -86,6 +92,12 @@ describe('useCommentStore', () => {
     it('throws when id is empty', async () => {
       const store = useCommentStore()
       await expect(store.deleteComment('')).rejects.toThrow('Comment ID is required')
+    })
+
+    it('throws when no team selected', async () => {
+      sessionStorage.removeItem('currentTeam')
+      const store = useCommentStore()
+      await expect(store.deleteComment('cm1')).rejects.toThrow('No team context')
     })
 
     it('removes comment from array', async () => {

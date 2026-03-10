@@ -52,6 +52,12 @@ describe('useInvoiceStore', () => {
   })
 
   describe('createFromScope', () => {
+    it('throws when no team selected', async () => {
+      sessionStorage.removeItem('currentTeam')
+      const store = useInvoiceStore()
+      await expect(store.createFromScope('s1')).rejects.toThrow('No team context')
+    })
+
     it('creates invoice from scope data', async () => {
       const scope = {
         id: 's1',
@@ -81,6 +87,12 @@ describe('useInvoiceStore', () => {
       await expect(store.updateInvoice('', {})).rejects.toThrow('Invoice ID is required')
     })
 
+    it('throws when no team selected', async () => {
+      sessionStorage.removeItem('currentTeam')
+      const store = useInvoiceStore()
+      await expect(store.updateInvoice('i1', { status: 'sent' })).rejects.toThrow('No team context')
+    })
+
     it('updates invoice in array', async () => {
       const updated = { id: 'i1', total: 2000, status: 'sent' }
       ;(mockRepo.update as ReturnType<typeof vi.fn>).mockResolvedValue(updated)
@@ -95,6 +107,12 @@ describe('useInvoiceStore', () => {
     it('throws when id is empty', async () => {
       const store = useInvoiceStore()
       await expect(store.deleteInvoice('')).rejects.toThrow('Invoice ID is required')
+    })
+
+    it('throws when no team selected', async () => {
+      sessionStorage.removeItem('currentTeam')
+      const store = useInvoiceStore()
+      await expect(store.deleteInvoice('i1')).rejects.toThrow('No team context')
     })
 
     it('removes invoice from array', async () => {

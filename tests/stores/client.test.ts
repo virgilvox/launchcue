@@ -149,6 +149,14 @@ describe('useClientStore', () => {
   })
 
   describe('getClientProjects', () => {
+    it('returns error when no team selected', async () => {
+      sessionStorage.removeItem('currentTeam')
+      const store = useClientStore()
+      const result = await store.getClientProjects('c1')
+      expect(result.success).toBe(false)
+      expect(result.error).toBe('No team selected')
+    })
+
     it('fetches projects for a client', async () => {
       const projects = [{ id: 'p1', title: 'Project' }]
       ;(mockProjectRepo.findAll as ReturnType<typeof vi.fn>).mockResolvedValue(projects)
@@ -175,6 +183,14 @@ describe('useClientStore', () => {
   })
 
   describe('getClientContacts', () => {
+    it('returns error when no team selected', async () => {
+      sessionStorage.removeItem('currentTeam')
+      const store = useClientStore()
+      const result = await store.getClientContacts('c1')
+      expect(result.success).toBe(false)
+      expect(result.error).toBe('No team selected')
+    })
+
     it('returns contacts from client', async () => {
       const client = { id: 'c1', contacts: [{ name: 'Contact 1' }] }
       ;(mockClientRepo.findById as ReturnType<typeof vi.fn>).mockResolvedValue(client)

@@ -47,6 +47,12 @@ describe('useOnboardingStore', () => {
   })
 
   describe('createInvitation', () => {
+    it('throws when no team selected', async () => {
+      sessionStorage.removeItem('currentTeam')
+      const store = useOnboardingStore()
+      await expect(store.createInvitation({ clientId: 'c1', email: 'a@test.com' } as any)).rejects.toThrow('No team context')
+    })
+
     it('creates invitation and pushes to array', async () => {
       const newInv = { id: 'inv-3', clientId: 'c1', email: 'c@test.com', token: 'tok-123' }
       ;(mockInvitationRepo.create as ReturnType<typeof vi.fn>).mockResolvedValue(newInv)
@@ -61,6 +67,12 @@ describe('useOnboardingStore', () => {
   })
 
   describe('deleteInvitation', () => {
+    it('throws when no team selected', async () => {
+      sessionStorage.removeItem('currentTeam')
+      const store = useOnboardingStore()
+      await expect(store.deleteInvitation('inv-1')).rejects.toThrow('No team context')
+    })
+
     it('removes invitation from array', async () => {
       ;(mockInvitationRepo.delete as ReturnType<typeof vi.fn>).mockResolvedValue(undefined)
 
@@ -101,6 +113,12 @@ describe('useOnboardingStore', () => {
   })
 
   describe('createChecklist', () => {
+    it('throws when no team selected', async () => {
+      sessionStorage.removeItem('currentTeam')
+      const store = useOnboardingStore()
+      await expect(store.createChecklist({ title: 'Test' } as any)).rejects.toThrow('No team context')
+    })
+
     it('creates checklist and pushes to array', async () => {
       const newChecklist = { id: 'cl-3', title: 'New Checklist' }
       ;(mockChecklistRepo.create as ReturnType<typeof vi.fn>).mockResolvedValue(newChecklist)
@@ -114,6 +132,12 @@ describe('useOnboardingStore', () => {
   })
 
   describe('updateChecklist', () => {
+    it('throws when no team selected', async () => {
+      sessionStorage.removeItem('currentTeam')
+      const store = useOnboardingStore()
+      await expect(store.updateChecklist('cl-1', { title: 'Updated' } as any)).rejects.toThrow('No team context')
+    })
+
     it('updates checklist in array', async () => {
       const updated = { id: 'cl-1', title: 'Updated Checklist' }
       ;(mockChecklistRepo.update as ReturnType<typeof vi.fn>).mockResolvedValue(updated)
@@ -129,6 +153,12 @@ describe('useOnboardingStore', () => {
   })
 
   describe('completeStep', () => {
+    it('throws when no team selected', async () => {
+      sessionStorage.removeItem('currentTeam')
+      const store = useOnboardingStore()
+      await expect(store.completeStep('cl-1', 's1')).rejects.toThrow('No team context')
+    })
+
     it('completes a step and updates checklist in array', async () => {
       const updated = { id: 'cl-1', title: 'Checklist', steps: [{ id: 's1', completed: true }] }
       ;(mockChecklistRepo.update as ReturnType<typeof vi.fn>).mockResolvedValue(updated)
@@ -148,6 +178,12 @@ describe('useOnboardingStore', () => {
   })
 
   describe('deleteChecklist', () => {
+    it('throws when no team selected', async () => {
+      sessionStorage.removeItem('currentTeam')
+      const store = useOnboardingStore()
+      await expect(store.deleteChecklist('cl-1')).rejects.toThrow('No team context')
+    })
+
     it('removes checklist from array', async () => {
       ;(mockChecklistRepo.delete as ReturnType<typeof vi.fn>).mockResolvedValue(undefined)
 

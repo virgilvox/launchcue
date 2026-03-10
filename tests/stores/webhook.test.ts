@@ -42,6 +42,12 @@ describe('useWebhookStore', () => {
   })
 
   describe('createWebhook', () => {
+    it('throws when no team selected', async () => {
+      sessionStorage.removeItem('currentTeam')
+      const store = useWebhookStore()
+      await expect(store.createWebhook({ url: 'https://test.com' } as any)).rejects.toThrow('No team context')
+    })
+
     it('creates webhook and pushes to array', async () => {
       const newWebhook = { id: 'wh-3', url: 'https://example.com/hook3', events: ['task.created'] }
       ;(mockRepo.create as ReturnType<typeof vi.fn>).mockResolvedValue(newWebhook)
@@ -59,6 +65,12 @@ describe('useWebhookStore', () => {
     it('throws when webhook ID is missing', async () => {
       const store = useWebhookStore()
       await expect(store.updateWebhook('', { url: 'https://new.com' } as any)).rejects.toThrow('Webhook ID is required for updates')
+    })
+
+    it('throws when no team selected', async () => {
+      sessionStorage.removeItem('currentTeam')
+      const store = useWebhookStore()
+      await expect(store.updateWebhook('wh-1', { url: 'https://new.com' } as any)).rejects.toThrow('No team context')
     })
 
     it('updates webhook in array', async () => {
@@ -79,6 +91,12 @@ describe('useWebhookStore', () => {
     it('throws when webhook ID is missing', async () => {
       const store = useWebhookStore()
       await expect(store.deleteWebhook('')).rejects.toThrow('Webhook ID is required for deletion')
+    })
+
+    it('throws when no team selected', async () => {
+      sessionStorage.removeItem('currentTeam')
+      const store = useWebhookStore()
+      await expect(store.deleteWebhook('wh-1')).rejects.toThrow('No team context')
     })
 
     it('removes webhook from array', async () => {

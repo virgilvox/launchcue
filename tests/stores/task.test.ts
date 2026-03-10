@@ -147,6 +147,12 @@ describe('useTaskStore', () => {
       await expect(store.deleteTask('')).rejects.toThrow('Task ID is required')
     })
 
+    it('throws when no team selected', async () => {
+      sessionStorage.removeItem('currentTeam')
+      const store = useTaskStore()
+      await expect(store.deleteTask('t1')).rejects.toThrow('No team context')
+    })
+
     it('removes task from array', async () => {
       ;(mockRepo.delete as ReturnType<typeof vi.fn>).mockResolvedValue(undefined)
 
@@ -171,6 +177,14 @@ describe('useTaskStore', () => {
   })
 
   describe('getTaskById', () => {
+    it('returns null when no team selected', async () => {
+      sessionStorage.removeItem('currentTeam')
+      const store = useTaskStore()
+      const result = await store.getTaskById('t1')
+      expect(result).toBeNull()
+      expect(mockRepo.findById).not.toHaveBeenCalled()
+    })
+
     it('returns cached task if found', async () => {
       const store = useTaskStore()
       const task = { id: 't1', title: 'Cached Task' }

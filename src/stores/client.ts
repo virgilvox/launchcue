@@ -134,6 +134,7 @@ export const useClientStore = defineStore('client', () => {
   }
 
   async function getClientContacts(clientId: string): Promise<ClientStoreResult> {
+    if (!authStore.currentTeam) return { success: false, error: 'No team selected' }
     try {
       const client = await getRepo().findById(clientId)
       return { success: true, contacts: client.contacts || [] }
@@ -144,6 +145,7 @@ export const useClientStore = defineStore('client', () => {
   }
 
   async function getClientProjects(clientId: string): Promise<ClientStoreResult> {
+    if (!authStore.currentTeam) return { success: false, error: 'No team selected' }
     try {
       const response = await getProjectRepo().findAll({ clientId })
       return { success: true, projects: response }

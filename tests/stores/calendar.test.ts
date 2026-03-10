@@ -164,6 +164,16 @@ describe('useCalendarStore', () => {
   })
 
   describe('getTaskDeadlines', () => {
+    it('returns empty when no team selected', async () => {
+      sessionStorage.removeItem('currentTeam')
+      const authStore = useAuthStore()
+      await authStore.initAuth()
+      const store = useCalendarStore()
+      const result = await store.getTaskDeadlines('2024-01-01', '2024-01-31')
+      expect(result).toEqual([])
+      expect(mockTaskRepo.findAll).not.toHaveBeenCalled()
+    })
+
     it('fetches and processes task deadlines', async () => {
       const tasks = [
         { id: 't1', title: 'Task 1', status: 'To Do', dueDate: '2024-01-15' },

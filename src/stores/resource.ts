@@ -44,6 +44,10 @@ export const useResourceStore = defineStore('resource', () => {
   }
 
   async function fetchResource(id: string): Promise<Resource | null> {
+    if (!useAuthStore().currentTeam) {
+      error.value = 'No team selected'
+      return null
+    }
     try {
       isLoading.value = true
       error.value = null
@@ -85,6 +89,7 @@ export const useResourceStore = defineStore('resource', () => {
   }
 
   async function updateResource(id: string, resourceData: Partial<ResourceCreateRequest>): Promise<Resource> {
+    if (!useAuthStore().currentTeam) throw new Error('No team context')
     try {
       isLoading.value = true
       error.value = null
@@ -112,6 +117,7 @@ export const useResourceStore = defineStore('resource', () => {
   }
 
   async function deleteResource(id: string): Promise<boolean> {
+    if (!useAuthStore().currentTeam) throw new Error('No team context')
     try {
       isLoading.value = true
       error.value = null

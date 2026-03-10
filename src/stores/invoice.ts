@@ -59,6 +59,7 @@ export const useInvoiceStore = defineStore('invoice', () => {
   // happen separately in ScopeBuilder.vue via updateScope() as a distinct user action.
   // The two-step flow means a failed invoice creation does not leave scope status inconsistent.
   const createFromScope = async (scopeId: string, overrides?: Partial<InvoiceCreateRequest>): Promise<Invoice> => {
+    if (!useAuthStore().currentTeam) throw new Error('No team context')
     try {
       const scopeRepo = getContainer().resolve<Repository<Scope>>(SCOPE_REPO)
       const scope = await scopeRepo.findById(scopeId)
@@ -88,6 +89,7 @@ export const useInvoiceStore = defineStore('invoice', () => {
     if (!id) {
       throw new Error('Invoice ID is required for updates')
     }
+    if (!useAuthStore().currentTeam) throw new Error('No team context')
     isLoading.value = true
     try {
       const updated = await getRepo().update(id, data)
@@ -108,6 +110,7 @@ export const useInvoiceStore = defineStore('invoice', () => {
     if (!id) {
       throw new Error('Invoice ID is required for deletion')
     }
+    if (!useAuthStore().currentTeam) throw new Error('No team context')
     isLoading.value = true
     try {
       await getRepo().delete(id)

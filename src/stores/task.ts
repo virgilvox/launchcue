@@ -92,6 +92,7 @@ export const useTaskStore = defineStore('task', () => {
     if (!id) {
       throw new Error('Task ID is required for deletion')
     }
+    if (!useAuthStore().currentTeam) throw new Error('No team context')
     try {
       await getRepo().delete(id)
       tasks.value = tasks.value.filter(t => t.id !== id)
@@ -102,6 +103,7 @@ export const useTaskStore = defineStore('task', () => {
   }
 
   const getTaskById = async (taskId: string): Promise<Task | null> => {
+    if (!useAuthStore().currentTeam) return null
     const existingTask = tasks.value.find(t => t.id === taskId)
     if (existingTask) {
       return existingTask

@@ -57,6 +57,14 @@ describe('useResourceStore', () => {
   })
 
   describe('fetchResource', () => {
+    it('returns null when no team selected', async () => {
+      sessionStorage.removeItem('currentTeam')
+      const store = useResourceStore()
+      const result = await store.fetchResource('r1')
+      expect(result).toBeNull()
+      expect(store.error).toBe('No team selected')
+    })
+
     it('fetches by id and sets currentResource', async () => {
       const resource = { id: 'r1', title: 'Resource 1' }
       ;(mockRepo.findById as ReturnType<typeof vi.fn>).mockResolvedValue(resource)
@@ -105,6 +113,12 @@ describe('useResourceStore', () => {
   })
 
   describe('updateResource', () => {
+    it('throws when no team selected', async () => {
+      sessionStorage.removeItem('currentTeam')
+      const store = useResourceStore()
+      await expect(store.updateResource('r1', { title: 'Updated' })).rejects.toThrow('No team context')
+    })
+
     it('updates resource in array', async () => {
       const updated = { id: 'r1', title: 'Updated' }
       ;(mockRepo.update as ReturnType<typeof vi.fn>).mockResolvedValue(updated)
@@ -130,6 +144,12 @@ describe('useResourceStore', () => {
   })
 
   describe('deleteResource', () => {
+    it('throws when no team selected', async () => {
+      sessionStorage.removeItem('currentTeam')
+      const store = useResourceStore()
+      await expect(store.deleteResource('r1')).rejects.toThrow('No team context')
+    })
+
     it('removes resource from array', async () => {
       ;(mockRepo.delete as ReturnType<typeof vi.fn>).mockResolvedValue(undefined)
       const store = useResourceStore()

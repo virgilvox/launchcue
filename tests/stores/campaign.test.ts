@@ -49,6 +49,12 @@ describe('useCampaignStore', () => {
       await expect(store.getCampaign('')).rejects.toThrow('Campaign ID is required')
     })
 
+    it('throws when no team selected', async () => {
+      sessionStorage.removeItem('currentTeam')
+      const store = useCampaignStore()
+      await expect(store.getCampaign('c1')).rejects.toThrow('No team context')
+    })
+
     it('returns cached campaign', async () => {
       const store = useCampaignStore()
       store.campaigns = [{ id: 'c1', title: 'Cached' }] as any[]
@@ -66,6 +72,12 @@ describe('useCampaignStore', () => {
   })
 
   describe('createCampaign', () => {
+    it('throws when no team selected', async () => {
+      sessionStorage.removeItem('currentTeam')
+      const store = useCampaignStore()
+      await expect(store.createCampaign({ title: 'Test' } as any)).rejects.toThrow('No team context')
+    })
+
     it('creates and pushes to array', async () => {
       const campaign = { id: 'c1', title: 'New' }
       ;(mockRepo.create as ReturnType<typeof vi.fn>).mockResolvedValue(campaign)
@@ -82,6 +94,12 @@ describe('useCampaignStore', () => {
       await expect(store.updateCampaign('', {})).rejects.toThrow('Campaign ID is required')
     })
 
+    it('throws when no team selected', async () => {
+      sessionStorage.removeItem('currentTeam')
+      const store = useCampaignStore()
+      await expect(store.updateCampaign('c1', { title: 'Updated' })).rejects.toThrow('No team context')
+    })
+
     it('updates campaign in array', async () => {
       const updated = { id: 'c1', title: 'Updated' }
       ;(mockRepo.update as ReturnType<typeof vi.fn>).mockResolvedValue(updated)
@@ -96,6 +114,12 @@ describe('useCampaignStore', () => {
     it('throws when id is empty', async () => {
       const store = useCampaignStore()
       await expect(store.deleteCampaign('')).rejects.toThrow('Campaign ID is required')
+    })
+
+    it('throws when no team selected', async () => {
+      sessionStorage.removeItem('currentTeam')
+      const store = useCampaignStore()
+      await expect(store.deleteCampaign('c1')).rejects.toThrow('No team context')
     })
 
     it('removes campaign from array', async () => {

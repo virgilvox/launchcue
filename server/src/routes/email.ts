@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import nodemailer from 'nodemailer'
 import { requireAuth, type AuthenticatedRequest } from '../middleware/auth.js'
+import { getSupabase } from '../supabase.js'
 
 export const emailRouter = Router()
 
@@ -23,10 +24,40 @@ function getTransporter() {
  */
 emailRouter.post('/invite', async (req, res) => {
   const { email, name, inviteUrl, teamName, type } = req.body
-  const { email: senderEmail } = (req as AuthenticatedRequest).user
+  const { email: senderEmail, authId, teamId } = (req as AuthenticatedRequest).user
 
   if (!email || !inviteUrl) {
     res.status(400).json({ error: 'Missing email or inviteUrl' })
+    return
+  }
+
+  // Verify sender has admin/owner role in the team
+  if (!teamId) {
+    res.status(403).json({ error: 'No team context' })
+    return
+  }
+
+  const sb = getSupabase()
+  const { data: userData } = await sb
+    .from('users')
+    .select('id')
+    .eq('auth_id', authId)
+    .single()
+
+  if (!userData) {
+    res.status(403).json({ error: 'User not found' })
+    return
+  }
+
+  const { data: membership } = await sb
+    .from('team_members')
+    .select('role')
+    .eq('team_id', teamId)
+    .eq('user_id', userData.id)
+    .single()
+
+  if (!membership || !['owner', 'admin'].includes(membership.role)) {
+    res.status(403).json({ error: 'Admin access required to send invitations' })
     return
   }
 

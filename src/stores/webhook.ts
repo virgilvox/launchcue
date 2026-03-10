@@ -31,6 +31,7 @@ export const useWebhookStore = defineStore('webhook', () => {
   }
 
   const createWebhook = async (data: Partial<Webhook>): Promise<Webhook> => {
+    if (!useAuthStore().currentTeam) throw new Error('No team context')
     try {
       const created = await getRepo().create(data)
       if (created && created.id) {
@@ -45,6 +46,7 @@ export const useWebhookStore = defineStore('webhook', () => {
 
   const updateWebhook = async (id: string, data: Partial<Webhook>): Promise<Webhook> => {
     if (!id) throw new Error('Webhook ID is required for updates')
+    if (!useAuthStore().currentTeam) throw new Error('No team context')
     isLoading.value = true
     try {
       const updated = await getRepo().update(id, data)
@@ -63,6 +65,7 @@ export const useWebhookStore = defineStore('webhook', () => {
 
   const deleteWebhook = async (id: string): Promise<void> => {
     if (!id) throw new Error('Webhook ID is required for deletion')
+    if (!useAuthStore().currentTeam) throw new Error('No team context')
     try {
       await getRepo().delete(id)
       webhooks.value = webhooks.value.filter(w => w.id !== id)
