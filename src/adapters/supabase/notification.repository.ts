@@ -1,8 +1,11 @@
 import type { Notification } from '@/types/models'
 import type { NotificationRepository } from '../types'
 import { getSupabase } from './client'
+import type { RealtimeChannel } from '@supabase/supabase-js'
 
 export class SupabaseNotificationRepository implements NotificationRepository {
+  private channel: RealtimeChannel | null = null
+
   async getAll(): Promise<Notification[]> {
     const { data, error } = await getSupabase()
       .from('notifications')
@@ -27,6 +30,32 @@ export class SupabaseNotificationRepository implements NotificationRepository {
       .update({ read: true })
       .eq('read', false)
     if (error) throw new Error(error.message)
+  }
+
+  /**
+   * Subscribe to real-time notifications via Supabase Realtime.
+   * Replaces 60s polling with instant push.
+   */
+  subscribe(callback: (notification: Notification) => void): () => void {
+    const sb = getSupabase()
+
+    this.channel = sb
+      .channel('notifications')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'notifications' },
+        (payload) => {
+          callback(this.mapFromDb(payload.new as Record<string, unknown>))
+        }
+      )
+      .subscribe()
+
+    return () => {
+      if (this.channel) {
+        sb.removeChannel(this.channel)
+        this.channel = null
+      }
+    }
   }
 
   private mapFromDb(row: Record<string, unknown>): Notification {

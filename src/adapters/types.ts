@@ -75,4 +75,6 @@ export interface NotificationRepository {
   getAll(): Promise<import('@/types/models').Notification[]>
   markRead(id: string): Promise<void>
   markAllRead(): Promise<void>
+  /** Subscribe to real-time notifications. Returns an unsubscribe function. */
+  subscribe?(callback: (notification: import('@/types/models').Notification) => void): () => void
 }
