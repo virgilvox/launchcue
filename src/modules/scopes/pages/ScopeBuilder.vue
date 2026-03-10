@@ -9,7 +9,7 @@
         <div class="flex gap-3">
           <button @click="showPreview = true" class="btn btn-ghost">Preview</button>
           <button @click="printScope" class="btn btn-secondary">Print / PDF</button>
-          <button v-if="authStore.canEdit" @click="save" class="btn btn-primary" :disabled="saving">
+          <button v-if="authStore.canEdit" type="button" @click="save" class="btn btn-primary" :disabled="saving">
             {{ saving ? 'Saving...' : (formData.id ? 'Save Changes' : (isTemplate ? 'Save Template' : 'Save Scope')) }}
           </button>
         </div>

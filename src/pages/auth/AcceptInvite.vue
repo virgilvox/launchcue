@@ -2,7 +2,7 @@
   <div class="min-h-screen flex items-center justify-center bg-[var(--bg)] px-4">
     <div class="w-full max-w-md">
       <div class="text-center mb-8">
-        <img class="h-12 w-auto mx-auto" src="/logo-placeholder.png" alt="LaunchCue">
+        <AppLogo :size="48" class="mx-auto" />
         <h1 class="mt-4 text-2xl font-bold text-[var(--text-primary)]">Join LaunchCue</h1>
         <p class="mt-2 text-sm text-[var(--text-secondary)]">Set up your account to access the client portal</p>
       </div>
@@ -82,6 +82,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useOnboardingStore } from '@/stores/onboarding'
 import LoadingSpinner from '@/components/LoadingSpinner.vue'
+import AppLogo from '@/components/ui/AppLogo.vue'
 
 const route = useRoute()
 const router = useRouter()

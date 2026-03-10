@@ -51,6 +51,18 @@ export abstract class SupabaseBaseRepository<T, CreateDTO = Partial<T>, UpdateDT
 
   async create(dto: CreateDTO): Promise<T> {
     const row = this.mapToDb(dto as Record<string, unknown>)
+
+    // Inject team_id and created_by from auth context if not already set
+    try {
+      if (!row.team_id || !row.created_by) {
+        const { userId, teamId } = await this.getCurrentContext()
+        if (!row.team_id && teamId) row.team_id = teamId
+        if (!row.created_by && userId) row.created_by = userId
+      }
+    } catch {
+      // Fallback to auto_inject triggers if auth context unavailable
+    }
+
     const { data, error } = await getSupabase()
       .from(this.tableName)
       .insert(row)
@@ -58,6 +70,18 @@ export abstract class SupabaseBaseRepository<T, CreateDTO = Partial<T>, UpdateDT
       .single()
     if (error) throw new Error(error.message)
     return this.mapFromDb(data as unknown as Record<string, unknown>)
+  }
+
+  /** Resolve current user and team from Supabase auth context. */
+  protected async getCurrentContext(): Promise<{ userId: string; teamId: string }> {
+    const sb = getSupabase()
+    const { data: { user } } = await sb.auth.getUser()
+    if (!user) throw new Error('Not authenticated')
+    const teamId = user.user_metadata?.current_team_id
+    if (!teamId) throw new Error('No team selected')
+    const { data: appUser, error } = await sb.from('users').select('id').eq('auth_id', user.id).single()
+    if (error || !appUser) throw new Error('User not found')
+    return { userId: appUser.id, teamId }
   }
 
   async update(id: string, dto: UpdateDTO): Promise<T> {

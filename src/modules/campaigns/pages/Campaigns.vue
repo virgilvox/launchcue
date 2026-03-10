@@ -1,11 +1,12 @@
 <template>
   <PageContainer>
     <div class="flex flex-col h-full">
+      <form @submit.prevent="saveCampaign">
       <header class="mb-6 flex justify-between items-center">
         <h2 class="heading-page">Campaign Builder</h2>
         <button
           v-if="authStore.canEdit"
-          @click="saveCampaign"
+          type="submit"
           class="btn btn-primary"
           :disabled="savingCampaign"
         >
@@ -40,6 +41,7 @@
           <!-- Generate Recap Button -->
           <div class="mt-8 flex justify-end">
             <button
+              type="button"
               @click="generateRecap"
               class="btn btn-primary"
             >
@@ -55,6 +57,8 @@
           @image-error="handleImageError"
         />
       </div>
+
+      </form>
 
       <!-- Generate Recap Modal -->
       <Modal v-model="showRecapModal" :title="`Recap: ${campaign.title || 'Campaign'}`">
@@ -114,6 +118,7 @@ import PageContainer from '@/components/ui/PageContainer.vue';
 import CampaignForm from '@/modules/campaigns/components/CampaignForm.vue';
 import CampaignCard from '@/modules/campaigns/components/CampaignCard.vue';
 import { useToast } from 'vue-toastification';
+import { useUnsavedChanges } from '@/composables/useUnsavedChanges';
 
 const toast = useToast();
 
@@ -147,6 +152,8 @@ const campaign = ref({
   budget: null,
   metrics: { reach: undefined, engagement: undefined, conversions: undefined },
 });
+
+const { markLoaded, markClean } = useUnsavedChanges(() => campaign.value);
 
 // Campaign types with toggle functionality
 const campaignTypes = ref([
@@ -341,9 +348,11 @@ async function saveCampaign() {
     let savedCampaign;
     if (campaign.value.id) {
       savedCampaign = await campaignStore.updateCampaign(campaign.value.id, campaignDataToSave);
+      markClean();
       toast.success('Campaign updated successfully!');
     } else {
       savedCampaign = await campaignStore.createCampaign(campaignDataToSave);
+      markClean();
       toast.success('Campaign created successfully!');
       campaign.value.id = savedCampaign.id;
       router.replace(`/campaigns/${savedCampaign.id}`);
@@ -455,6 +464,7 @@ onMounted(async () => {
     error.value = 'Failed to initialize campaign page. Please try again.';
   } finally {
     loading.value = false;
+    markLoaded();
   }
 });
 </script>

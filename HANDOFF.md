@@ -141,19 +141,19 @@ tests/
 - **Cascade protection**: Client delete blocked if active projects exist
 
 ### Known remaining gaps
-- **AI adapter missing auth header**: `ai.adapter.ts` does not send Authorization header; AI feature will 401 in production
+- ~~**AI adapter missing auth header**~~: Fixed — AI adapter sends Bearer token
 - ~~**getToken() vestigial**~~: Fixed — auth adapter now exposes `getSession()`, auth store uses SDK-managed sessions
-- **Registration race condition**: `register()` does 4 sequential DB inserts without a transaction; partial failure leaves orphaned records (mitigated by cleanup catch block)
+- ~~**Registration race condition**~~: Fixed — uses `register_user` RPC atomically
 - **RBAC on DELETE**: Most resource endpoints allow any authenticated team member to delete. Consider RLS policies to restrict to owner/admin
 - ~~**Shared isLoading race condition**~~: Fixed — calendar, team, client, project stores now use `useLoadingCounter()` composable
-- **Comment adapter missing team_id/user_id**: `comment.repository.ts` createComment() does not inject team_id or user_id; auto_inject trigger handles this but explicit injection would be more robust
-- **Base repository doesn't inject team_id/created_by**: `base.repository.ts` create() relies on auto_inject triggers to fill these; no app-level fallback if triggers are missing
-- **Email endpoint missing protocol validation**: inviteUrl accepts non-https protocols (javascript://, data://)
-- **AI endpoint needs per-user rate limiting**: Global 100 req/15min is too lenient for expensive Anthropic API calls
-- **Unsaved changes guard incomplete**: Invoice, Scope, Project forms use `useUnsavedChanges` composable (route guard + beforeunload); Task, Note, Campaign, Client forms use modals (not page navigation)
+- ~~**Comment adapter missing team_id/user_id**~~: Fixed — `comment.repository.ts` createComment() explicitly injects team_id and user_id
+- **Base repository injects team_id/created_by**: `base.repository.ts` create() resolves current auth context and injects team_id/created_by, with try-catch fallback to auto_inject triggers
+- ~~**Email endpoint missing protocol validation**~~: Fixed — HTTPS-only in production, allows HTTP in development
+- ~~**AI endpoint needs per-user rate limiting**~~: Fixed — per-user rate limit of 20 req/15min keyed by auth user ID
+- **Unsaved changes guard**: Invoice, Scope, Project, Campaign, Notes forms use `useUnsavedChanges` composable; Task, Client forms use modals (not page navigation)
 - **~100 Vue components missing `lang="ts"`**: Progressive migration needed, starting with `src/components/ui/`
 - **Home.vue**: Landing page has its own scoped button styles that diverge from the brutalist design system (intentional for marketing)
-- **Supabase Realtime deployed but unused**: Either switch notifications from polling to Realtime or remove from docker-compose
+- **Supabase Realtime**: Deployed in docker-compose but intentionally unused. Notifications use polling (60s `setInterval`) for simplicity and reliability. Realtime is available if needed for future features (live collaboration, presence). No plan to remove from docker-compose.
 
 ---
 
@@ -179,7 +179,7 @@ tests/
 - No inline editing on table cells
 - No dashboard widget customization/drag-and-drop
 - No recent items in search
-- App.vue has 2 hardcoded hex values in `<style>` (#111827, #f3f4f6) -should use CSS vars
+- ~~App.vue hex values~~: Fixed — now uses `var(--page-bg)` and `var(--page-text)`
 
 ---
 

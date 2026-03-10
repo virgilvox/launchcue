@@ -201,6 +201,7 @@ import EmptyState from '@/components/ui/EmptyState.vue';
 import { PlusIcon, DocumentTextIcon } from '@heroicons/vue/24/outline';
 
 import { useAuthStore } from '@/stores/auth';
+import { useUnsavedChanges } from '@/composables/useUnsavedChanges';
 const route = useRoute();
 const noteStore = useNoteStore();
 const clientStore = useClientStore();
@@ -238,6 +239,11 @@ const noteForm = ref({
   clientId: null,
   projectId: null
 });
+
+const { markLoaded: markNoteLoaded, markClean: markNoteClean } = useUnsavedChanges(
+  () => showNoteModal.value ? noteForm.value : null,
+  'You have an unsaved note. Are you sure you want to leave?'
+);
 
 // Note templates
 const noteTemplates = [
@@ -360,6 +366,7 @@ function openAddNoteModal() {
     projectId: null
   };
   showNoteModal.value = true;
+  markNoteLoaded();
 }
 
 function editNote(note) {
@@ -373,6 +380,7 @@ function editNote(note) {
   };
   activeMenu.value = null;
   showNoteModal.value = true;
+  markNoteLoaded();
 }
 
 function closeNoteModal() {
@@ -403,6 +411,7 @@ async function saveNote() {
       notes.value.unshift(newNote); // Add to start of list
       toast.success('Note added');
     }
+    markNoteClean();
     closeNoteModal();
   } catch (err) {
     toast.error(`Failed to save note: ${err.message || 'Unknown error'}`);

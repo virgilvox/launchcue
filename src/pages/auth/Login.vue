@@ -2,7 +2,7 @@
   <div class="min-h-screen flex items-center justify-center bg-[var(--bg)] px-4 sm:px-6 lg:px-8">
     <div class="max-w-md w-full">
       <div class="text-center">
-        <img src="/logo-placeholder.png" alt="LaunchCue" class="h-12 w-12 mx-auto mb-4">
+        <AppLogo :size="48" class="mx-auto mb-4" />
         <h1 class="text-2xl font-bold text-[var(--text-primary)]">{{ appName }}</h1>
         <h2 class="mt-2 text-lg font-medium text-[var(--text-secondary)]">Sign in to your account</h2>
       </div>
@@ -86,6 +86,7 @@ import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '../../stores/auth';
 import { useToast } from 'vue-toastification';
+import AppLogo from '@/components/ui/AppLogo.vue';
 
 const appName = import.meta.env.VITE_APP_NAME || 'LaunchCue';
 const router = useRouter();

@@ -35,5 +35,5 @@
     "src/**/*.vue",
     "env.d.ts"
   ],
-  "exclude": ["node_modules", "dist", "netlify"]
+  "exclude": ["node_modules", "dist"]
 }

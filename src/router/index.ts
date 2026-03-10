@@ -21,9 +21,7 @@ const AuthLayout = () => import('../layouts/AuthLayout.vue')
 const Login = () => import('../pages/auth/Login.vue')
 const Register = () => import('../pages/auth/Register.vue')
 
-// Dashboard (always registered — not part of any feature module)
 const Home = () => import('../pages/Home.vue')
-const Dashboard = () => import('../modules/dashboard/pages/Dashboard.vue')
 
 /**
  * Static routes that are always present regardless of registered modules.
@@ -119,18 +117,11 @@ export function createAppRouter(registry: PluginRegistry) {
   // Collect dynamic routes from registered modules
   const moduleRoutes = registry.getRoutes()
 
-  // Build the DefaultLayout route with dashboard + module children
+  // Build the DefaultLayout route with module children (dashboard is now a registered module)
   const appRoute: RouteRecordRaw = {
     path: '/',
     component: DefaultLayout,
     children: [
-      {
-        path: 'dashboard',
-        name: 'dashboard',
-        component: Dashboard,
-        meta: { requiresAuth: true, breadcrumbs: [{ label: 'Dashboard' }] }
-      },
-      // Spread all module routes as children of DefaultLayout
       ...moduleRoutes
     ]
   }

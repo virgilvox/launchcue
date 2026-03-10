@@ -4,6 +4,7 @@
  */
 import type { PluginRegistry } from '@/core/plugin-registry'
 
+import { dashboardModule } from './dashboard'
 import { tasksModule } from './tasks'
 import { projectsModule } from './projects'
 import { clientsModule } from './clients'
@@ -22,6 +23,9 @@ import { notificationsModule } from './notifications'
 export function registerAllModules(registry: PluginRegistry): void {
   // Order matters for nav group ordering (first registered = first displayed).
   // Dependencies are resolved by topological sort, but nav order follows registration.
+
+  // Dashboard (registered as module but nav handled by Sidebar.vue)
+  registry.register(dashboardModule)
 
   // CORE group
   registry.register(tasksModule)

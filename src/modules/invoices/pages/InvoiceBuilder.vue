@@ -10,7 +10,7 @@
       <div class="flex gap-3">
         <button @click="showPreview = true" class="btn btn-ghost">Preview</button>
         <button @click="printInvoice" class="btn btn-secondary">Print / PDF</button>
-        <button v-if="formData.status === 'draft'" @click="save" class="btn btn-primary" :disabled="saving">
+        <button v-if="formData.status === 'draft'" type="button" @click="save" class="btn btn-primary" :disabled="saving">
           {{ saving ? 'Saving...' : (formData.id ? 'Save Changes' : 'Create Invoice') }}
         </button>
         <button v-if="formData.id && formData.status === 'draft'" @click="markAsSent" class="btn btn-secondary">

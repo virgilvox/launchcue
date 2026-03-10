@@ -1,6 +1,7 @@
 <script setup>
 import { useAuthStore } from '@/stores/auth'
 import { useRouter } from 'vue-router'
+import AppLogo from '@/components/ui/AppLogo.vue'
 
 const authStore = useAuthStore()
 const router = useRouter()
@@ -18,7 +19,7 @@ const handleLogout = async () => {
       <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex justify-between items-center h-16">
           <div class="flex items-center gap-3">
-            <img class="h-8 w-auto" src="/logo-placeholder.png" alt="LaunchCue">
+            <AppLogo :size="32" />
             <span class="heading-section">LaunchCue</span>
             <span class="text-sm text-[var(--text-secondary)] hidden sm:inline">Client Portal</span>
           </div>

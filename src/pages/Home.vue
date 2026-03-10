@@ -6,7 +6,7 @@
       <div class="nav-inner">
         <a href="#" class="logo" @click.prevent="scrollToTop">
           <div class="logo-icon">
-            <img src="/logo-placeholder.png" alt="LaunchCue logo">
+            <AppLogo :size="32" />
           </div>
           LaunchCue
         </a>
@@ -316,6 +316,7 @@
 import { computed, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
+import AppLogo from '@/components/ui/AppLogo.vue';
 
 const router = useRouter();
 const authStore = useAuthStore();

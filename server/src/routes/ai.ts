@@ -1,9 +1,21 @@
-import { Router } from 'express'
-import { requireAuth } from '../middleware/auth.js'
+import { Router, type Request } from 'express'
+import rateLimit from 'express-rate-limit'
+import { requireAuth, type AuthenticatedRequest } from '../middleware/auth.js'
 
 export const aiRouter = Router()
 
 aiRouter.use(requireAuth)
+
+// Per-user rate limit for expensive AI calls
+const aiUserLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 20,
+  keyGenerator: (req: Request) => (req as AuthenticatedRequest).user?.authId || req.ip || 'unknown',
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many AI requests. Please try again later.' },
+})
+aiRouter.use(aiUserLimiter)
 
 /**
  * POST /api/ai/process — Brain dump AI processing

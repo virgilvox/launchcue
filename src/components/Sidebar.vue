@@ -20,7 +20,7 @@
       <!-- Logo and Toggle -->
       <div class="flex items-center h-16 flex-shrink-0 px-4 border-b border-[var(--sidebar-border)] justify-between">
         <div class="flex items-center">
-          <img src="/logo-placeholder.png" alt="LaunchCue" class="w-8 h-8 flex-shrink-0 object-contain" />
+          <AppLogo :size="32" />
           <span v-if="!isCollapsed || isMobile" class="ml-3 font-heading text-lg font-bold text-[var(--sidebar-text-active)]">LaunchCue</span>
         </div>
         <button
@@ -148,6 +148,7 @@ import {
     ChevronDownIcon
 } from '@heroicons/vue/24/outline'
 import { registryKey } from '@/injection-keys'
+import AppLogo from '@/components/ui/AppLogo.vue'
 
 const route = useRoute()
 const authStore = useAuthStore()
