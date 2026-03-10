@@ -58,11 +58,12 @@ describe('useUnsavedChanges', () => {
     expect(isDirty.value).toBe(false)
   })
 
-  it('registers beforeunload handler', () => {
+  it('does not register beforeunload handler outside onMounted', () => {
     const addSpy = vi.spyOn(window, 'addEventListener')
     const source = ref({ name: '' })
     useUnsavedChanges(() => source.value)
-    expect(addSpy).toHaveBeenCalledWith('beforeunload', expect.any(Function))
+    // After Phase 1A fix, handler is deferred to onMounted — not called at composable execution time
+    expect(addSpy).not.toHaveBeenCalledWith('beforeunload', expect.any(Function))
     addSpy.mockRestore()
   })
 })

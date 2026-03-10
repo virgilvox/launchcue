@@ -35,6 +35,7 @@ export const useTaskStore = defineStore('task', () => {
   }
 
   const createTask = async (taskData: TaskCreateRequest): Promise<Task> => {
+    if (!useAuthStore().currentTeam) throw new Error('No team context')
     try {
       const formattedData: TaskCreateRequest = { ...taskData }
 
@@ -59,6 +60,7 @@ export const useTaskStore = defineStore('task', () => {
   }
 
   const updateTask = async (taskData: TaskUpdateRequest): Promise<Task> => {
+    if (!useAuthStore().currentTeam) throw new Error('No team context')
     if (!taskData.id) {
       throw new Error('Task ID is required for updates')
     }

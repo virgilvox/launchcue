@@ -42,6 +42,7 @@ export const useInvoiceStore = defineStore('invoice', () => {
   }
 
   const createInvoice = async (data: InvoiceCreateRequest): Promise<Invoice> => {
+    if (!useAuthStore().currentTeam) throw new Error('No team context')
     try {
       const created = await getRepo().create(data)
       if (created && created.id) {

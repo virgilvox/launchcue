@@ -102,3 +102,114 @@ export function createMockTeamRepository(overrides: Record<string, unknown> = {}
     ...overrides,
   }
 }
+
+/** Create a mock scope object */
+export function makeScope(overrides: Record<string, unknown> = {}) {
+  return {
+    id: 'scope-1',
+    title: 'Test Scope',
+    description: 'Test scope description',
+    projectId: 'project-1',
+    clientId: 'client-1',
+    status: 'draft',
+    deliverables: [],
+    terms: '',
+    totalAmount: 0,
+    createdAt: '2024-01-01T00:00:00Z',
+    updatedAt: '2024-01-01T00:00:00Z',
+    ...overrides,
+  }
+}
+
+/** Create a mock scope template object */
+export function makeScopeTemplate(overrides: Record<string, unknown> = {}) {
+  return {
+    id: 'template-1',
+    title: 'Test Template',
+    description: 'Test template description',
+    deliverables: [
+      { title: 'Deliverable 1', description: 'Desc', quantity: 1, unit: 'ea', rate: 100, estimatedHours: 5 },
+    ],
+    terms: 'Net 30',
+    tags: [],
+    teamId: 'team-1',
+    createdAt: '2024-01-01T00:00:00Z',
+    updatedAt: '2024-01-01T00:00:00Z',
+    ...overrides,
+  }
+}
+
+/** Create a mock note object */
+export function makeNote(overrides: Record<string, unknown> = {}) {
+  return {
+    id: 'note-1',
+    title: 'Test Note',
+    content: 'Test note content',
+    tags: [],
+    clientId: null,
+    projectId: null,
+    teamId: 'team-1',
+    userId: 'user-1',
+    createdAt: '2024-01-01T00:00:00Z',
+    updatedAt: '2024-01-01T00:00:00Z',
+    ...overrides,
+  }
+}
+
+/** Create a mock resource object */
+export function makeResource(overrides: Record<string, unknown> = {}) {
+  return {
+    id: 'resource-1',
+    name: 'Test Resource',
+    type: 'document',
+    url: 'https://example.com/doc',
+    description: 'Test resource description',
+    tags: [],
+    teamId: 'team-1',
+    createdBy: 'user-1',
+    createdAt: '2024-01-01T00:00:00Z',
+    updatedAt: '2024-01-01T00:00:00Z',
+    ...overrides,
+  }
+}
+
+/** Create a mock webhook object */
+export function makeWebhook(overrides: Record<string, unknown> = {}) {
+  return {
+    id: 'webhook-1',
+    url: 'https://example.com/webhook',
+    events: ['task.created'],
+    active: true,
+    teamId: 'team-1',
+    createdAt: '2024-01-01T00:00:00Z',
+    ...overrides,
+  }
+}
+
+/** Create a mock API key object */
+export function makeApiKey(overrides: Record<string, unknown> = {}) {
+  return {
+    id: 'api-key-1',
+    prefix: 'lc_test',
+    name: 'Test API Key',
+    teamId: 'team-1',
+    createdAt: '2024-01-01T00:00:00Z',
+    lastUsedAt: null,
+    ...overrides,
+  }
+}
+
+/** Create a mock audit log object */
+export function makeAuditLog(overrides: Record<string, unknown> = {}) {
+  return {
+    id: 'log-1',
+    action: 'task.created',
+    userId: 'user-1',
+    teamId: 'team-1',
+    resourceType: 'task',
+    resourceId: 'task-1',
+    metadata: {},
+    createdAt: '2024-01-01T00:00:00Z',
+    ...overrides,
+  }
+}

@@ -1,4 +1,4 @@
-import { ref, watch, onUnmounted, type Ref, type WatchSource } from 'vue'
+import { ref, watch, onMounted, onUnmounted, type Ref, type WatchSource } from 'vue'
 import { onBeforeRouteLeave } from 'vue-router'
 
 export function useUnsavedChanges(source: WatchSource, message = 'You have unsaved changes. Are you sure you want to leave?') {
@@ -22,7 +22,7 @@ export function useUnsavedChanges(source: WatchSource, message = 'You have unsav
     }
   })
 
-  // Browser close/refresh guard
+  // Browser close/refresh guard — only bind when component is mounted
   const beforeUnloadHandler = (e: BeforeUnloadEvent) => {
     if (isDirty.value) {
       e.preventDefault()
@@ -30,7 +30,10 @@ export function useUnsavedChanges(source: WatchSource, message = 'You have unsav
       return message
     }
   }
-  window.addEventListener('beforeunload', beforeUnloadHandler)
+
+  onMounted(() => {
+    window.addEventListener('beforeunload', beforeUnloadHandler)
+  })
 
   onUnmounted(() => {
     window.removeEventListener('beforeunload', beforeUnloadHandler)

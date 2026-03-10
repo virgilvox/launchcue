@@ -4,7 +4,7 @@ import { getContainer } from '@/core/service-container'
 import { getEventBus } from '@/core/event-bus'
 import { RESOURCE_REPO } from '@/adapters/repository-keys'
 import type { Repository } from '@/adapters/types'
-import { useTeamStore } from './team'
+import { useAuthStore } from './auth'
 import type { Resource } from '../types/models'
 import type { ResourceCreateRequest } from '../types/api'
 
@@ -13,8 +13,6 @@ export const useResourceStore = defineStore('resource', () => {
   const currentResource = ref<Resource | null>(null)
   const isLoading = ref<boolean>(false)
   const error = ref<string | null>(null)
-
-  const teamStore = useTeamStore()
 
   function getRepo() {
     return getContainer().resolve<Repository<Resource, ResourceCreateRequest, Partial<ResourceCreateRequest>>>(RESOURCE_REPO)
@@ -25,7 +23,7 @@ export const useResourceStore = defineStore('resource', () => {
       isLoading.value = true
       error.value = null
 
-      const currentTeam = teamStore.currentTeam
+      const currentTeam = useAuthStore().currentTeam
       const teamId = currentTeam?.id
 
       if (!teamId) {
@@ -67,7 +65,7 @@ export const useResourceStore = defineStore('resource', () => {
       isLoading.value = true
       error.value = null
 
-      const currentTeam = teamStore.currentTeam
+      const currentTeam = useAuthStore().currentTeam
 
       if (!resourceData.teamId && currentTeam) {
         resourceData.teamId = currentTeam.id

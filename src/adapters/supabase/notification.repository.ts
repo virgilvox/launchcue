@@ -6,11 +6,18 @@ import type { RealtimeChannel } from '@supabase/supabase-js'
 export class SupabaseNotificationRepository implements NotificationRepository {
   private channel: RealtimeChannel | null = null
 
-  async getAll(): Promise<Notification[]> {
-    const { data, error } = await getSupabase()
+  async getAll(teamId?: string): Promise<Notification[]> {
+    let query = getSupabase()
       .from('notifications')
       .select('*')
       .order('created_at', { ascending: false })
+
+    // Defense-in-depth: filter by team_id even though RLS handles it
+    if (teamId) {
+      query = query.eq('team_id', teamId)
+    }
+
+    const { data, error } = await query
     if (error) throw new Error(error.message)
 
     return (data || []).map((row: Record<string, unknown>) => this.mapFromDb(row))

@@ -23,15 +23,15 @@ function markTooltipSeen(id: string) {
 }
 
 export function useTooltips() {
-  const seenTooltips = ref<Set<string>>(new Set())
+  const seenTooltips = ref<string[]>([])
   const activeTooltip = ref<string | null>(null)
 
   onMounted(() => {
-    seenTooltips.value = getSeenTooltips()
+    seenTooltips.value = [...getSeenTooltips()]
   })
 
   function shouldShow(id: string): boolean {
-    return !seenTooltips.value.has(id)
+    return !seenTooltips.value.includes(id)
   }
 
   function show(id: string) {
@@ -42,7 +42,9 @@ export function useTooltips() {
 
   function dismiss(id: string) {
     markTooltipSeen(id)
-    seenTooltips.value.add(id)
+    if (!seenTooltips.value.includes(id)) {
+      seenTooltips.value.push(id)
+    }
     if (activeTooltip.value === id) {
       activeTooltip.value = null
     }

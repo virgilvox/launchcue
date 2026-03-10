@@ -31,10 +31,11 @@ export const useCommentStore = defineStore('comment', () => {
   }
 
   const getRecentComments = async (): Promise<Comment[]> => {
+    if (!useAuthStore().currentTeam) return []
     isLoading.value = true
     try {
-      // Use getComments with empty filter to get recent activity
-      const response = await getRepo().getComments('', '')
+      // Fetch all comments for the team (RLS scoped) without resource filter
+      const response = await getRepo().getComments('all', 'all')
       comments.value = Array.isArray(response) ? response : []
       return comments.value
     } catch (error) {

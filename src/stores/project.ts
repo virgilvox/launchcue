@@ -51,6 +51,7 @@ export const useProjectStore = defineStore('project', () => {
   }
 
   const createProject = async (projectData: ProjectCreateRequest): Promise<Project> => {
+    if (!useAuthStore().currentTeam) throw new Error('No team context')
     try {
       const createdProject = await getRepo().create(projectData)
       if (createdProject && createdProject.id) {
