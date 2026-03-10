@@ -17,9 +17,10 @@ function getAuth(): AuthAdapter {
 }
 
 export const useAuthStore = defineStore('auth', () => {
-  // State
+  // State — user/teams/currentTeam stored in sessionStorage (app-level metadata)
+  // Token is owned by the Supabase SDK (localStorage) — we keep a reactive ref for isAuthenticated
   const user = ref<AuthUser | null>(JSON.parse(sessionStorage.getItem('user') || 'null'))
-  const token = ref<string | null>(sessionStorage.getItem('token') || null)
+  const token = ref<string | null>(null)
   const userTeams = ref<TeamSummary[]>(JSON.parse(sessionStorage.getItem('teams') || '[]'))
   const currentTeam = ref<TeamSummary | null>(JSON.parse(sessionStorage.getItem('currentTeam') || 'null'))
   const isLoading = ref<boolean>(false)
@@ -35,41 +36,69 @@ export const useAuthStore = defineStore('auth', () => {
   const canEdit = computed<boolean>(() => ['owner', 'admin', 'member'].includes(userRole.value as string))
   const isViewer = computed<boolean>(() => userRole.value === 'viewer')
 
-  // Check if a JWT token has expired by decoding the payload
-  const isTokenExpired = (jwt: string): boolean => {
-    try {
-      const payload = JSON.parse(atob(jwt.split('.')[1]))
-      return payload.exp ? (payload.exp * 1000) < Date.now() : false
-    } catch {
-      return true // Treat malformed tokens as expired
-    }
-  }
-
-  // Initialize auth state from session storage (checks if user/token exist)
-  const initAuth = (): boolean => {
-    user.value = JSON.parse(sessionStorage.getItem('user') || 'null')
-    token.value = sessionStorage.getItem('token') || null
-    userTeams.value = JSON.parse(sessionStorage.getItem('teams') || '[]')
-    currentTeam.value = JSON.parse(sessionStorage.getItem('currentTeam') || 'null')
-
+  // Initialize auth state — recovers session from Supabase SDK
+  const initAuth = async (): Promise<boolean> => {
     const auth = getAuth()
 
-    // Check token expiry before accepting it
-    if (token.value && isTokenExpired(token.value)) {
-      user.value = null
-      token.value = null
-      userTeams.value = []
-      currentTeam.value = null
-      sessionStorage.removeItem('token')
-      sessionStorage.removeItem('user')
-      sessionStorage.removeItem('teams')
-      sessionStorage.removeItem('currentTeam')
-      auth.setToken(null)
-      return false
+    // Try SDK session first (Supabase localStorage-managed)
+    if (typeof auth.getSession === 'function') {
+      try {
+        const session = await auth.getSession()
+        if (session?.access_token) {
+          token.value = session.access_token
+
+          // Recover app-level metadata from sessionStorage
+          user.value = JSON.parse(sessionStorage.getItem('user') || 'null')
+          userTeams.value = JSON.parse(sessionStorage.getItem('teams') || '[]')
+          currentTeam.value = JSON.parse(sessionStorage.getItem('currentTeam') || 'null')
+
+          // If no user data in sessionStorage (new tab), rebuild from API
+          if (!user.value) {
+            try {
+              const profile = await auth.getProfile()
+              user.value = profile as AuthUser
+              sessionStorage.setItem('user', JSON.stringify(profile))
+
+              const teams = await auth.getTeams()
+              userTeams.value = teams
+              sessionStorage.setItem('teams', JSON.stringify(teams))
+
+              if (teams.length > 0) {
+                const teamWithRole = teams[0]
+                if (teamWithRole.role) {
+                  (user.value as AuthUser).role = teamWithRole.role as TeamRole | 'client'
+                }
+                setCurrentTeam(teams[0])
+              }
+            } catch {
+              // API calls failed — clear and force re-login
+              clearState()
+              return false
+            }
+          }
+        } else {
+          // No SDK session — clear everything
+          clearState()
+          return false
+        }
+      } catch {
+        // getSession threw — fall through to sessionStorage fallback
+      }
     }
 
-    // Sync token to adapter
-    auth.setToken(token.value)
+    // Fallback: recover from sessionStorage (tests, adapters without getSession)
+    if (!token.value) {
+      const storedToken = sessionStorage.getItem('token')
+      if (storedToken) {
+        token.value = storedToken
+        user.value = JSON.parse(sessionStorage.getItem('user') || 'null')
+        userTeams.value = JSON.parse(sessionStorage.getItem('teams') || '[]')
+        currentTeam.value = JSON.parse(sessionStorage.getItem('currentTeam') || 'null')
+      } else {
+        clearState()
+        return false
+      }
+    }
 
     // Register 401 handler so adapter can trigger logout without circular imports
     auth.onUnauthorized(() => {
@@ -77,6 +106,17 @@ export const useAuthStore = defineStore('auth', () => {
     })
 
     return isAuthenticated.value
+  }
+
+  function clearState() {
+    user.value = null
+    token.value = null
+    userTeams.value = []
+    currentTeam.value = null
+    sessionStorage.removeItem('user')
+    sessionStorage.removeItem('teams')
+    sessionStorage.removeItem('currentTeam')
+    sessionStorage.removeItem('token')
   }
 
   // Register
@@ -167,16 +207,7 @@ export const useAuthStore = defineStore('auth', () => {
       await getAuth().logout()
 
       // Clear local state
-      user.value = null
-      token.value = null
-      userTeams.value = []
-      currentTeam.value = null
-
-      // Clear session storage
-      sessionStorage.removeItem('token')
-      sessionStorage.removeItem('user')
-      sessionStorage.removeItem('teams')
-      sessionStorage.removeItem('currentTeam')
+      clearState()
 
       // Reset all other Pinia stores to clear stale data
       resetAllStores()
@@ -192,9 +223,9 @@ export const useAuthStore = defineStore('auth', () => {
   const setUserData = (userData: AuthUser, accessToken: string): void => {
     user.value = userData
     token.value = accessToken
-    getAuth().setToken(accessToken)
 
     sessionStorage.setItem('user', JSON.stringify(userData))
+    // Keep token in sessionStorage as fallback for legacy/test paths
     sessionStorage.setItem('token', accessToken)
   }
 

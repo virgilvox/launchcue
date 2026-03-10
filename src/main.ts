@@ -41,9 +41,9 @@ async function bootstrap() {
   const pinia = createPinia()
   app.use(pinia)
 
-  // 6. Initialize auth state early — checks token expiry before any route navigation
+  // 6. Initialize auth state early — recovers session from SDK before any route navigation
   const authStore = useAuthStore()
-  authStore.initAuth()
+  await authStore.initAuth()
 
   // 7. Create router with dynamic module routes
   const router = createAppRouter(registry)

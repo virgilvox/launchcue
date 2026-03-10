@@ -141,7 +141,8 @@
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue';
-import { useRoute, useRouter, onBeforeRouteLeave } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
+import { useUnsavedChanges } from '@/composables/useUnsavedChanges';
 import { useToast } from 'vue-toastification';
 import { useScopeStore } from '@/stores/scope';
 import { useClientStore } from '@/stores/client';
@@ -174,9 +175,6 @@ const saving = ref(false);
 const error = ref(null);
 const showPreview = ref(false);
 const tagsInput = ref('');
-const isDirty = ref(false);
-const loaded = ref(false);
-
 const formData = ref({
   id: null,
   title: '',
@@ -189,6 +187,8 @@ const formData = ref({
   tags: [],
   status: 'draft',
 });
+
+const { isDirty, markLoaded, markClean } = useUnsavedChanges(() => formData.value);
 
 // --- Computed ---
 
@@ -207,23 +207,6 @@ const filteredProjects = computed(() => {
 // Reset projectId when client changes
 watch(() => formData.value.clientId, () => {
   formData.value.projectId = null;
-});
-
-// Track unsaved changes (skip initial data load)
-watch(formData, () => {
-  if (loaded.value) {
-    isDirty.value = true;
-  }
-}, { deep: true });
-
-// Warn before navigating away with unsaved changes
-onBeforeRouteLeave((to, from, next) => {
-  if (isDirty.value) {
-    const answer = window.confirm('You have unsaved changes. Are you sure you want to leave?');
-    next(answer);
-  } else {
-    next();
-  }
 });
 
 // --- Data Loading ---
@@ -402,10 +385,10 @@ async function save() {
         const created = await scopeStore.createTemplate(templatePayload);
         toast.success('Template created successfully!');
         formData.value.id = created.id;
-        isDirty.value = false;
+        markClean();
         router.replace(`/scope-templates/${created.id}`);
       }
-      isDirty.value = false;
+      markClean();
     } else {
       const scopePayload = {
         title: formData.value.title,
@@ -433,10 +416,10 @@ async function save() {
         const created = await scopeStore.createScope(scopePayload);
         toast.success('Scope created successfully!');
         formData.value.id = created.id;
-        isDirty.value = false;
+        markClean();
         router.replace(`/scopes/${created.id}`);
       }
-      isDirty.value = false;
+      markClean();
     }
   } catch (err) {
     error.value = isTemplate.value
@@ -492,7 +475,7 @@ onMounted(async () => {
   } finally {
     loading.value = false;
     // Use nextTick delay to ensure the watch skips the initial population
-    setTimeout(() => { loaded.value = true; }, 0);
+    markLoaded();
   }
 });
 </script>

@@ -7,10 +7,11 @@ import type { Repository } from '@/adapters/types'
 import type { Project } from '../types/models'
 import type { ProjectCreateRequest } from '../types/api'
 import { useAuthStore } from './auth'
+import { useLoadingCounter } from '@/composables/useLoadingCounter'
 
 export const useProjectStore = defineStore('project', () => {
   const projects = ref<Project[]>([])
-  const isLoading = ref<boolean>(false)
+  const { isLoading, wrap } = useLoadingCounter()
 
   function getRepo() {
     return getContainer().resolve<Repository<Project, ProjectCreateRequest, Partial<ProjectCreateRequest>>>(PROJECT_REPO)
@@ -18,32 +19,30 @@ export const useProjectStore = defineStore('project', () => {
 
   const fetchProjects = async (): Promise<Project[]> => {
     if (!useAuthStore().currentTeam) return []
-    isLoading.value = true
-    try {
-      const response = await getRepo().findAll()
-      projects.value = Array.isArray(response) ? response : []
-      return projects.value
-    } catch (error) {
-      projects.value = []
-      throw error
-    } finally {
-      isLoading.value = false
-    }
+    return wrap(async () => {
+      try {
+        const response = await getRepo().findAll()
+        projects.value = Array.isArray(response) ? response : []
+        return projects.value
+      } catch (error) {
+        projects.value = []
+        throw error
+      }
+    })
   }
 
   const fetchClientProjects = async (clientId: string): Promise<Project[]> => {
     if (!clientId) {
       throw new Error('Client ID is required to fetch client projects.')
     }
-    isLoading.value = true
-    try {
-      const response = await getRepo().findAll({ clientId })
-      return Array.isArray(response) ? response : []
-    } catch (error) {
-      throw error
-    } finally {
-      isLoading.value = false
-    }
+    return wrap(async () => {
+      try {
+        const response = await getRepo().findAll({ clientId })
+        return Array.isArray(response) ? response : []
+      } catch (error) {
+        throw error
+      }
+    })
   }
 
   const getProject = async (id: string): Promise<Project> => {
@@ -68,36 +67,34 @@ export const useProjectStore = defineStore('project', () => {
     if (!id) {
       throw new Error('Project ID is required for updates')
     }
-    isLoading.value = true
-    try {
-      const updatedProject = await getRepo().update(id, projectData)
-      const index = projects.value.findIndex(p => p.id === id)
-      if (index !== -1) {
-        projects.value[index] = updatedProject
+    return wrap(async () => {
+      try {
+        const updatedProject = await getRepo().update(id, projectData)
+        const index = projects.value.findIndex(p => p.id === id)
+        if (index !== -1) {
+          projects.value[index] = updatedProject
+        }
+        getEventBus().emit('project.updated', { project: updatedProject })
+        return updatedProject
+      } catch (error) {
+        throw error
       }
-      getEventBus().emit('project.updated', { project: updatedProject })
-      return updatedProject
-    } catch (error) {
-      throw error
-    } finally {
-      isLoading.value = false
-    }
+    })
   }
 
   const deleteProject = async (id: string): Promise<void> => {
     if (!id) {
       throw new Error('Project ID is required for deletion')
     }
-    isLoading.value = true
-    try {
-      await getRepo().delete(id)
-      projects.value = projects.value.filter(p => p.id !== id)
-      getEventBus().emit('project.deleted', { id })
-    } catch (error) {
-      throw error
-    } finally {
-      isLoading.value = false
-    }
+    return wrap(async () => {
+      try {
+        await getRepo().delete(id)
+        projects.value = projects.value.filter(p => p.id !== id)
+        getEventBus().emit('project.deleted', { id })
+      } catch (error) {
+        throw error
+      }
+    })
   }
 
   const addProject = (project: Project): Project | undefined => {

@@ -8,6 +8,7 @@ import { useAuthStore } from './auth'
 import { useProjectStore } from './project'
 import { useTaskStore } from './task'
 import { useToast } from 'vue-toastification'
+import { useLoadingCounter } from '@/composables/useLoadingCounter'
 import type { CalendarEvent, Task, Project } from '../types/models'
 import type { CalendarEventCreateRequest } from '../types/api'
 
@@ -55,9 +56,9 @@ export const useCalendarStore = defineStore('calendar', () => {
   const projectStore = useProjectStore()
   const taskStore = useTaskStore()
   const toast = useToast()
+  const { isLoading, wrap } = useLoadingCounter()
 
   const events = ref<ProcessedCalendarEvent[]>([])
-  const isLoading = ref<boolean>(false)
   const error = ref<string | null>(null)
 
   function getRepo() {
@@ -81,48 +82,46 @@ export const useCalendarStore = defineStore('calendar', () => {
       return { success: false, error: 'No team selected' }
     }
 
-    isLoading.value = true
-    error.value = null
+    return wrap(async () => {
+      error.value = null
+      try {
+        const start = startDate instanceof Date ? startDate.toISOString() : startDate
+        const end = endDate instanceof Date ? endDate.toISOString() : endDate
 
-    try {
-      const start = startDate instanceof Date ? startDate.toISOString() : startDate
-      const end = endDate instanceof Date ? endDate.toISOString() : endDate
+        const data = await getRepo().findAll({ startDate: start, endDate: end })
 
-      const data = await getRepo().findAll({ startDate: start, endDate: end })
+        const processedEvents: ProcessedCalendarEvent[] = data.map(event => {
+          const eventType = (event as unknown as ProcessedCalendarEvent).type || determineEventType(event)
 
-      const processedEvents: ProcessedCalendarEvent[] = data.map(event => {
-        const eventType = (event as unknown as ProcessedCalendarEvent).type || determineEventType(event)
-
-        let title = event.title
-        if (eventType === 'project' && event.projectId && (!title || title === 'project')) {
-          const project = projectStore.projects.find(p => p.id === event.projectId)
-          if (project) {
-            title = project.title || 'Project Deadline'
-          } else {
-            title = 'Project Deadline'
+          let title = event.title
+          if (eventType === 'project' && event.projectId && (!title || title === 'project')) {
+            const project = projectStore.projects.find(p => p.id === event.projectId)
+            if (project) {
+              title = project.title || 'Project Deadline'
+            } else {
+              title = 'Project Deadline'
+            }
           }
-        }
 
-        return {
-          ...(event as unknown as Record<string, unknown>),
-          id: event.id,
-          start: event.start ? new Date(event.start) : null,
-          end: event.end ? new Date(event.end) : null,
-          color: event.color || getDefaultColor(event),
-          type: eventType,
-          title: title || event.title || 'Event'
-        } as ProcessedCalendarEvent
-      })
+          return {
+            ...(event as unknown as Record<string, unknown>),
+            id: event.id,
+            start: event.start ? new Date(event.start) : null,
+            end: event.end ? new Date(event.end) : null,
+            color: event.color || getDefaultColor(event),
+            type: eventType,
+            title: title || event.title || 'Event'
+          } as ProcessedCalendarEvent
+        })
 
-      events.value = processedEvents
-      return { success: true, events: processedEvents }
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Failed to fetch calendar events'
-      error.value = message
-      return { success: false, error: error.value }
-    } finally {
-      isLoading.value = false
-    }
+        events.value = processedEvents
+        return { success: true, events: processedEvents }
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : 'Failed to fetch calendar events'
+        error.value = message
+        return { success: false, error: error.value }
+      }
+    })
   }
 
   async function createEvent(eventData: Record<string, unknown>): Promise<CalendarStoreResult> {
@@ -130,33 +129,31 @@ export const useCalendarStore = defineStore('calendar', () => {
       return { success: false, error: 'No team selected' }
     }
 
-    isLoading.value = true
-    error.value = null
+    return wrap(async () => {
+      error.value = null
+      try {
+        const data = await getRepo().create({
+          ...eventData,
+          teamId: authStore.currentTeam!.id
+        } as unknown as CalendarEventCreateRequest)
 
-    try {
-      const data = await getRepo().create({
-        ...eventData,
-        teamId: authStore.currentTeam.id
-      } as unknown as CalendarEventCreateRequest)
+        events.value.push({
+          ...data,
+          start: data.start ? new Date(data.start) : null,
+          end: data.end ? new Date(data.end) : null,
+          type: determineEventType(data)
+        } as ProcessedCalendarEvent)
 
-      events.value.push({
-        ...data,
-        start: data.start ? new Date(data.start) : null,
-        end: data.end ? new Date(data.end) : null,
-        type: determineEventType(data)
-      } as ProcessedCalendarEvent)
-
-      getEventBus().emit('calendar-event.created', { event: data })
-      toast.success('Event created successfully')
-      return { success: true, event: data }
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Failed to create calendar event'
-      error.value = message
-      toast.error('Failed to create calendar event')
-      return { success: false, error: error.value }
-    } finally {
-      isLoading.value = false
-    }
+        getEventBus().emit('calendar-event.created', { event: data })
+        toast.success('Event created successfully')
+        return { success: true, event: data }
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : 'Failed to create calendar event'
+        error.value = message
+        toast.error('Failed to create calendar event')
+        return { success: false, error: error.value }
+      }
+    })
   }
 
   async function updateEvent(id: string, eventData: Record<string, unknown>): Promise<CalendarStoreResult> {
@@ -164,33 +161,31 @@ export const useCalendarStore = defineStore('calendar', () => {
       return { success: false, error: 'No team selected' }
     }
 
-    isLoading.value = true
-    error.value = null
+    return wrap(async () => {
+      error.value = null
+      try {
+        const data = await getRepo().update(id, eventData as Partial<CalendarEventCreateRequest>)
 
-    try {
-      const data = await getRepo().update(id, eventData as Partial<CalendarEventCreateRequest>)
+        const index = events.value.findIndex(e => e.id === id)
+        if (index !== -1) {
+          events.value[index] = {
+            ...data,
+            start: data.start ? new Date(data.start) : null,
+            end: data.end ? new Date(data.end) : null,
+            type: determineEventType(data)
+          } as ProcessedCalendarEvent
+        }
 
-      const index = events.value.findIndex(e => e.id === id)
-      if (index !== -1) {
-        events.value[index] = {
-          ...data,
-          start: data.start ? new Date(data.start) : null,
-          end: data.end ? new Date(data.end) : null,
-          type: determineEventType(data)
-        } as ProcessedCalendarEvent
+        getEventBus().emit('calendar-event.updated', { event: data })
+        toast.success('Event updated successfully')
+        return { success: true, event: data }
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : 'Failed to update calendar event'
+        error.value = message
+        toast.error('Failed to update calendar event')
+        return { success: false, error: error.value }
       }
-
-      getEventBus().emit('calendar-event.updated', { event: data })
-      toast.success('Event updated successfully')
-      return { success: true, event: data }
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Failed to update calendar event'
-      error.value = message
-      toast.error('Failed to update calendar event')
-      return { success: false, error: error.value }
-    } finally {
-      isLoading.value = false
-    }
+    })
   }
 
   async function deleteEvent(id: string): Promise<CalendarStoreResult> {
@@ -198,24 +193,22 @@ export const useCalendarStore = defineStore('calendar', () => {
       return { success: false, error: 'No team selected' }
     }
 
-    isLoading.value = true
-    error.value = null
+    return wrap(async () => {
+      error.value = null
+      try {
+        await getRepo().delete(id)
+        events.value = events.value.filter(e => e.id !== id)
 
-    try {
-      await getRepo().delete(id)
-      events.value = events.value.filter(e => e.id !== id)
-
-      getEventBus().emit('calendar-event.deleted', { id })
-      toast.success('Event deleted successfully')
-      return { success: true }
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Failed to delete calendar event'
-      error.value = message
-      toast.error('Failed to delete calendar event')
-      return { success: false, error: error.value }
-    } finally {
-      isLoading.value = false
-    }
+        getEventBus().emit('calendar-event.deleted', { id })
+        toast.success('Event deleted successfully')
+        return { success: true }
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : 'Failed to delete calendar event'
+        error.value = message
+        toast.error('Failed to delete calendar event')
+        return { success: false, error: error.value }
+      }
+    })
   }
 
   async function getUpcomingItems(daysAhead: number = 7): Promise<CalendarStoreResult> {
@@ -223,122 +216,118 @@ export const useCalendarStore = defineStore('calendar', () => {
       return { success: false, error: 'No team selected' }
     }
 
-    isLoading.value = true
-    error.value = null
+    return wrap(async () => {
+      error.value = null
+      try {
+        const startDate = new Date()
+        const endDate = new Date()
+        endDate.setDate(endDate.getDate() + daysAhead)
 
-    try {
-      const startDate = new Date()
-      const endDate = new Date()
-      endDate.setDate(endDate.getDate() + daysAhead)
+        await fetchEvents(startDate, endDate)
 
-      await fetchEvents(startDate, endDate)
+        let upcomingTasks: UpcomingItem[] = []
+        if (taskStore.tasks.length > 0) {
+          upcomingTasks = taskStore.tasks
+            .filter(task => {
+              if (!task.dueDate || task.status === 'Done') return false
+              const dueDate = new Date(task.dueDate)
+              return dueDate >= startDate && dueDate <= endDate
+            })
+            .map(task => ({
+              id: task.id,
+              title: task.title,
+              date: new Date(task.dueDate!),
+              type: 'task' as const,
+              description: task.description || 'Task due date',
+              projectId: task.projectId,
+              taskId: task.id,
+              color: 'blue'
+            }))
+        }
 
-      let upcomingTasks: UpcomingItem[] = []
-      if (taskStore.tasks.length > 0) {
-        upcomingTasks = taskStore.tasks
-          .filter(task => {
-            if (!task.dueDate || task.status === 'Done') return false
-            const dueDate = new Date(task.dueDate)
-            return dueDate >= startDate && dueDate <= endDate
+        let upcomingProjects: UpcomingItem[] = []
+        if (projectStore.projects.length > 0) {
+          upcomingProjects = projectStore.projects
+            .filter(project => {
+              if (!project.dueDate) return false
+              const dueDate = new Date(project.dueDate)
+              return dueDate >= startDate && dueDate <= endDate
+            })
+            .map(project => ({
+              id: project.id,
+              title: project.title || 'Project Deadline',
+              date: new Date(project.dueDate!),
+              type: 'project' as const,
+              description: 'Project deadline',
+              projectId: project.id,
+              taskId: null,
+              color: 'orange'
+            }))
+        }
+
+        const formattedEvents: UpcomingItem[] = events.value.map(event => ({
+          id: event.id,
+          title: event.title,
+          date: event.start,
+          type: event.type || determineEventType(event as unknown as Partial<CalendarEvent>),
+          description: event.description || 'Calendar event',
+          projectId: event.projectId,
+          taskId: event.taskId,
+          color: event.color || getDefaultColor(event as unknown as Partial<CalendarEvent>)
+        }))
+
+        const allItems = [...upcomingTasks, ...upcomingProjects, ...formattedEvents]
+          .sort((a, b) => {
+            const dateA = a.date ? a.date.getTime() : 0
+            const dateB = b.date ? b.date.getTime() : 0
+            return dateA - dateB
           })
-          .map(task => ({
-            id: task.id,
-            title: task.title,
-            date: new Date(task.dueDate!),
-            type: 'task' as const,
-            description: task.description || 'Task due date',
-            projectId: task.projectId,
-            taskId: task.id,
-            color: 'blue'
-          }))
+
+        return { success: true, items: allItems }
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : 'Failed to fetch upcoming items'
+        error.value = message
+        return { success: false, error: error.value, items: [] }
       }
-
-      let upcomingProjects: UpcomingItem[] = []
-      if (projectStore.projects.length > 0) {
-        upcomingProjects = projectStore.projects
-          .filter(project => {
-            if (!project.dueDate) return false
-            const dueDate = new Date(project.dueDate)
-            return dueDate >= startDate && dueDate <= endDate
-          })
-          .map(project => ({
-            id: project.id,
-            title: project.title || 'Project Deadline',
-            date: new Date(project.dueDate!),
-            type: 'project' as const,
-            description: 'Project deadline',
-            projectId: project.id,
-            taskId: null,
-            color: 'orange'
-          }))
-      }
-
-      const formattedEvents: UpcomingItem[] = events.value.map(event => ({
-        id: event.id,
-        title: event.title,
-        date: event.start,
-        type: event.type || determineEventType(event as unknown as Partial<CalendarEvent>),
-        description: event.description || 'Calendar event',
-        projectId: event.projectId,
-        taskId: event.taskId,
-        color: event.color || getDefaultColor(event as unknown as Partial<CalendarEvent>)
-      }))
-
-      const allItems = [...upcomingTasks, ...upcomingProjects, ...formattedEvents]
-        .sort((a, b) => {
-          const dateA = a.date ? a.date.getTime() : 0
-          const dateB = b.date ? b.date.getTime() : 0
-          return dateA - dateB
-        })
-
-      return { success: true, items: allItems }
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Failed to fetch upcoming items'
-      error.value = message
-      return { success: false, error: error.value, items: [] }
-    } finally {
-      isLoading.value = false
-    }
+    })
   }
 
   async function getTaskDeadlines(startDate: string, endDate: string): Promise<ProcessedTaskDeadline[]> {
-    isLoading.value = true
-    error.value = null
+    return wrap(async () => {
+      error.value = null
+      try {
+        const taskRepo = getContainer().resolve<Repository<Task>>(TASK_REPO)
+        const tasks = await taskRepo.findAll({ startDate, endDate, hasDueDate: true })
 
-    try {
-      const taskRepo = getContainer().resolve<Repository<Task>>(TASK_REPO)
-      const tasks = await taskRepo.findAll({ startDate, endDate, hasDueDate: true })
-
-      if (!tasks || !Array.isArray(tasks)) {
-        return []
-      }
-
-      const processedTasks: ProcessedTaskDeadline[] = tasks.map((task: unknown) => {
-        const t = task as Record<string, unknown>
-        const processedTask: ProcessedTaskDeadline = {
-          id: (t.id as string) || `task-${Math.random().toString(36).substr(2, 9)}`,
-          title: (t.title as string) || 'Task',
-          status: (t.status as string) || 'To Do',
-          dueDate: t.dueDate ? new Date(t.dueDate as string) : null,
-          description: (t.description as string) || '',
-          projectId: (t.projectId as string) || null,
-          projectName: (t.projectName as string) || null,
-          statusColor: ''
+        if (!tasks || !Array.isArray(tasks)) {
+          return []
         }
 
-        processedTask.statusColor = getTaskStatusColor(processedTask.status)
+        const processedTasks: ProcessedTaskDeadline[] = tasks.map((task: unknown) => {
+          const t = task as Record<string, unknown>
+          const processedTask: ProcessedTaskDeadline = {
+            id: (t.id as string) || `task-${Math.random().toString(36).substr(2, 9)}`,
+            title: (t.title as string) || 'Task',
+            status: (t.status as string) || 'To Do',
+            dueDate: t.dueDate ? new Date(t.dueDate as string) : null,
+            description: (t.description as string) || '',
+            projectId: (t.projectId as string) || null,
+            projectName: (t.projectName as string) || null,
+            statusColor: ''
+          }
 
-        return processedTask
-      })
+          processedTask.statusColor = getTaskStatusColor(processedTask.status)
 
-      return processedTasks
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Failed to fetch task deadlines'
-      error.value = message
-      return []
-    } finally {
-      isLoading.value = false
-    }
+          return processedTask
+        })
+
+        return processedTasks
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : 'Failed to fetch task deadlines'
+        error.value = message
+        return []
+      }
+    })
   }
 
   function getTaskStatusColor(status: string): string {

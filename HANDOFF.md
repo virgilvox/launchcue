@@ -10,7 +10,7 @@
 - **Frontend**: Vue 3 (Composition API, `<script setup>`), Pinia stores, Vue Router, Tailwind CSS
 - **Backend**: Supabase (PostgreSQL + RLS + GoTrue auth + PostgREST + Realtime)
 - **API Server**: Express (AI processing, webhook delivery, email)
-- **Auth**: Supabase Auth (GoTrue), JWT, RBAC (owner/admin/member/viewer/client)
+- **Auth**: Supabase Auth (GoTrue), JWT with SDK-managed sessions (localStorage), RBAC (owner/admin/member/viewer/client)
 - **Design System**: CSS custom properties (brutalist style -0 border-radius, 2px borders, hard offset shadows)
 - **Architecture**: Plugin-based DI container, Repository pattern, feature modules with topological dependency sort
 - **Deployment**: DigitalOcean App Platform (static site + API service) + Droplet (self-hosted Supabase) -live at launchcue.app
@@ -38,7 +38,7 @@ src/
     team/           # Team management (members, invites, roles)
   components/       # Shared UI components
     ui/             # Design system primitives (Modal, PageHeader, EmptyState, etc.)
-  composables/      # Vue composables (useModalState, useEntityLookup, etc.)
+  composables/      # Vue composables (useModalState, useEntityLookup, useLoadingCounter, useUnsavedChanges, etc.)
   constants/        # Static data (clientColors.ts)
   layouts/          # DefaultLayout.vue, ClientLayout.vue
   pages/            # Auth + portal pages (non-module routes)
@@ -54,8 +54,10 @@ supabase/           # Kong config, migrations for Docker
 infra/              # Droplet setup script
 .do/                # DigitalOcean App Platform spec
 tests/
+  helpers/          # Mock factories, store setup, mock router/toast
   core/             # Service container, event bus, plugin registry tests
-  stores/           # Auth store tests
+  stores/           # Store tests (auth, task, notification, team, project, client, calendar, campaign, invoice, comment, brain-dump)
+  composables/      # Composable tests (useLoadingCounter, useUnsavedChanges)
 ```
 
 ### Design System
@@ -109,7 +111,7 @@ tests/
 - **Search→Notes**: Highlight query param + scroll-to on Notes page mount
 
 ### UX Polish
-- **Unsaved changes warning**: onBeforeRouteLeave guard on InvoiceBuilder, ScopeBuilder, ProjectForm
+- **Unsaved changes warning**: `useUnsavedChanges` composable (dirty tracking + route guard + beforeunload) on InvoiceBuilder, ScopeBuilder, ProjectForm
 - **Loading states**: LoadingSpinner component on all pages (including portal pages)
 - **Empty states**: EmptyState component with icons and action buttons on all list pages
 - **Error handling**: Toast notifications on mutation errors only; stores never toast on fetch failures (pages decide)
@@ -139,15 +141,15 @@ tests/
 
 ### Known remaining gaps
 - **AI adapter missing auth header**: `ai.adapter.ts` does not send Authorization header; AI feature will 401 in production
-- **getToken() vestigial**: `auth.adapter.ts` getToken() reads from sessionStorage but is unused now that persistSession is true
+- ~~**getToken() vestigial**~~: Fixed — auth adapter now exposes `getSession()`, auth store uses SDK-managed sessions
 - **Registration race condition**: `register()` does 4 sequential DB inserts without a transaction; partial failure leaves orphaned records (mitigated by cleanup catch block)
 - **RBAC on DELETE**: Most resource endpoints allow any authenticated team member to delete. Consider RLS policies to restrict to owner/admin
-- **Shared isLoading race condition**: 10+ stores share a single `isLoading` ref across multiple async methods; concurrent calls can conflict. Consider `useLoadingCounter()` utility
+- ~~**Shared isLoading race condition**~~: Fixed — calendar, team, client, project stores now use `useLoadingCounter()` composable
 - **Comment adapter missing team_id/user_id**: `comment.repository.ts` createComment() does not inject team_id or user_id; auto_inject trigger handles this but explicit injection would be more robust
 - **Base repository doesn't inject team_id/created_by**: `base.repository.ts` create() relies on auto_inject triggers to fill these; no app-level fallback if triggers are missing
 - **Email endpoint missing protocol validation**: inviteUrl accepts non-https protocols (javascript://, data://)
 - **AI endpoint needs per-user rate limiting**: Global 100 req/15min is too lenient for expensive Anthropic API calls
-- **Unsaved changes guard incomplete**: Only Invoice, Scope, Project forms have `onBeforeRouteLeave`; Task, Note, Campaign, Client forms don't
+- **Unsaved changes guard incomplete**: Invoice, Scope, Project forms use `useUnsavedChanges` composable (route guard + beforeunload); Task, Note, Campaign, Client forms use modals (not page navigation)
 - **~100 Vue components missing `lang="ts"`**: Progressive migration needed, starting with `src/components/ui/`
 - **Home.vue**: Landing page has its own scoped button styles that diverge from the brutalist design system (intentional for marketing)
 - **Supabase Realtime deployed but unused**: Either switch notifications from polling to Realtime or remove from docker-compose
@@ -162,9 +164,12 @@ tests/
 - **~100 Vue components still use `<script setup>` without `lang="ts"`**
 
 ### Testing
-- 52 tests across 4 test files (core infrastructure + auth store)
+- 215 tests across 16 test files
 - Core: service-container (8), event-bus (8), plugin-registry (19)
-- Auth store: 17 tests
+- Auth store: 20 tests (SDK session recovery, fallback, login/register/logout/switchTeam/createTeam, RBAC computeds)
+- Store tests: task (19), notification (17), team (24), project (17), client (15), calendar (12), campaign (11), invoice (12), comment (9), brain-dump (10)
+- Composable tests: useLoadingCounter (9), useUnsavedChanges (5)
+- Test helpers: mock factories, store setup, mock router/toast
 - No component tests, integration tests, or E2E tests
 
 ### Other
@@ -183,12 +188,12 @@ tests/
 |----------|-------|
 | Feature modules | 15 |
 | Vue files (total) | 107 (21 module pages + 2 standalone pages + 6 auth + 3 portal + 75 components) |
-| Composables | 6 |
+| Composables | 8 |
 | Pinia stores | 18 (all TS, all using repository pattern) |
 | Supabase adapter files | 25 (20 repository + 1 auth + 1 search + 1 AI + base class + index + client) |
 | Express API endpoints | 3 (AI, webhooks, email) |
 | SQL migrations | 10 (26 tables) |
-| Test files | 4 (52 tests) |
+| Test files | 16 (215 tests) |
 | Type definition files | 4 (models, api, enums, index) + core/types.ts |
 
 ---
@@ -205,7 +210,7 @@ npm run dev:full         # Start all three above
 # Or run individual commands
 npm run build            # Production build (Vite)
 npm run type-check       # vue-tsc --noEmit
-npm test                 # Run vitest tests (52 tests)
+npm test                 # Run vitest tests (215 tests)
 npm run lint             # ESLint check
 npm run format           # Prettier format
 
@@ -231,6 +236,8 @@ See `.env.example` for all required variables. Key ones:
 - **Feature modules**: Each declares `id`, `routes`, `navItems`, `searchProviders`, `dependencies`, `setup()`
 - **API calls**: Store → repository adapter → page component with try/catch + toast.error
 - **Forms**: `useModalState` composable for modal open/close/edit state
+- **Unsaved changes**: `useUnsavedChanges` composable (dirty tracking, route guard, beforeunload)
+- **Loading state**: `useLoadingCounter` composable (concurrent-safe isLoading for stores)
 - **Confirmation**: `useConfirmDialog` composable for delete confirmations
 - **Entity resolution**: `useEntityLookup` for client/project name + color lookups from IDs
 - **Soft delete**: active_* views filter deleted rows automatically via RLS
@@ -335,5 +342,30 @@ Full-stack audit across SQL, RLS, Express, auth, DI, adapters, stores, modules, 
 
 **Documentation:**
 - `docs/plugin-guide.md`: Comprehensive developer guide for adding/removing feature modules (7 sections with code examples)
+
+### Hardening & Testing Sprint (2026-03-10)
+Full hardening pass: auth session reconciliation, concurrent loading safety, unsaved changes composable, and comprehensive test suite.
+
+**Auth Session Reconciliation (Critical):**
+- Auth store `initAuth()` now async — recovers session from Supabase SDK (`getSession()`) before falling back to sessionStorage
+- Removed manual `isTokenExpired()` and sessionStorage token management — SDK owns tokens via `autoRefreshToken: true` + `persistSession: true`
+- Auth adapter gains `getSession()` method returning `{ access_token, refresh_token }` from SDK
+- `main.ts` now awaits `authStore.initAuth()` — session recovered before any route navigation
+- New tabs share session via localStorage (SDK-managed); app metadata (user/teams/currentTeam) still in sessionStorage with API rebuild fallback
+
+**Concurrent Loading Safety:**
+- New `useLoadingCounter` composable: counter-based `isLoading` computed + `wrap()` for safe concurrent operations
+- Applied to calendar (6 methods), team (7 methods), client (1 method), project (3 methods) stores
+- Concurrent async calls no longer corrupt `isLoading` state
+
+**Unsaved Changes Composable:**
+- New `useUnsavedChanges` composable: dirty tracking with `markLoaded()`/`markClean()`, `onBeforeRouteLeave` guard, `beforeunload` handler
+- Refactored ProjectForm, InvoiceBuilder, ScopeBuilder from inline implementation to composable
+
+**Test Suite (52 → 215 tests):**
+- Test helpers: `mock-factories.ts` (7 factories), `store-setup.ts` (setupStoreTest + seedAuth), mock-router, mock-toast
+- 11 new store test files covering all CRUD operations, auth guards, error handling, computed properties
+- 2 composable test files covering concurrent operations, dirty tracking, cleanup
+- All 215 tests pass, `tsc --noEmit` clean, `vite build` succeeds
 
 *Last updated: 2026-03-10*

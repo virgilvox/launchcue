@@ -180,11 +180,12 @@
 
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue';
-import { useRoute, useRouter, onBeforeRouteLeave } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { useToast } from 'vue-toastification';
 import { useClientStore } from '@/stores/client';
 import { useProjectStore } from '@/stores/project';
 import { formatDate } from '@/utils/dateFormatter';
+import { useUnsavedChanges } from '@/composables/useUnsavedChanges';
 import PageContainer from '@/components/ui/PageContainer.vue';
 import LoadingSpinner from '@/components/LoadingSpinner.vue';
 
@@ -198,8 +199,6 @@ const loading = ref(true);
 const saving = ref(false);
 const error = ref(null);
 const tagsInput = ref('');
-const isDirty = ref(false);
-const loaded = ref(false);
 const clients = computed(() => clientStore.clients.filter(client => !client.isContact));
 
 const projectForm = ref({
@@ -213,6 +212,8 @@ const projectForm = ref({
   clientId: '',
   tags: []
 });
+
+const { isDirty, markLoaded, markClean } = useUnsavedChanges(() => projectForm.value);
 
 const isEditing = computed(() => {
   return route.params.id !== undefined;
@@ -238,23 +239,6 @@ watch(tagsInput, (value) => {
     });
 
     tagsInput.value = '';
-  }
-});
-
-// Track unsaved changes (skip initial data load)
-watch(projectForm, () => {
-  if (loaded.value) {
-    isDirty.value = true;
-  }
-}, { deep: true });
-
-// Warn before navigating away with unsaved changes
-onBeforeRouteLeave((to, from, next) => {
-  if (isDirty.value) {
-    const answer = window.confirm('You have unsaved changes. Are you sure you want to leave?');
-    next(answer);
-  } else {
-    next();
   }
 });
 
@@ -357,7 +341,7 @@ async function submitForm() {
       toast.success('Project created successfully');
     }
 
-    isDirty.value = false;
+    markClean();
 
     // Navigate back
     navigateBack(result);
@@ -444,7 +428,7 @@ onMounted(async () => {
   } finally {
     loading.value = false;
     // Use nextTick delay to ensure the watch skips the initial population
-    setTimeout(() => { loaded.value = true; }, 0);
+    markLoaded();
   }
 });
 </script> 

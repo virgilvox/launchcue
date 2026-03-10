@@ -56,6 +56,8 @@ export interface AuthAdapter {
   verifyEmail(token: string): Promise<void>
   setToken(token: string | null): void
   getToken(): string | null
+  /** Retrieve current session from the auth provider (SDK-managed). */
+  getSession?(): Promise<{ access_token: string; refresh_token?: string } | null>
   onUnauthorized(callback: () => void): void
 }
 

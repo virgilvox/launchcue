@@ -9,6 +9,7 @@ import type { Repository } from '@/adapters/types'
 import { getClientColor } from '../constants/clientColors'
 import type { Client, Project } from '../types/models'
 import type { ClientCreateRequest } from '../types/api'
+import { useLoadingCounter } from '@/composables/useLoadingCounter'
 
 interface ClientStoreResult<T = undefined> {
   success: boolean
@@ -22,10 +23,10 @@ interface ClientStoreResult<T = undefined> {
 
 export const useClientStore = defineStore('client', () => {
   const clients = ref<Client[]>([])
-  const isLoading = ref<boolean>(false)
   const error = ref<string | null>(null)
   const authStore = useAuthStore()
   const toast = useToast()
+  const { isLoading, wrap } = useLoadingCounter()
 
   function getRepo() {
     return getContainer().resolve<Repository<Client, ClientCreateRequest, Partial<ClientCreateRequest>>>(CLIENT_REPO)
@@ -38,20 +39,18 @@ export const useClientStore = defineStore('client', () => {
   async function fetchClients(): Promise<Client[] | ClientStoreResult> {
     if (!authStore.currentTeam) return { success: false, error: 'No team selected' }
 
-    isLoading.value = true
-    error.value = null
-
-    try {
-      const response = await getRepo().findAll()
-      clients.value = response
-      isLoading.value = false
-      return response
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Failed to fetch clients'
-      error.value = message
-      isLoading.value = false
-      return { success: false, error: error.value }
-    }
+    return wrap(async () => {
+      error.value = null
+      try {
+        const response = await getRepo().findAll()
+        clients.value = response
+        return response
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : 'Failed to fetch clients'
+        error.value = message
+        return { success: false, error: error.value }
+      }
+    })
   }
 
   async function getClient(id: string): Promise<ClientStoreResult> {

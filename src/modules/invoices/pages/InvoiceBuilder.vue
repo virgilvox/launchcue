@@ -134,7 +134,8 @@
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue';
-import { useRoute, useRouter, onBeforeRouteLeave } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
+import { useUnsavedChanges } from '@/composables/useUnsavedChanges';
 import { useToast } from 'vue-toastification';
 import { useInvoiceStore } from '@/stores/invoice';
 import { useClientStore } from '@/stores/client';
@@ -167,9 +168,6 @@ const saving = ref(false);
 const error = ref(null);
 const showPreview = ref(false);
 const showScopeImport = ref(false);
-const isDirty = ref(false);
-const loaded = ref(false);
-
 const formData = ref({
   id: null,
   invoiceNumber: '',
@@ -184,6 +182,8 @@ const formData = ref({
   notes: '',
   dueDate: null,
 });
+
+const { isDirty, markLoaded, markClean } = useUnsavedChanges(() => formData.value);
 
 // --- Computed ---
 
@@ -237,23 +237,6 @@ watch(() => formData.value.projectId, async (projectId) => {
     } catch (err) {
       toast.error('Failed to load scopes. Please try again.');
     }
-  }
-});
-
-// Track unsaved changes (skip initial data load)
-watch(formData, () => {
-  if (loaded.value) {
-    isDirty.value = true;
-  }
-}, { deep: true });
-
-// Warn before navigating away with unsaved changes
-onBeforeRouteLeave((to, from, next) => {
-  if (isDirty.value) {
-    const answer = window.confirm('You have unsaved changes. Are you sure you want to leave?');
-    next(answer);
-  } else {
-    next();
   }
 });
 
@@ -398,10 +381,10 @@ async function save() {
       toast.success('Invoice created successfully!');
       formData.value.id = created.id;
       formData.value.invoiceNumber = created.invoiceNumber;
-      isDirty.value = false;
+      markClean();
       router.replace(`/invoices/${created.id}`);
     }
-    isDirty.value = false;
+    markClean();
   } catch (err) {
     error.value = 'Failed to save invoice. Please try again.';
     toast.error(error.value);
@@ -483,7 +466,7 @@ onMounted(async () => {
   } finally {
     loading.value = false;
     // Use nextTick delay to ensure the watch skips the initial population
-    setTimeout(() => { loaded.value = true; }, 0);
+    markLoaded();
   }
 });
 </script>

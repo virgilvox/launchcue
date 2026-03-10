@@ -2,94 +2,95 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import { useAuthStore } from '@/stores/auth'
 import { initContainer } from '@/core/service-container'
-import { AUTH_ADAPTER } from '@/adapters/repository-keys'
-import { TEAM_REPO } from '@/adapters/repository-keys'
+import { AUTH_ADAPTER, TEAM_REPO } from '@/adapters/repository-keys'
 import type { AuthAdapter } from '@/adapters/types'
+import { createMockAuthAdapter, makeJwt, makeUser, makeTeamSummary } from '../helpers/mock-factories'
+import { seedAuth } from '../helpers/store-setup'
 
 // Mock the router to avoid actual navigation
 vi.mock('@/router', () => ({
   default: { push: vi.fn() },
 }))
 
-function createMockAuthAdapter(overrides: Partial<AuthAdapter> = {}): AuthAdapter {
-  return {
-    login: vi.fn(),
-    register: vi.fn(),
-    logout: vi.fn(),
-    switchTeam: vi.fn(),
-    changePassword: vi.fn(),
-    getProfile: vi.fn(),
-    updateProfile: vi.fn(),
-    getTeams: vi.fn().mockResolvedValue([]),
-    forgotPassword: vi.fn(),
-    resetPassword: vi.fn(),
-    verifyEmail: vi.fn(),
-    setToken: vi.fn(),
-    getToken: vi.fn().mockReturnValue(null),
-    onUnauthorized: vi.fn(),
-    ...overrides,
-  }
-}
-
-/** Create a valid JWT token with given expiry (seconds since epoch) */
-function makeJwt(exp: number): string {
-  const header = btoa(JSON.stringify({ alg: 'HS256', typ: 'JWT' }))
-  const payload = btoa(JSON.stringify({ exp, sub: 'user-1' }))
-  return `${header}.${payload}.fake-signature`
-}
-
 describe('useAuthStore', () => {
   let mockAuth: AuthAdapter
 
   beforeEach(() => {
-    // Clear sessionStorage
     sessionStorage.clear()
-
-    // Set up Pinia
     setActivePinia(createPinia())
-
-    // Set up service container with mock auth adapter
     mockAuth = createMockAuthAdapter()
     const container = initContainer()
     container.register(AUTH_ADAPTER, () => mockAuth)
   })
 
   describe('initAuth', () => {
-    it('returns true with valid token in sessionStorage', () => {
-      const futureExp = Math.floor(Date.now() / 1000) + 3600 // 1 hour from now
+    it('returns true with valid session from SDK', async () => {
+      const futureExp = Math.floor(Date.now() / 1000) + 3600
       const token = makeJwt(futureExp)
-      const user = { id: '1', name: 'Test', email: 'test@example.com' }
+      const user = makeUser()
 
-      sessionStorage.setItem('token', token)
+      // Simulate SDK session available
+      ;(mockAuth as any).getSession = vi.fn().mockResolvedValue({ access_token: token })
       sessionStorage.setItem('user', JSON.stringify(user))
 
       const store = useAuthStore()
-      const result = store.initAuth()
+      const result = await store.initAuth()
 
       expect(result).toBe(true)
       expect(store.isAuthenticated).toBe(true)
       expect(store.user?.email).toBe('test@example.com')
-      expect(mockAuth.setToken).toHaveBeenCalledWith(token)
+      expect(store.token).toBe(token)
     })
 
-    it('returns false and clears state with expired token', () => {
-      const pastExp = Math.floor(Date.now() / 1000) - 3600 // 1 hour ago
-      const token = makeJwt(pastExp)
-      const user = { id: '1', name: 'Test', email: 'test@example.com' }
-
-      sessionStorage.setItem('token', token)
-      sessionStorage.setItem('user', JSON.stringify(user))
+    it('returns false when no SDK session exists', async () => {
+      ;(mockAuth as any).getSession = vi.fn().mockResolvedValue(null)
 
       const store = useAuthStore()
-      const result = store.initAuth()
+      const result = await store.initAuth()
 
       expect(result).toBe(false)
       expect(store.isAuthenticated).toBe(false)
-      expect(store.user).toBeNull()
-      expect(store.token).toBeNull()
-      expect(sessionStorage.getItem('token')).toBeNull()
-      expect(sessionStorage.getItem('user')).toBeNull()
-      expect(mockAuth.setToken).toHaveBeenCalledWith(null)
+    })
+
+    it('rebuilds user data from API when sessionStorage is empty (new tab)', async () => {
+      const futureExp = Math.floor(Date.now() / 1000) + 3600
+      const token = makeJwt(futureExp)
+      const profile = makeUser({ name: 'Rebuilt User' })
+      const teams = [makeTeamSummary()]
+
+      ;(mockAuth as any).getSession = vi.fn().mockResolvedValue({ access_token: token })
+      ;(mockAuth.getProfile as ReturnType<typeof vi.fn>).mockResolvedValue(profile)
+      ;(mockAuth.getTeams as ReturnType<typeof vi.fn>).mockResolvedValue(teams)
+
+      const store = useAuthStore()
+      const result = await store.initAuth()
+
+      expect(result).toBe(true)
+      expect(store.user?.name).toBe('Rebuilt User')
+      expect(store.userTeams).toHaveLength(1)
+      expect(store.currentTeam?.id).toBe('team-1')
+    })
+
+    it('falls back to sessionStorage token when getSession is not available', async () => {
+      // Legacy path: getSession throws (not available)
+      const futureExp = Math.floor(Date.now() / 1000) + 3600
+      const token = makeJwt(futureExp)
+      sessionStorage.setItem('token', token)
+      sessionStorage.setItem('user', JSON.stringify(makeUser()))
+
+      const store = useAuthStore()
+      const result = await store.initAuth()
+
+      expect(result).toBe(true)
+      expect(store.isAuthenticated).toBe(true)
+    })
+
+    it('returns false when fallback token is also missing', async () => {
+      const store = useAuthStore()
+      const result = await store.initAuth()
+
+      expect(result).toBe(false)
+      expect(store.isAuthenticated).toBe(false)
     })
   })
 
@@ -129,13 +130,10 @@ describe('useAuthStore', () => {
 
   describe('logout', () => {
     it('clears state and sessionStorage', async () => {
-      // Set up authenticated state
-      const futureExp = Math.floor(Date.now() / 1000) + 3600
-      sessionStorage.setItem('token', makeJwt(futureExp))
-      sessionStorage.setItem('user', JSON.stringify({ id: '1', name: 'Test', email: 'test@example.com' }))
-
+      seedAuth()
+      // Fallback path for initAuth
       const store = useAuthStore()
-      store.initAuth()
+      await store.initAuth()
       expect(store.isAuthenticated).toBe(true)
 
       await store.logout()
@@ -143,7 +141,6 @@ describe('useAuthStore', () => {
       expect(store.user).toBeNull()
       expect(store.token).toBeNull()
       expect(store.isAuthenticated).toBe(false)
-      expect(sessionStorage.getItem('token')).toBeNull()
       expect(sessionStorage.getItem('user')).toBeNull()
       expect(mockAuth.logout).toHaveBeenCalled()
     })
@@ -188,13 +185,12 @@ describe('useAuthStore', () => {
   describe('switchTeam', () => {
     it('switches team and updates token', async () => {
       const futureExp = Math.floor(Date.now() / 1000) + 3600
-      const token = makeJwt(futureExp)
-      sessionStorage.setItem('token', token)
-      sessionStorage.setItem('user', JSON.stringify({ id: '1', name: 'Test', email: 'test@example.com' }))
-      sessionStorage.setItem('teams', JSON.stringify([
-        { id: 'team-1', name: 'Team One', role: 'owner' },
-        { id: 'team-2', name: 'Team Two', role: 'member' },
-      ]))
+      seedAuth({
+        teams: [
+          { id: 'team-1', name: 'Team One', role: 'owner' },
+          { id: 'team-2', name: 'Team Two', role: 'member' },
+        ],
+      })
 
       const newToken = makeJwt(futureExp)
       ;(mockAuth.switchTeam as ReturnType<typeof vi.fn>).mockResolvedValue({
@@ -204,7 +200,7 @@ describe('useAuthStore', () => {
       })
 
       const store = useAuthStore()
-      store.initAuth()
+      await store.initAuth()
       const result = await store.switchTeam('team-2')
 
       expect(result.id).toBe('team-2')
@@ -213,20 +209,18 @@ describe('useAuthStore', () => {
     })
 
     it('rolls back on switch failure', async () => {
-      const futureExp = Math.floor(Date.now() / 1000) + 3600
-      const token = makeJwt(futureExp)
-      sessionStorage.setItem('token', token)
-      sessionStorage.setItem('user', JSON.stringify({ id: '1', name: 'Test', email: 'test@example.com' }))
-      sessionStorage.setItem('teams', JSON.stringify([
-        { id: 'team-1', name: 'Team One', role: 'owner' },
-        { id: 'team-2', name: 'Team Two', role: 'member' },
-      ]))
-      sessionStorage.setItem('currentTeam', JSON.stringify({ id: 'team-1', name: 'Team One', role: 'owner' }))
+      const { token } = seedAuth({
+        teams: [
+          { id: 'team-1', name: 'Team One', role: 'owner' },
+          { id: 'team-2', name: 'Team Two', role: 'member' },
+        ],
+        currentTeam: { id: 'team-1', name: 'Team One', role: 'owner' },
+      })
 
       ;(mockAuth.switchTeam as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('Switch failed'))
 
       const store = useAuthStore()
-      store.initAuth()
+      await store.initAuth()
 
       await expect(store.switchTeam('team-2')).rejects.toThrowError(/Switch failed/)
       expect(store.currentTeam?.id).toBe('team-1')
@@ -236,9 +230,7 @@ describe('useAuthStore', () => {
 
   describe('loadUserTeams', () => {
     it('loads teams and sets current team', async () => {
-      const futureExp = Math.floor(Date.now() / 1000) + 3600
-      sessionStorage.setItem('token', makeJwt(futureExp))
-      sessionStorage.setItem('user', JSON.stringify({ id: '1', name: 'Test', email: 'test@example.com' }))
+      seedAuth()
 
       ;(mockAuth.getTeams as ReturnType<typeof vi.fn>).mockResolvedValue([
         { id: 'team-1', name: 'Team One', role: 'owner' },
@@ -246,7 +238,7 @@ describe('useAuthStore', () => {
       ])
 
       const store = useAuthStore()
-      store.initAuth()
+      await store.initAuth()
       await store.loadUserTeams()
 
       expect(store.userTeams).toHaveLength(2)
@@ -256,9 +248,7 @@ describe('useAuthStore', () => {
 
   describe('createTeam', () => {
     it('creates team via TEAM_REPO and adds to userTeams', async () => {
-      const futureExp = Math.floor(Date.now() / 1000) + 3600
-      sessionStorage.setItem('token', makeJwt(futureExp))
-      sessionStorage.setItem('user', JSON.stringify({ id: '1', name: 'Test', email: 'test@example.com' }))
+      seedAuth()
 
       const mockTeamRepo = {
         create: vi.fn().mockResolvedValue({ id: 'new-team', name: 'New Team' }),
@@ -272,7 +262,7 @@ describe('useAuthStore', () => {
       container.register(TEAM_REPO, () => mockTeamRepo)
 
       const store = useAuthStore()
-      store.initAuth()
+      await store.initAuth()
       const result = await store.createTeam('New Team')
 
       expect(mockTeamRepo.create).toHaveBeenCalledWith({ name: 'New Team' })
@@ -283,15 +273,11 @@ describe('useAuthStore', () => {
   })
 
   describe('role-based computed properties', () => {
-    it('computes role correctly from user data', () => {
-      const futureExp = Math.floor(Date.now() / 1000) + 3600
-      sessionStorage.setItem('token', makeJwt(futureExp))
-      sessionStorage.setItem('user', JSON.stringify({
-        id: '1', name: 'Test', email: 'test@example.com', role: 'admin'
-      }))
+    it('computes role correctly from user data', async () => {
+      seedAuth({ user: makeUser({ role: 'admin' }) })
 
       const store = useAuthStore()
-      store.initAuth()
+      await store.initAuth()
 
       expect(store.userRole).toBe('admin')
       expect(store.isOwner).toBe(false)
@@ -301,30 +287,22 @@ describe('useAuthStore', () => {
       expect(store.isViewer).toBe(false)
     })
 
-    it('owner has all permissions', () => {
-      const futureExp = Math.floor(Date.now() / 1000) + 3600
-      sessionStorage.setItem('token', makeJwt(futureExp))
-      sessionStorage.setItem('user', JSON.stringify({
-        id: '1', name: 'Test', email: 'test@example.com', role: 'owner'
-      }))
+    it('owner has all permissions', async () => {
+      seedAuth({ user: makeUser({ role: 'owner' }) })
 
       const store = useAuthStore()
-      store.initAuth()
+      await store.initAuth()
 
       expect(store.isOwner).toBe(true)
       expect(store.canManageTeam).toBe(true)
       expect(store.canEdit).toBe(true)
     })
 
-    it('viewer cannot edit or manage', () => {
-      const futureExp = Math.floor(Date.now() / 1000) + 3600
-      sessionStorage.setItem('token', makeJwt(futureExp))
-      sessionStorage.setItem('user', JSON.stringify({
-        id: '1', name: 'Test', email: 'test@example.com', role: 'viewer'
-      }))
+    it('viewer cannot edit or manage', async () => {
+      seedAuth({ user: makeUser({ role: 'viewer' }) })
 
       const store = useAuthStore()
-      store.initAuth()
+      await store.initAuth()
 
       expect(store.isViewer).toBe(true)
       expect(store.canEdit).toBe(false)
@@ -338,31 +316,25 @@ describe('useAuthStore', () => {
       expect(store.isAuthenticated).toBe(false)
     })
 
-    it('is true when both user and token are set', () => {
-      const futureExp = Math.floor(Date.now() / 1000) + 3600
-      sessionStorage.setItem('token', makeJwt(futureExp))
-      sessionStorage.setItem('user', JSON.stringify({ id: '1', name: 'Test', email: 'test@example.com' }))
+    it('is true when both user and token are set', async () => {
+      seedAuth()
 
       const store = useAuthStore()
-      store.initAuth()
+      await store.initAuth()
       expect(store.isAuthenticated).toBe(true)
     })
   })
 
   describe('updateUserState', () => {
-    it('merges partial user data without overwriting id/email', () => {
-      const futureExp = Math.floor(Date.now() / 1000) + 3600
-      sessionStorage.setItem('token', makeJwt(futureExp))
-      sessionStorage.setItem('user', JSON.stringify({
-        id: '1', name: 'Test', email: 'test@example.com'
-      }))
+    it('merges partial user data without overwriting id/email', async () => {
+      seedAuth()
 
       const store = useAuthStore()
-      store.initAuth()
+      await store.initAuth()
       store.updateUserState({ name: 'Updated Name' })
 
       expect(store.user?.name).toBe('Updated Name')
-      expect(store.user?.id).toBe('1')
+      expect(store.user?.id).toBe('user-1')
       expect(store.user?.email).toBe('test@example.com')
     })
   })

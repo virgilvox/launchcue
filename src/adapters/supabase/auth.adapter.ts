@@ -185,7 +185,20 @@ export class SupabaseAuthAdapter implements AuthAdapter {
   }
 
   getToken(): string | null {
-    return sessionStorage.getItem('token')
+    // SDK owns the token — read from current session
+    // Synchronous fallback; prefer getSession() for async access
+    return null
+  }
+
+  async getSession(): Promise<{ access_token: string; refresh_token?: string } | null> {
+    const { data } = await getSupabase().auth.getSession()
+    if (data.session) {
+      return {
+        access_token: data.session.access_token,
+        refresh_token: data.session.refresh_token,
+      }
+    }
+    return null
   }
 
   onUnauthorized(callback: () => void): void {
