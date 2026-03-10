@@ -77,7 +77,8 @@
 <script setup>
 import { ref } from 'vue';
 import { useToast } from 'vue-toastification';
-import apiService from '../../services/api.service';
+import { getContainer } from '@/core/service-container';
+import { AUTH_ADAPTER } from '@/adapters/repository-keys';
 
 const appName = import.meta.env.VITE_APP_NAME || 'LaunchCue';
 const toast = useToast();
@@ -93,7 +94,8 @@ const handleSubmit = async () => {
   isLoading.value = true;
 
   try {
-    await apiService.forgotPassword(email.value);
+    const auth = getContainer().resolve(AUTH_ADAPTER);
+    await auth.forgotPassword(email.value);
     success.value = true;
     successMessage.value = 'If an account with that email exists, a password reset link has been sent. Check your inbox.';
     toast.success('Reset link sent!');

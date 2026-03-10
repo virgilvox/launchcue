@@ -11,7 +11,7 @@ import { useAuthStore } from './stores/auth'
 import { initContainer } from './core/service-container'
 import { initEventBus } from './core/event-bus'
 import { initPluginRegistry } from './core/plugin-registry'
-import { registerNetlifyAdapters } from './adapters/netlify'
+import { registerSupabaseAdapters } from './adapters/supabase'
 import { registerAllModules } from './modules'
 
 async function bootstrap() {
@@ -20,8 +20,8 @@ async function bootstrap() {
   const eventBus = initEventBus()
   const registry = initPluginRegistry()
 
-  // 2. Register backend adapters (swap this line for Supabase)
-  registerNetlifyAdapters(container)
+  // 2. Register backend adapters
+  registerSupabaseAdapters(container)
 
   // 3. Register feature modules
   registerAllModules(registry)

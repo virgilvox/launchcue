@@ -20,7 +20,7 @@ export const useTaskStore = defineStore('task', () => {
     isLoading.value = true
     error.value = null
     try {
-      const response = await getRepo().findAll(filter)
+      const response = await getRepo().findAll(filter as Record<string, unknown>)
       tasks.value = response || []
       return tasks.value
     } catch (err: unknown) {

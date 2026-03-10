@@ -1,0 +1,48 @@
+name: launchcue
+region: nyc
+services:
+  - name: api
+    github:
+      repo: virgilvox/launchcue
+      branch: main
+      deploy_on_push: true
+    source_dir: /server
+    dockerfile_path: server/Dockerfile
+    http_port: 3001
+    instance_size_slug: professional-xs
+    routes:
+      - path: /api
+    envs:
+      - key: SUPABASE_URL
+        type: SECRET
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        type: SECRET
+      - key: ANTHROPIC_API_KEY
+        type: SECRET
+      - key: SMTP_HOST
+        type: SECRET
+      - key: SMTP_PORT
+        value: "587"
+      - key: SMTP_USER
+        type: SECRET
+      - key: SMTP_PASS
+        type: SECRET
+      - key: ALLOWED_ORIGINS
+        value: "${APP_URL}"
+static_sites:
+  - name: frontend
+    github:
+      repo: virgilvox/launchcue
+      branch: main
+      deploy_on_push: true
+    build_command: npm ci && npm run build
+    output_dir: dist
+    index_document: index.html
+    error_document: index.html
+    envs:
+      - key: VITE_SUPABASE_URL
+        type: SECRET
+      - key: VITE_SUPABASE_ANON_KEY
+        type: SECRET
+      - key: VITE_API_URL
+        value: "/api"

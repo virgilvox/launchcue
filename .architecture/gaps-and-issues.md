@@ -1,121 +1,92 @@
 # Gaps, Broken Flows & Issues
 
-## Critical Gaps (P0)
+> Updated after Netlify→Supabase migration. Items marked RESOLVED were fixed during the rearchitecture.
 
-### 1. Webhooks Not Wired
-- `dispatchWebhooks()` exists in `utils/webhookDispatcher.js` but is NOT called from any CRUD function
-- Users can create webhooks via Settings but they never fire
-- **Impact**: Feature is completely non-functional
+## Status Summary
 
-### 2. No Email Sending
-- Password reset tokens generated → nowhere to send them
-- Email verification tokens generated → nowhere to send them
-- Client invitations generated → nowhere to send them
-- **Impact**: These features are unusable without manual token delivery
+| Status | Count |
+|--------|-------|
+| RESOLVED | 13 |
+| OPEN | 8 |
+| CLARIFIED | 1 |
+| ACCEPTABLE | 2 |
 
-### 3. No Tests Beyond 13 Utility Tests
-- Zero component tests
-- Zero integration tests
-- Zero API/endpoint tests
-- **Impact**: Regressions go undetected
+---
 
-### 4. No Pagination (Frontend)
-- All stores fetch ALL records at once (no limit/offset/cursor)
-- Backend supports pagination but frontend ignores it
-- **Impact**: Performance degrades with data growth
+## Resolved
 
-## Significant Gaps (P1)
+### 1. Webhooks Not Wired — RESOLVED
+PostgreSQL trigger dispatches webhook events. Express server processes the webhook queue every 30 seconds via `webhook-processor.ts`.
 
-### 5. Notification Creation Never Called
-- `notifications.js` exports `createNotification()` for other functions to call
-- No other function imports or calls it
-- Notifications collection stays empty → NotificationBell always shows 0
-- **Impact**: Notification system is completely dead
+### 2. No Email Sending — RESOLVED
+GoTrue handles auth emails (verification, password reset) natively. Express `email.ts` route handles client invitations and notifications via nodemailer + SMTP.
 
-### 6. Brain Dump AI Not Connected
-- `brain-dump-create-items.js` references AI processing but no AI provider configured
-- No API key/config for Claude or any LLM
-- **Impact**: Brain Dump feature likely non-functional
+### 4. No Pagination (Frontend) — RESOLVED
+`findPaginated()` method on repository interface. `Pagination.vue` component wired in list views.
 
-### 7. Recurring Events Incomplete
-- Schema supports `recurrence: { frequency, interval, endDate }`
-- Calendar view expands occurrences for display
-- BUT: No UI to create/edit recurrence rules
-- **Impact**: Recurrence only works if set via API directly
+### 5. Dead Notifications — RESOLVED
+Notification store polls via NOTIFICATION_REPO every 60 seconds (`startPolling(60000)` with `setInterval`). DefaultLayout starts polling on mount.
 
-### 8. Search Results Not Clickable for All Types
-- GlobalSearch handles navigation for some result types
-- May not cover all 5 searchable collections properly
+### 6. Brain Dump AI Not Connected — RESOLVED
+Express `/api/ai/process` endpoint uses Anthropic SDK (Claude). Brain dump page calls via Vite proxy.
 
-### 9. Scope-to-Invoice Flow Fragile
-- `scopeStore` depends on `invoiceStore` for `createFromScope`
-- No error recovery if invoice creation fails after scope status change
-- **Impact**: Potential data inconsistency
+### 10. Delete Loading States — RESOLVED
+Properly wired in Tasks, Clients, and other CRUD views with `isProcessing` state.
 
-## UI/UX Issues (P2)
+### 15. 4 Services Still in JavaScript — RESOLVED
+All service files deleted. Stores now use repository pattern via DI container — no service layer.
 
-### 10. No Loading States on Some Delete Operations
-- Confirm dialog has `isProcessing` but not all pages wire it correctly
-- Some deletions show no feedback until completion
+### 16. notification.js Store is JavaScript — RESOLVED
+Notification store rewritten in TypeScript with repository pattern.
 
-### 11. Calendar Color Map Fragile
-- Uses lookup objects for Tailwind class → hex mapping
-- If a new event color is added, must update maps in multiple files
+### 17. Duplicate CampaignsList Route — RESOLVED
+Not actually duplicates — `CampaignsList.vue` is the list view, `Campaigns.vue` is the builder. Dead `CampaignDetail.vue` deleted (was not imported by any module).
 
-### 12. Form Validation Inconsistent
-- Tasks: title required
-- Clients: name required
-- Projects: name required + date range
-- Campaigns, Notes, Scopes, Invoices: validation varies, some missing
+### 19. Settings Service Has No Backend — RESOLVED
+Settings service deleted along with all services. Settings managed via Supabase directly.
 
-### 13. Mobile Sidebar State Leak
-- Sidebar open/close state persisted to localStorage
-- Mobile drawer might start open if desktop state was saved
+### 22. Rate Limit Bypass via Header Spoofing — RESOLVED
+Rate limiting now behind Supabase RLS + Kong gateway. Express uses express-rate-limit by IP.
 
-## Architecture Debt (P3)
+### 23. JWT 24h Expiry Without Refresh — RESOLVED
+Supabase Auth auto-refreshes sessions. No manual token management needed.
 
-### 14. 80+ Components Not `<script setup lang="ts">`
-- Most use Options API or Composition API without setup syntax
-- Inconsistent patterns across files
+### 9. Scope-to-Invoice Flow — CLARIFIED
+`createFromScope()` only creates an invoice from scope data. Scope status changes happen separately in `ScopeBuilder.vue` via `updateScope()` as a distinct user action. The two-step flow means a failed invoice creation does not leave scope status inconsistent.
 
-### 15. 4 Services Still in JavaScript
-- `comment.service.js`, `notification.service.js`, `auditLog.service.js`, `webhook.service.js`
-- Type safety gap
+---
 
-### 16. notification.js Store is JavaScript
-- Only non-TS store, inconsistent with other 10 stores
+## Open
 
-### 17. Duplicate Route: CampaignsList → Campaigns
-- Both exist, one is essentially an alias/redirect
-- Confusing route structure
+### 3. No Tests Beyond Core (P0)
+52 tests across 4 files (service-container, event-bus, plugin-registry, auth store). No component tests, no integration tests, no E2E tests.
 
-### 18. Console Error in main.ts Global Handler
-- Only remaining console.error — acceptable for production error boundary
+### 7. Recurring Events No UI (P1)
+Schema supports `recurrence: { frequency, interval, endDate }`. Calendar view expands occurrences for display. But no UI to create/edit recurrence rules.
 
-### 19. Settings Service Has No Backend
-- `settings.service.ts` exports get/update but no corresponding Netlify function
-- Dead code or planned feature
+### 8. Search Note Navigation (P2) — IMPROVED
+Added `highlight` query param to note search results. Notes page scrolls to and highlights the matching note. Full inline expansion not yet implemented.
 
-### 20. No Request Deduplication
-- Multiple components mounting simultaneously can trigger duplicate API calls
-- No AbortController usage for cancelled navigations
+### 11. Calendar Color Map Fragile (P2)
+Uses lookup objects for Tailwind class → hex mapping. Adding a new event color requires updating maps in multiple files.
 
-## Security Gaps
+### 12. Form Validation Inconsistent (P2)
+Validation varies by entity. Tasks: title required. Clients: name required. Others: inconsistent or missing validation rules.
 
-### 21. CORS Allow-All in Development
-- `ALLOWED_ORIGINS` empty in dev → allows any origin
-- Fine for dev but could leak to staging/production
+### 13. Mobile Sidebar State Leak (P2)
+Sidebar open/close state persisted to localStorage. Mobile drawer might start open if desktop state was saved.
 
-### 22. Rate Limit Bypass via Header Spoofing
-- Identifier falls back to x-forwarded-for header
-- Attackers can rotate this header to bypass rate limits
-- **Mitigation**: Use Netlify's actual client IP when available
+### 14. 80+ Components Not `<script setup lang="ts">` (P3)
+Most components use `<script setup>` without `lang="ts"`. Large effort to migrate, not blocking functionality.
 
-### 23. JWT 24h Expiry Without Refresh
-- No refresh token mechanism
-- Users must re-login every 24 hours
-- **Impact**: Poor UX for long sessions
+### 18. Console Error in main.ts Global Handler — ACCEPTABLE
+Only remaining `console.error` — acceptable for production error boundary.
 
-### 24. API Key Scopes Not Enforced in All Functions
-- Some functions check `requireRole()` but API key auth passes through
-- Scope validation depends on correct scope mapping in `authHandler.js`
+### 20. No Request Deduplication (P3)
+Multiple components mounting simultaneously can trigger duplicate API calls. No AbortController usage for cancelled navigations.
+
+### 21. CORS Allow-All in Development — ACCEPTABLE
+Express CORS allows `localhost:5173` in dev. Fine for local development, production uses `ALLOWED_ORIGINS` env var.
+
+### 24. API Key Scopes Not Fully Enforced (P3)
+Scope validation depends on correct mapping. Some edge cases may not check scopes thoroughly.

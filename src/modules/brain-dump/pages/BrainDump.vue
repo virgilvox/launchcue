@@ -211,7 +211,7 @@
 <script setup>
 import { ref, reactive, onMounted, computed, watch } from 'vue';
 import { useToast } from 'vue-toastification';
-import brainDumpService from '@/services/brain-dump.service';
+import { useBrainDumpStore } from '@/stores/brain-dump';
 import { useClientStore } from '@/stores/client';
 import { useProjectStore } from '@/stores/project';
 
@@ -228,6 +228,7 @@ import { LightBulbIcon } from '@heroicons/vue/24/outline';
 
 import { useAuthStore } from '@/stores/auth';
 const toast = useToast();
+const brainDumpStore = useBrainDumpStore();
 const clientStore = useClientStore();
 const projectStore = useProjectStore();
 const authStore = useAuthStore();
@@ -242,8 +243,8 @@ async function loadHistory() {
   if (historyLoading.value) return;
   historyLoading.value = true;
   try {
-    const data = await brainDumpService.getDumps();
-    historyItems.value = Array.isArray(data) ? data : (data.data || []);
+    const data = await brainDumpStore.fetchDumps();
+    historyItems.value = Array.isArray(data) ? data : [];
   } catch (err) {
     toast.error('Failed to load brain dump history');
     historyItems.value = [];
@@ -265,7 +266,7 @@ function toggleExpandItem(id) {
 async function deleteHistoryItem(id) {
   if (!confirm('Are you sure you want to delete this brain dump?')) return;
   try {
-    await brainDumpService.deleteDump(id);
+    await brainDumpStore.deleteDump(id);
     historyItems.value = historyItems.value.filter(item => item.id !== id);
     toast.success('Brain dump deleted');
   } catch (err) {
@@ -381,12 +382,15 @@ async function processWithAI() {
       }
     }
     
-    // 2. Call the AI processing service
-    const result = await brainDumpService.processText({
-      input: userInput.value,
-      processingType: selectedProcessingType.value,
-      contextInfo: formattedContext, // Pass the potentially large context string
-      useEnrichedContext: !!formattedContext // Indicate if context was added
+    // 2. Call the AI processing via store
+    const result = await brainDumpStore.processText({
+      prompt: userInput.value,
+      processingDetails: {
+        type: selectedProcessingType.value,
+        context: formattedContext,
+        enriched: !!formattedContext
+      },
+      max_tokens: 4096
     });
     
     // 3. Handle results
@@ -418,7 +422,7 @@ async function fetchContextData() {
       projectId: selectedProject.value || undefined,
       options: JSON.stringify(contextOptions) // Send selected options
     };
-    contextData.value = await brainDumpService.getContextData(params);
+    contextData.value = await brainDumpStore.getContextData(params);
   } catch (error) {
     toast.error('Failed to load context data');
     contextData.value = null;
@@ -485,7 +489,7 @@ async function createSelectedItems(selectedItems) {
     const projects = selectedItems.filter(item => item.type.toLowerCase() === 'project');
     
     // Call service to create items
-    const result = await brainDumpService.createItems({
+    const result = await brainDumpStore.createItems({
       tasks,
       events,
       projects

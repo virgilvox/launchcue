@@ -4,42 +4,35 @@
 
 ### Prerequisites
 
-- Node.js (v18+ recommended)
+- Node.js 18+
 - npm
-- MongoDB instance (local or Atlas)
-- Netlify CLI (included as a dev dependency)
+- Docker + Docker Compose (for local Supabase)
+- Anthropic API key (optional, for AI features)
 
 ### Setup
 
 ```bash
 git clone <repo-url> launchcue
-cd launchcue
-npm install
-```
-
-Create a `.env` file in the project root with the following variables:
-
-```env
-MONGODB_URI=mongodb+srv://<user>:<password>@<cluster>.mongodb.net/<database>
-JWT_SECRET=your-secret-key
-ANTHROPIC_API_KEY=sk-ant-...
+cd launchcue && npm install
+cp .env.example .env  # Fill in Supabase URL, keys, etc.
+cd server && npm install && cd ..
 ```
 
 ### Running the app
 
-**Frontend only** (Vite dev server, no serverless functions):
+**Frontend only** (Vite dev server):
 
 ```bash
 npm run dev
 ```
 
-**Full stack** (Vite + Netlify Functions):
+**Full stack** (Vite + Express API + local Supabase):
 
 ```bash
-npx netlify dev
+npm run dev:full
 ```
 
-The Vite dev server runs on `http://localhost:5173` by default. When using `netlify dev`, the proxy typically runs on `http://localhost:8888`.
+The Vite dev server runs on `http://localhost:5173`, the Express API on `http://localhost:3001`, and local Supabase on `http://localhost:8000`.
 
 ---
 
@@ -47,13 +40,17 @@ The Vite dev server runs on `http://localhost:5173` by default. When using `netl
 
 | Script | Command | Description |
 |---|---|---|
-| `npm run dev` | `vite` | Start the Vite development server (frontend only) |
-| `npm run build` | `vite build` | Build for production (outputs to `dist/`) |
-| `npm run preview` | `vite preview` | Preview the production build locally |
-| `npm run dev:netlify` | `netlify dev` | Start full-stack dev server (Vite + Netlify Functions) |
-| `npm run type-check` | `vue-tsc --noEmit` | Run TypeScript type checking without emitting files |
-| `npm run test` | `vitest run` | Run tests once |
-| `npm run test:watch` | `vitest` | Run tests in watch mode |
+| `npm run dev` | `vite` | Vite dev server (port 5173) |
+| `npm run dev:server` | `cd server && npm run dev` | Express API (port 3001, tsx watch) |
+| `npm run dev:supabase` | `docker compose` | Docker Compose for local Supabase (port 8000) |
+| `npm run dev:supabase:down` | `docker compose down` | Stop local Supabase |
+| `npm run dev:full` | `concurrently` | All three services concurrently |
+| `npm run build` | `vite build` | Production build |
+| `npm run type-check` | `vue-tsc --noEmit` | TypeScript checking |
+| `npm run test` | `vitest run` | Run tests (52 across 4 files) |
+| `npm run test:watch` | `vitest` | Watch mode |
+| `npm run lint` | `eslint src/ --ext .ts,.vue` | ESLint |
+| `npm run format` | `prettier --write src/` | Prettier |
 
 ---
 
@@ -61,133 +58,107 @@ The Vite dev server runs on `http://localhost:5173` by default. When using `netl
 
 ```
 launchcue/
+├── .do/                     # DigitalOcean App Platform config
 ├── docs/                    # Documentation
-├── netlify/
-│   └── functions/           # Serverless backend (flat files, not nested)
-│       ├── utils/           # Shared utilities (db, auth, rateLimit, etc.)
-│       ├── tasks.js         # Task CRUD
-│       ├── projects.js      # Project CRUD
-│       ├── clients.js       # Client CRUD
-│       ├── campaigns.js     # Campaign CRUD
-│       ├── notes.js         # Notes CRUD
-│       ├── resources.js     # Resources CRUD
-│       ├── calendar-events.js
-│       ├── braindumps.js
-│       ├── comments.js
-│       ├── notifications.js
-│       ├── webhooks.js
-│       ├── audit-logs.js
-│       ├── search.js
-│       ├── ai-process.js
-│       ├── auth-login.js
-│       ├── auth-register.js
-│       ├── auth-logout.js
-│       ├── auth-switch-team.js
-│       ├── auth-change-password.js
-│       ├── auth-forgot-password.js
-│       ├── auth-reset-password.js
-│       ├── auth-verify-email.js
-│       ├── api-keys.js
-│       ├── teams.js
-│       ├── scope-templates.js   # Scope template CRUD
-│       ├── scopes.js            # Project scope CRUD (soft delete)
-│       ├── invoices.js          # Invoice CRUD (soft delete, auto-numbering)
-│       ├── client-invitations.js # Client invite + accept flow
-│       └── onboarding.js        # Onboarding checklist CRUD
+├── infra/                   # Infrastructure scripts (droplet-setup.sh)
+├── server/                  # Express API server (AI, webhooks, email)
+│   └── src/
+│       ├── routes/          # ai.ts, webhooks.ts, email.ts
+│       ├── middleware/      # auth.ts (JWT validation via Supabase)
+│       ├── supabase.ts      # Server-side Supabase client
+│       ├── webhook-processor.ts  # Webhook dispatch logic
+│       └── index.ts         # Express entry point
 ├── src/
-│   ├── assets/              # CSS (main.css with Tailwind)
-│   ├── components/
-│   │   ├── ui/              # Reusable UI primitives (Badge, Card, DataTable, etc.)
-│   │   ├── dashboard/       # Dashboard widgets
-│   │   ├── tasks/           # Task-specific components (TaskForm, TaskList, TaskKanban, TaskFilters)
-│   │   ├── brain-dump/      # BrainDumpForm
-│   │   ├── settings/        # ApiKeyManager, AuditLogViewer, WebhookManager
-│   │   ├── resource/        # ResourceDialog
-│   │   ├── calendar/        # CalendarMonthView, WeekView, DayView, EventSidebar, Filters
-│   │   ├── project/         # ProjectDetailsCard, TasksSection, TeamSection, StatsCard
-│   │   ├── client/          # ClientInfoSection, ContactsSection, ProjectsTable
-│   │   ├── campaign/        # CampaignForm, CampaignCard
-│   │   ├── scope/           # ScopeDeliverableRow, TermsEditor, SummaryCard, Preview
-│   │   ├── invoice/         # InvoiceLineItemRow, Summary, Preview, StatusBadge
-│   │   ├── onboarding/      # OnboardingStepForm, StepUpload, Progress
-│   │   ├── GlobalSearch.vue
-│   │   └── Modal.vue
-│   ├── composables/         # Reusable composables (useModalState, useListFilters, etc.)
-│   ├── layouts/             # DefaultLayout.vue, ClientLayout.vue
-│   ├── pages/               # Route-level page components
-│   │   ├── auth/            # Login, ForgotPassword, ResetPassword, VerifyEmail, AcceptInvite
-│   │   └── client-portal/   # PortalDashboard, PortalProject, PortalOnboarding
-│   ├── router/index.ts      # Vue Router config
-│   ├── services/*.ts        # API service layer (16 TS + 4 JS)
-│   ├── stores/*.ts          # Pinia stores (10 TS + 1 JS)
-│   ├── types/               # TypeScript types (models, api, enums, index)
-│   ├── utils/               # Utility functions
-│   ├── App.vue
-│   └── main.ts
-├── index.html
-├── netlify.toml
-├── tailwind.config.js
-├── vite.config.ts
-├── tsconfig.json
-└── package.json
+│   ├── adapters/            # Repository implementations
+│   │   └── supabase/        # 25 Supabase adapter files (19 repos + 3 adapters + base + index + client)
+│   ├── core/                # ServiceContainer, EventBus, PluginRegistry
+│   ├── modules/             # 15 feature modules (routes, nav, search)
+│   ├── stores/              # 18 Pinia stores (all repository pattern)
+│   ├── components/          # Vue components
+│   ├── composables/         # Reusable composables
+│   ├── layouts/             # DefaultLayout, AuthLayout, ClientLayout
+│   ├── pages/               # Top-level pages (Home, auth, client-portal)
+│   ├── types/               # TypeScript definitions
+│   └── main.ts              # App bootstrap + plugin registration
+├── tests/                   # Vitest tests (core/, stores/)
+├── docker-compose.dev.yml   # Local Supabase stack
+└── vite.config.ts           # Vite config (proxy /api → localhost:3001)
 ```
 
 ---
 
-## 4. Coding Conventions
+## 4. Architecture Patterns
 
-### Vue Components
+### DI Container
 
-- Use Composition API with `<script setup>` (or `<script setup lang="ts">` for typed components).
-- Define props with `defineProps` and emits with `defineEmits`.
-- Keep template logic minimal; move complex expressions into computed properties or composables.
+All data access goes through a symbol-keyed dependency injection container. Repositories are resolved at runtime:
 
-### Validation
+```typescript
+import { getContainer } from '@/core/service-container'
+import { TASK_REPO } from '@/adapters/repository-keys'
 
-- All backend endpoint input is validated with **Zod schemas** before processing.
-- Define schemas at the top of each function file and call `.parse()` or `.safeParse()` on the incoming body.
+const repo = getContainer().resolve(TASK_REPO)
+const tasks = await repo.findAll()
+```
 
-### Soft Delete
+### Repository Pattern
 
-- Deletions set a `deletedAt` timestamp on the document instead of removing it.
-- All queries must filter out soft-deleted records (e.g., `{ deletedAt: null }`).
+Every store accesses data through the `Repository<T, CreateDTO, UpdateDTO>` interface. No store imports Supabase directly. Extended interfaces exist for repositories that need additional methods (e.g., `TeamRepository`, `BrainDumpRepository`, `CommentRepository`, `NotificationRepository`).
 
-### Service Pattern
+### Feature Modules
 
-- Each resource has a dedicated service file in `src/services/` that wraps `apiService` CRUD methods.
-- Services export plain functions (not classes) like `getTasks()`, `createTask(data)`, etc.
-- The base `apiService` in `src/services/api.service.ts` handles Axios configuration, auth headers, and error normalization.
+Each of the 15 feature modules declares routes, nav items, and search providers as data in its `index.ts` file. Modules are registered in `src/main.ts` at boot time.
 
-### Store Pattern
+### Plugin Registry
 
-- Pinia stores use the **Composition API style** (setup function), not the Options API style.
-- Stores call service functions and manage reactive state with `ref` / `computed`.
-
-### Error Handling (Backend)
-
-- Wrap endpoint handlers with the `withErrorHandling` utility for automatic OPTIONS handling, authentication, try/catch, and error response formatting.
-- Alternatively, handle manually with `try/catch` and return responses via `createErrorResponse`.
-- In production, error messages are sanitized to avoid leaking internal details.
-
-### Styling
-
-- **Tailwind CSS** with the `@tailwindcss/forms` and `@tailwindcss/typography` plugins.
-- Primary color palette: **Indigo** (unified between `tailwind.config.js` and CSS custom properties).
-- Dark mode: class-based (`darkMode: 'class'` in Tailwind config). Toggle the `dark` class on `<html>`.
+The plugin registry performs topological dependency sorting so modules boot in the correct order. Each module can declare dependencies on other modules.
 
 ---
 
-## 5. TypeScript Patterns
+## 5. Coding Conventions
+
+### Vue Components
+
+- Composition API with `<script setup>`.
+- Define props with `defineProps` and emits with `defineEmits`.
+- Keep template logic minimal; move complex expressions into computed properties or composables.
+
+### Stores
+
+- Pinia Composition API style (setup function).
+- Stores call repositories via DI container -- never import Supabase or API services directly.
+
+### Adapters
+
+- Implement `Repository<T>` interface (or extended variant).
+- Registered as lazy singletons in the service container.
+- All implementations live in `src/adapters/supabase/`.
+
+### Styling
+
+- **Tailwind CSS** with a brutalist design system.
+- Colors: Purple (#7C3AED) primary, Coral (#E8503A) accent, Parchment (#FAF8F5) background.
+- Border radius: 0. Border width: 2px. Hard offset shadows.
+- Dark mode: class-based (`darkMode: 'class'`), CSS custom properties.
+- Typography: Space Grotesk (headings), Inter (body), JetBrains Mono (data).
+
+### Testing
+
+- **Vitest** with **happy-dom** as the DOM environment.
+- Tests live in `tests/` with subdirectories `core/` and `stores/`.
+- 52 tests across 4 files.
+
+---
+
+## 6. TypeScript
 
 ### Configuration
 
-The TypeScript configuration (`tsconfig.json`) uses these key settings:
-
-- **`strict: true`** -- full strict mode is enabled.
-- **`allowJs: true`** -- permits `.js` files to coexist alongside `.ts` during the incremental migration.
-- **`moduleResolution: "bundler"`** -- uses Vite's bundler-based module resolution.
-- **`target: "ES2020"`** -- targets modern JavaScript.
-- **`paths: { "@/*": ["./src/*"] }`** -- enables `@/` as an alias for `src/`.
+- **`strict: true`** -- full strict mode.
+- **`allowJs: true`** -- permits `.js` files during incremental migration.
+- **`moduleResolution: "bundler"`** -- Vite's bundler-based resolution.
+- **`target: "ES2020"`** -- modern JavaScript.
+- **`paths: { "@/*": ["./src/*"] }`** -- `@/` alias for `src/`.
 
 ### Type Definitions
 
@@ -200,144 +171,27 @@ All shared types live in `src/types/`:
 | `enums.ts` | Shared enums (status values, roles, priorities) |
 | `index.ts` | Barrel re-export |
 
-Import types from `@/types` in component and service files:
-
 ```typescript
 import type { Task, Client } from '@/types'
 ```
-
-### Migration Status
-
-The codebase is in an incremental TypeScript migration:
-
-- **Migrated:** 13 service files, 7 stores, router, Vite config, entry point (`main.ts`)
-- **Remaining .js:** 4 service files and 1 store created during feature work
-- **Vue components:** Not yet converted to `<script setup lang="ts">` (67 files)
-- **Backend:** Stays as CommonJS `.js` (Netlify Functions runtime)
-
----
-
-## 6. Adding a New Endpoint -- Checklist
-
-1. **Create the function file** at `netlify/functions/your-endpoint.js`.
-
-2. **Use `withErrorHandling`** to wrap your handler. This provides automatic CORS/OPTIONS handling, JWT authentication, try/catch, and structured error responses:
-
-   ```javascript
-   const { withErrorHandling } = require('./utils/authHandler');
-
-   exports.handler = withErrorHandling(async (event, context, user) => {
-     // user is the authenticated user from the JWT
-     // your logic here
-   }, { rateLimit: 'general' });
-   ```
-
-3. **Add a Zod schema** for input validation:
-
-   ```javascript
-   const { z } = require('zod');
-
-   const createSchema = z.object({
-     name: z.string().min(1).max(200),
-     description: z.string().optional(),
-   });
-
-   // Inside handler:
-   const data = createSchema.parse(JSON.parse(event.body));
-   ```
-
-4. **Add audit logging** for mutations (create, update, delete):
-
-   ```javascript
-   const { logAuditEvent } = require('./utils/auditLog');
-
-   await logAuditEvent(db, {
-     userId: user.userId,
-     teamId: user.teamId,
-     action: 'create',
-     resourceType: 'your-resource',
-     resourceId: result.insertedId.toString(),
-   });
-   ```
-
-5. **Rate limiting** is configured via the `withErrorHandling` options: `{ rateLimit: 'general' }` or `{ rateLimit: 'auth' }`.
-
-6. **Sanitize error messages** -- the `withErrorHandling` wrapper handles this automatically. If writing manual error responses, avoid exposing stack traces or internal error details in production.
-
-7. **Add the corresponding frontend service** in `src/services/` (see section 7 below).
 
 ---
 
 ## 7. Adding a New Feature -- Checklist
 
-Follow this convention when adding a new feature (e.g., "invoices"):
+1. **Feature module** -- Create in `src/modules/{feature}/` with `index.ts` defining routes, nav items, and search providers.
 
-1. **Components** → `src/components/{feature}/` — feature-specific UI components (e.g., `src/components/invoice/InvoiceLineItemRow.vue`). Reusable UI primitives stay in `src/components/ui/`.
+2. **Supabase adapter** -- Create in `src/adapters/supabase/{feature}.repository.ts` implementing `Repository<T>`.
 
-2. **Page** → `src/pages/{Feature}.vue` — the route-level page that orchestrates data loading and passes props to child components. Use `PageContainer` for vertical spacing and `PageHeader` for the title/breadcrumbs/actions bar.
+3. **Repository key** -- Register a new symbol in `src/adapters/repository-keys.ts`.
 
-   ```vue
-   <template>
-     <PageContainer>
-       <PageHeader title="Invoices" :breadcrumbs="breadcrumbs">
-         <template #actions>
-           <button class="btn btn-primary">Create Invoice</button>
-         </template>
-       </PageHeader>
-       <!-- page content -->
-     </PageContainer>
-   </template>
-   ```
+4. **Pinia store** -- Create in `src/stores/{feature}.ts` using the repository pattern via DI.
 
-3. **Route** → `src/router/index.ts` — add the route inside the DefaultLayout children array. Include `meta.breadcrumbs` for automatic breadcrumb rendering.
+5. **Register module** -- Add the module to `src/main.ts`.
 
-   ```typescript
-   {
-     path: 'invoices',
-     name: 'invoices',
-     component: () => import('../pages/Invoices.vue'),
-     meta: { requiresAuth: true, breadcrumbs: [{ label: 'Dashboard', to: '/dashboard' }, { label: 'Invoices' }] }
-   }
-   ```
+6. **Types** -- Add interfaces to `src/types/models.ts`.
 
-4. **Nav** → `src/components/Sidebar.vue` — add an entry to the `navigation` computed array.
-
-5. **Service** → `src/services/{feature}.service.ts` — if the feature needs API calls. Exports plain functions wrapping `apiService`:
-
-   ```typescript
-   import apiService from './api.service'
-
-   export function getInvoices() {
-     return apiService.get('/invoices')
-   }
-
-   export function createInvoice(data: Record<string, unknown>) {
-     return apiService.post('/invoices', data)
-   }
-   ```
-
-6. **Store** → `src/stores/{feature}.ts` — if the feature needs global state. Uses Pinia Composition API style.
-
-7. **Types** → `src/types/models.ts` — add interfaces for any new data models.
-
-8. **Composables** → `src/composables/` — use existing composables (`useModalState`, `useListFilters`, `useConfirmDialog`, `useAsyncAction`, `useResponsive`) to reduce boilerplate.
-
-### Component directory structure
-
-```
-src/components/
-  ui/          — Shared UI primitives (Button classes, PageContainer, PageHeader, Modal, DataTable, etc.)
-  calendar/    — Calendar page sub-components
-  campaign/    — Campaign builder sub-components
-  campaigns/   — Campaign timeline
-  client/      — Client detail sub-components
-  project/     — Project detail sub-components
-  dashboard/   — Dashboard widgets
-  tasks/       — Task-specific components (TaskForm, TaskList, TaskKanban, TaskFilters)
-  brain-dump/  — Brain dump components
-  settings/    — Settings page components (ApiKeyManager, AuditLogViewer, WebhookManager)
-  resource/    — Resource dialog
-```
+7. **Composables** -- Use existing composables (`useModalState`, `useConfirmDialog`, `useResponsive`, `useTooltips`, `useKeyboardShortcuts`, `useEntityLookup`) to reduce boilerplate.
 
 ### Detail page pattern
 
@@ -364,56 +218,41 @@ All detail pages (ProjectDetail, ClientDetail, etc.) follow this standard layout
 | `vue` (3.5) | Frontend framework |
 | `vue-router` (4.5) | Client-side routing |
 | `pinia` (3.0) | State management |
-| `axios` (1.9) | HTTP client |
+| `@supabase/supabase-js` | Supabase client (auth, database, realtime) |
 | `tailwindcss` (3.4) | Utility-first CSS |
 | `@heroicons/vue` | Icon library |
 | `@tiptap/*` | Rich text editor (used in Notes) |
 | `chart.js` + `vue-chartjs` | Dashboard analytics charts |
 | `date-fns` | Date formatting and manipulation |
-| `zod` | Schema validation (backend + can be used frontend) |
-| `mongodb` (6.16) | MongoDB driver (backend) |
-| `jsonwebtoken` | JWT auth (backend) |
-| `bcryptjs` | Password hashing (backend) |
-| `@anthropic-ai/sdk` | AI processing via Claude API (backend) |
+| `@anthropic-ai/sdk` | AI processing via Claude API (Express server) |
 | `dompurify` | HTML sanitization |
 | `marked` | Markdown rendering |
 | `@vueuse/core` | Vue composable utilities |
+| `concurrently` | Run multiple dev servers |
 | `vitest` | Test runner |
 | `happy-dom` | DOM environment for tests |
 | `vue-tsc` | Vue TypeScript type checking |
 
 ---
 
-## 9. Testing
+## 9. Environment Variables
 
-Tests are run with **Vitest** using **happy-dom** as the DOM environment.
+See `.env.example` for the full list. Key variables:
 
-```bash
-# Run all tests once
-npm run test
-
-# Run tests in watch mode
-npm run test:watch
-```
-
-Test files live in the `tests/` directory and follow the naming pattern `*.test.{js,ts}`. The Vitest config is defined inline in `vite.config.ts` under the `test` key:
-
-```typescript
-test: {
-  environment: 'happy-dom',
-  globals: true,
-  include: ['tests/**/*.test.{js,ts}'],
-}
-```
-
----
-
-## 10. Environment Variables
+### Frontend (VITE_ prefix, exposed to browser)
 
 | Variable | Required | Description |
 |---|---|---|
-| `MONGODB_URI` | Yes | MongoDB connection string |
-| `JWT_SECRET` | Yes | Secret key for signing JWTs |
-| `ANTHROPIC_API_KEY` | Yes | API key for Claude AI processing |
+| `VITE_SUPABASE_URL` | Yes | Supabase project URL |
+| `VITE_SUPABASE_ANON_KEY` | Yes | Supabase anonymous/public key |
+| `VITE_API_URL` | Yes | Express API base URL (e.g., `/api` -- proxied by Vite in dev) |
 
-These are read by the Netlify Functions at runtime. For local development, place them in a `.env` file at the project root. The `.env` file is gitignored and must never be committed.
+### Express Server
+
+| Variable | Required | Description |
+|---|---|---|
+| `SUPABASE_URL` | Yes | Supabase project URL |
+| `SUPABASE_SERVICE_ROLE_KEY` | Yes | Supabase service role key (server-side only) |
+| `ANTHROPIC_API_KEY` | No | API key for Claude AI features |
+
+These are read at runtime. For local development, place them in a `.env` file at the project root. The `.env` file is gitignored and must never be committed.

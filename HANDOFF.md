@@ -1,6 +1,6 @@
 # LaunchCue — Handoff Document
 
-> DevRel management platform built with Vue 3, Tailwind CSS, Netlify Functions, and MongoDB.
+> DevRel management platform built with Vue 3, Tailwind CSS, Supabase (PostgreSQL), and Express API server.
 
 ---
 
@@ -8,38 +8,54 @@
 
 ### Tech Stack
 - **Frontend**: Vue 3 (Composition API, `<script setup>`), Pinia stores, Vue Router, Tailwind CSS
-- **Backend**: Netlify Functions (Node.js, CommonJS), MongoDB via `mongodb` driver
-- **Auth**: JWT tokens stored in sessionStorage, API key support, RBAC (owner/admin/member/viewer/client)
+- **Backend**: Supabase (PostgreSQL + RLS + GoTrue auth + PostgREST + Realtime)
+- **API Server**: Express (AI processing, webhook delivery, email)
+- **Auth**: Supabase Auth (GoTrue), JWT, RBAC (owner/admin/member/viewer/client)
 - **Design System**: CSS custom properties (brutalist style — 0 border-radius, 2px borders, hard offset shadows)
+- **Architecture**: Plugin-based DI container, Repository pattern, feature modules with topological dependency sort
+- **Deployment**: DigitalOcean App Platform (static site + API service) + Droplet (self-hosted Supabase)
 
 ### Directory Structure
 ```
 src/
-  components/       # Reusable UI + feature components
+  core/             # DI container, event bus, plugin registry, types
+  adapters/         # Repository implementations (supabase/), types, keys
+  modules/          # 15 feature modules — each has {pages/, components/, index.ts}
+    dashboard/      # Dashboard + widgets (StatsGrid, ClientHealth, etc.)
+    tasks/          # Tasks (list, kanban, form, filters)
+    projects/       # Projects (detail, form, status workflow)
+    clients/        # Clients (detail, contacts, color coding)
+    calendar/       # Calendar (month/week/day views, event CRUD)
+    notes/          # Notes (rich text Tiptap, templates, tags)
+    campaigns/      # Campaigns (builder, timeline, status)
+    brain-dump/     # Brain dump (AI capture, save-to-note)
+    invoices/       # Invoices (builder, scope import, print/PDF)
+    scopes/         # Scopes (template→instance, deliverables, print/PDF)
+    resources/      # Resources (links/files, tags, client linking)
+    notifications/  # Notification bell, realtime subscriptions
+    onboarding/     # Client onboarding (checklists, step types)
+    settings/       # Settings (profile, webhooks, API keys, audit log)
+    team/           # Team management (members, invites, roles)
+  components/       # Shared UI components
     ui/             # Design system primitives (Modal, PageHeader, EmptyState, etc.)
-    dashboard/      # Dashboard widgets (StatsGrid, ClientHealthWidget, etc.)
-    tasks/          # Task-specific (TaskList, TaskKanban, TaskForm, etc.)
-    calendar/       # Calendar views (MonthView, WeekView, DayView)
-    campaign/       # Campaign components
-    client/         # Client detail components
-    project/        # Project detail components
-    invoice/        # Invoice components
-    scope/          # Scope builder components
-    brain-dump/     # Brain dump components
-    settings/       # Settings panel components
   composables/      # Vue composables (useModalState, useEntityLookup, etc.)
   constants/        # Static data (clientColors.ts)
   layouts/          # DefaultLayout.vue, ClientLayout.vue
-  pages/            # Route-level page components
+  pages/            # Auth + portal pages (non-module routes)
     auth/           # Login, Register, ForgotPassword, etc.
     client-portal/  # Portal pages for client users
-  services/         # API service layer (*.ts)
-  stores/           # Pinia stores (*.ts)
+  stores/           # Pinia stores using repository pattern (18 stores)
   types/            # TypeScript types (models, api, enums)
-  utils/            # Utility functions (formatters, dateFormatter, statusColors)
-netlify/
-  functions/        # Serverless API endpoints (*.js, CommonJS)
-    utils/          # Shared backend utilities (db, auth, response, softDelete, etc.)
+  utils/            # Utility functions + icon resolver
+server/             # Express API server (AI, webhooks, email)
+supabase/
+  migrations/       # PostgreSQL schema (5 migrations, 26 tables, RLS, triggers)
+supabase/           # Kong config, migrations for Docker
+infra/              # Droplet setup script
+.do/                # DigitalOcean App Platform spec
+tests/
+  core/             # Service container, event bus, plugin registry tests
+  stores/           # Auth store tests
 ```
 
 ### Design System
@@ -68,15 +84,28 @@ netlify/
 - **Resources**: Link/file resource library with tags and client linking
 
 ### Platform Features
-- **Auth**: Login, register, password reset (token-based), email verification (token-based), team switching
+- **Auth**: Login, register, password reset, email verification, team switching (Supabase Auth)
 - **RBAC**: owner/admin/member/viewer/client roles with route guards and backend enforcement
 - **Client Portal**: Restricted layout (ClientLayout) with dashboard, project view, onboarding
 - **Teams**: Invite system, role management, team switching with data reload
 - **Settings**: Profile, dark mode toggle, webhook manager, API key manager, audit log viewer
 - **Global Search**: Command palette (Cmd+K) searching tasks/projects/clients/notes/campaigns, `>` prefix for commands
 - **Keyboard Shortcuts**: g-chord navigation (g+d=Dashboard, g+t=Tasks, etc.) with sidebar hints
-- **Notifications**: Bell with dropdown, mark-as-read
+- **Notifications**: Bell with dropdown, mark-as-read, polling (60-second interval)
 - **Comments**: Threaded comments on tasks with ownership enforcement
+
+### Architecture
+- **DI Container**: ServiceContainer with symbol keys, lazy singleton resolution
+- **Repository Pattern**: `Repository<T, CreateDTO, UpdateDTO>` interface, 20 Supabase repository implementations
+- **Feature Modules**: 15 modules declaring routes, nav items, search providers, dependencies
+- **All 18 Pinia stores**: Fully migrated to repository pattern via DI container
+- **Zero legacy imports**: No `src/services/`, no axios, no Netlify code — all deleted
+- **Supabase Backend**: 5 SQL migrations, 26 tables, RLS policies, active_* views for soft delete
+- **Express API Server**: AI processing (Anthropic), webhook delivery (HMAC + retry), email (nodemailer)
+- **Docker**: Full-stack compose (docker-compose.yml) + dev-only Supabase stack (docker-compose.dev.yml)
+- **CI/CD**: ESLint v9 flat config, Prettier, GitHub Actions, DO App Platform deploy-on-push
+- **Docs**: All 7 docs/ files, 6 .architecture/ files, README.md fully updated for Supabase stack
+- **Search→Notes**: Highlight query param + scroll-to on Notes page mount
 
 ### UX Polish
 - **Unsaved changes warning**: onBeforeRouteLeave guard on InvoiceBuilder, ScopeBuilder, ProjectForm
@@ -91,42 +120,36 @@ netlify/
 ## Backend Security Posture
 
 ### What's in place
-- **Authentication**: All endpoints use centralized `authenticate()` (JWT + API key)
-- **Team scoping**: All queries include `teamId` (including updateOne and post-update findOne)
-- **Soft delete**: All primary resources use `softDelete()` + `...notDeleted` filter on all queries (GET, PUT existence checks, DELETE, list queries)
-- **Zod validation**: All POST/PUT endpoints validate request body with Zod schemas
-- **Field stripping**: All PUT handlers strip `teamId`, `createdBy`, `createdAt`, `_id`, `id`, `deletedAt`, `deletedBy`
-- **RBAC**: audit-logs (owner/admin), onboarding write ops (owner/admin), teams (owner for delete, owner/admin for invite/role changes)
-- **Rate limiting**: All endpoints check rate limits
+- **Authentication**: Supabase Auth (GoTrue) with JWT, automatic token refresh
+- **Team scoping**: RLS policies on all tables enforce team_id from JWT claims
+- **Soft delete**: active_* views filter deleted rows, all writes use soft delete
+- **Zod validation**: API server validates request bodies with Zod schemas
+- **RBAC**: Role-based access control in JWT claims, route guards on frontend
+- **Rate limiting**: Express API server uses express-rate-limit
 - **Audit logging**: Create/update/delete operations log to audit trail
 - **Cascade protection**: Client delete blocked if active projects exist
 
 ### Known remaining gaps
-- **RBAC on DELETE**: Most resource endpoints (tasks, projects, campaigns, notes, calendar-events, resources, scope-templates, invoices, webhooks) allow any authenticated team member to delete. Consider adding `requireRole(['owner', 'admin', 'member'])` to exclude viewers.
-- **brain-dump-create-items.js**: AI-generated items are spread directly (`...item`) with no Zod schema. Low risk since it's internal AI output, but should be validated.
-- **ai-process.js**: Request body (model, max_tokens) is not Zod-validated. User could set arbitrary model names or large token counts.
-- **Home.vue**: Landing page has its own scoped button/component styles that diverge from the brutalist design system (border-radius, shadows). This is intentional for marketing but noted for consistency.
+- **RBAC on DELETE**: Most resource endpoints allow any authenticated team member to delete. Consider RLS policies to restrict to owner/admin.
+- **brain-dump createItems**: AI-generated items inserted with minimal validation. Low risk since it's internal AI output.
+- **Home.vue**: Landing page has its own scoped button styles that diverge from the brutalist design system (intentional for marketing).
 
 ---
 
 ## What's NOT Built
 
-### Email Integration
-Token-based flows exist for password reset, email verification, and client invitations, but **no email sending** is implemented. The tokens are generated and stored; a transport (SendGrid, SES, Resend, etc.) needs to be wired up.
+### TypeScript Migration (Partial)
+- All stores (18) are TypeScript
+- Router and config are TypeScript
+- **~100 Vue components still use `<script setup>` without `lang="ts"`**
 
 ### Testing
-- 13 utility unit tests exist (`src/utils/__tests__/`)
+- 52 tests across 4 test files (core infrastructure + auth store)
+- Core: service-container (8), event-bus (8), plugin-registry (19)
+- Auth store: 17 tests
 - No component tests, integration tests, or E2E tests
-- No backend function tests
-
-### TypeScript Migration (Partial)
-- All services (16) and stores (10) are TypeScript
-- Router and config are TypeScript
-- **80+ Vue components still use `<script setup>` without `lang="ts"`**
-- Backend functions remain CommonJS JavaScript (by design — Netlify Functions)
 
 ### Other
-- No real-time updates (WebSocket/SSE)
 - No file upload (resources are link-based only)
 - No bulk actions on list pages
 - No inline editing on table cells
@@ -140,41 +163,76 @@ Token-based flows exist for password reset, email verification, and client invit
 
 | Category | Count |
 |----------|-------|
-| Vue pages | 24 (+ 6 auth + 3 portal) |
-| Vue components | ~60 |
-| Composables | 6 (useModalState, useResponsive, useConfirmDialog, useEntityLookup, useKeyboardShortcuts, useTooltips) |
-| Frontend services | 20 (16 TS + 4 JS) |
-| Frontend stores | 11 (10 TS + 1 JS) |
-| Backend functions | 33 |
-| Backend utils | 11 |
-| Type definition files | 4 (models, api, enums, index) |
+| Feature modules | 15 |
+| Vue files (total) | 107 (21 module pages + 2 standalone pages + 6 auth + 3 portal + 75 components) |
+| Composables | 6 |
+| Pinia stores | 18 (all TS, all using repository pattern) |
+| Supabase adapter files | 25 (20 repository + 1 auth + 1 search + 1 AI + base class + index + client) |
+| Express API endpoints | 3 (AI, webhooks, email) |
+| SQL migrations | 5 (26 tables) |
+| Test files | 4 (52 tests) |
+| Type definition files | 4 (models, api, enums, index) + core/types.ts |
 
 ---
 
 ## Development
 
 ```bash
-npm install          # Install dependencies
-npm run dev          # Start Vite dev server + Netlify Functions
-npm run build        # Production build (Vite)
-netlify dev          # Full local dev with functions
+# Local development (requires Docker for Supabase stack)
+npm run dev:supabase     # Start Supabase stack (PostgreSQL, GoTrue, PostgREST, Realtime, Kong)
+npm run dev              # Start Vite dev server (port 5173)
+npm run dev:server       # Start Express API server (port 3001)
+npm run dev:full         # Start all three above
+
+# Or run individual commands
+npm run build            # Production build (Vite)
+npm run type-check       # vue-tsc --noEmit
+npm test                 # Run vitest tests (52 tests)
+npm run lint             # ESLint check
+npm run format           # Prettier format
+
+# Stop Supabase stack
+npm run dev:supabase:down
+
+# Full stack (Docker, self-hosted)
+docker compose up -d
 ```
 
 ### Environment Variables
-Required in `.env` or Netlify dashboard:
-- `MONGODB_URI` — MongoDB connection string
-- `JWT_SECRET` — JWT signing secret
-- `OPENAI_API_KEY` — For brain dump AI processing
+See `.env.example` for all required variables. Key ones:
+- `VITE_SUPABASE_URL` — Supabase endpoint (http://localhost:8000 for local dev)
+- `VITE_SUPABASE_ANON_KEY` — Supabase anonymous key
+- `VITE_API_URL` — API server URL (/api for both local and production)
+- `SUPABASE_SERVICE_ROLE_KEY` — Server-side Supabase key (Express API)
+- `ANTHROPIC_API_KEY` — For AI features
 
 ### Key Patterns
 - **Page layout**: Always `<PageContainer>` → `<PageHeader>` → content
-- **API calls**: Service layer → Pinia store → page component with try/catch + toast.error
+- **DI container**: `getContainer().resolve<T>(SYMBOL_KEY)` — stores use `getRepo()` helper
+- **Repository pattern**: `Repository<T, CreateDTO, UpdateDTO>` interface with Supabase implementations
+- **Feature modules**: Each declares `id`, `routes`, `navItems`, `searchProviders`, `dependencies`, `setup()`
+- **API calls**: Store → repository adapter → page component with try/catch + toast.error
 - **Forms**: `useModalState` composable for modal open/close/edit state
 - **Confirmation**: `useConfirmDialog` composable for delete confirmations
 - **Entity resolution**: `useEntityLookup` for client/project name + color lookups from IDs
-- **Soft delete**: Backend uses `softDelete()` utility + `...notDeleted` spread in all queries
+- **Soft delete**: active_* views filter deleted rows automatically via RLS
 - **Calendar sync**: Tasks and projects auto-create/update calendar events on due date changes
+
+### Deployment
+- **Frontend**: DO App Platform static site (Vite build → dist/)
+- **API Server**: DO App Platform service (Docker, port 3001, /api route)
+- **Supabase**: DO Droplet with self-hosted stack (see infra/droplet-setup.sh)
+- **CI/CD**: GitHub Actions for lint/type-check/build/test, DO deploy-on-push
 
 ---
 
-*Last updated: 2026-02-24*
+### Cleanup Complete (2026-03-09)
+- Deleted `.netlify/` cache, dead `CampaignDetail.vue`, MongoDB env vars
+- Removed `axios` dependency, `netlify/**` ESLint ignore
+- Fixed `index.html` OG URL (netlify.app → launchcue.app)
+- Added note highlight from search (GlobalSearch → Notes with query param)
+- Clarified `createFromScope()` two-step flow with comment
+- All docs rewritten: zero Netlify/MongoDB references in source or docs
+- `gaps-and-issues.md`: 13 resolved, 8 open, 2 acceptable
+
+*Last updated: 2026-03-09*

@@ -182,6 +182,6 @@ export function getRouter() {
 // This creates a proxy that defers to the actual router instance
 export default new Proxy({} as ReturnType<typeof createRouter>, {
   get(_target, prop) {
-    return (getRouter() as Record<string | symbol, unknown>)[prop]
+    return (getRouter() as unknown as Record<string | symbol, unknown>)[prop]
   }
 })

@@ -146,7 +146,8 @@ import { useToast } from 'vue-toastification';
 import { useScopeStore } from '@/stores/scope';
 import { useClientStore } from '@/stores/client';
 import { useProjectStore } from '@/stores/project';
-import scopeService from '@/services/scope.service';
+import { getContainer } from '@/core/service-container';
+import { SCOPE_REPO, SCOPE_TEMPLATE_REPO } from '@/adapters/repository-keys';
 import ScopeDeliverableRow from '@/modules/scopes/components/ScopeDeliverableRow.vue';
 import ScopeTermsEditor from '@/modules/scopes/components/ScopeTermsEditor.vue';
 import ScopeSummaryCard from '@/modules/scopes/components/ScopeSummaryCard.vue';
@@ -250,7 +251,8 @@ async function loadScope(id) {
   error.value = null;
 
   try {
-    const scopeData = await scopeService.getScope(id);
+    const scopeRepo = getContainer().resolve(SCOPE_REPO);
+    const scopeData = await scopeRepo.findById(id);
     formData.value = {
       id: scopeData._id?.toString() || scopeData.id,
       title: scopeData.title || '',
@@ -289,7 +291,8 @@ async function loadTemplate(id) {
   error.value = null;
 
   try {
-    const templateData = await scopeService.getScopeTemplate(id);
+    const templateRepo = getContainer().resolve(SCOPE_TEMPLATE_REPO);
+    const templateData = await templateRepo.findById(id);
     formData.value = {
       id: templateData._id?.toString() || templateData.id,
       title: templateData.title || '',

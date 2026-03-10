@@ -1,0 +1,76 @@
+import { ref } from 'vue'
+import { defineStore } from 'pinia'
+import { getContainer } from '@/core/service-container'
+import { getEventBus } from '@/core/event-bus'
+import { COMMENT_REPO } from '@/adapters/repository-keys'
+import type { CommentRepository } from '@/adapters/types'
+import type { Comment } from '../types/models'
+
+export const useCommentStore = defineStore('comment', () => {
+  const comments = ref<Comment[]>([])
+  const isLoading = ref(false)
+
+  function getRepo() {
+    return getContainer().resolve<CommentRepository>(COMMENT_REPO)
+  }
+
+  const fetchComments = async (resourceType: string, resourceId: string): Promise<Comment[]> => {
+    isLoading.value = true
+    try {
+      const response = await getRepo().getComments(resourceType, resourceId)
+      comments.value = Array.isArray(response) ? response : []
+      return comments.value
+    } catch (error) {
+      comments.value = []
+      throw error
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  const getRecentComments = async (): Promise<Comment[]> => {
+    isLoading.value = true
+    try {
+      // Use getComments with empty filter to get recent activity
+      const response = await getRepo().getComments('', '')
+      comments.value = Array.isArray(response) ? response : []
+      return comments.value
+    } catch (error) {
+      comments.value = []
+      throw error
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  const createComment = async (resourceType: string, resourceId: string, data: { content: string }): Promise<Comment> => {
+    try {
+      const created = await getRepo().createComment(resourceType, resourceId, data)
+      comments.value.push(created)
+      getEventBus().emit('comment.created', { comment: created })
+      return created
+    } catch (error) {
+      throw error
+    }
+  }
+
+  const deleteComment = async (id: string): Promise<void> => {
+    if (!id) throw new Error('Comment ID is required for deletion')
+    try {
+      await getRepo().deleteComment(id)
+      comments.value = comments.value.filter(c => c.id !== id)
+      getEventBus().emit('comment.deleted', { id })
+    } catch (error) {
+      throw error
+    }
+  }
+
+  return {
+    comments,
+    isLoading,
+    fetchComments,
+    getRecentComments,
+    createComment,
+    deleteComment
+  }
+})

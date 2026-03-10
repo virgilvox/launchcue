@@ -275,8 +275,8 @@ import { useRoute, useRouter } from 'vue-router'
 import { useToast } from 'vue-toastification'
 import { useModalState } from '@/composables/useModalState'
 import { useConfirmDialog } from '@/composables/useConfirmDialog'
-import projectService from '@/services/project.service'
-import taskService from '@/services/task.service'
+import { useProjectStore } from '@/stores/project'
+import { useTaskStore } from '@/stores/task'
 import PageContainer from '@/components/ui/PageContainer.vue'
 import PageHeader from '@/components/ui/PageHeader.vue'
 import ProjectDetailsCard from '@/modules/projects/components/ProjectDetailsCard.vue'
@@ -288,6 +288,8 @@ import LoadingSpinner from '@/components/LoadingSpinner.vue'
 const route = useRoute()
 const router = useRouter()
 const toast = useToast()
+const projectStore = useProjectStore()
+const taskStore = useTaskStore()
 
 // State
 const loading = ref(true)
@@ -393,7 +395,7 @@ async function loadProject() {
 
   try {
     const projectId = route.params.id
-    project.value = await projectService.getProject(projectId)
+    project.value = await projectStore.getProject(projectId)
 
     await loadProjectTasks(projectId)
   } catch (err) {
@@ -408,7 +410,7 @@ async function loadProjectTasks(projectId) {
   tasksLoading.value = true
 
   try {
-    projectTasks.value = await taskService.getProjectTasks(projectId)
+    projectTasks.value = await taskStore.fetchTasks({ projectId })
   } catch (err) {
     toast.error('Failed to load project tasks')
   } finally {
@@ -420,7 +422,8 @@ async function loadProjectTasks(projectId) {
 async function toggleTaskCompletion(task) {
   try {
     const newCompleted = !task.completed
-    const result = await taskService.updateTask(task.id, {
+    const result = await taskStore.updateTask({
+      id: task.id,
       completed: newCompleted,
       status: newCompleted ? 'Done' : 'To Do',
     })
@@ -439,7 +442,7 @@ async function toggleTaskCompletion(task) {
 // Change project status
 async function handleStatusChange(newStatus) {
   try {
-    const result = await projectService.updateProject(project.value.id, { status: newStatus })
+    const result = await projectStore.updateProject(project.value.id, { status: newStatus })
     project.value = { ...project.value, ...result }
     toast.success(`Project status changed to ${newStatus}`)
   } catch (err) {
@@ -487,7 +490,7 @@ async function saveTask() {
     }
 
     if (taskModal.editingItem.value) {
-      const updatedTask = await taskService.updateTask(taskModal.editingItem.value.id, taskData)
+      const updatedTask = await taskStore.updateTask({ id: taskModal.editingItem.value.id, ...taskData })
 
       const index = projectTasks.value.findIndex(t => t.id === taskModal.editingItem.value.id)
       if (index !== -1) {
@@ -496,7 +499,7 @@ async function saveTask() {
 
       toast.success('Task updated successfully')
     } else {
-      const newTask = await taskService.createTask(project.value.id, taskData)
+      const newTask = await taskStore.createTask(taskData)
 
       if (newTask) {
         projectTasks.value.push(newTask)
@@ -515,7 +518,7 @@ async function saveTask() {
 // Delete task
 async function deleteTask(task) {
   try {
-    await taskService.deleteTask(task.id)
+    await taskStore.deleteTask(task.id)
 
     const index = projectTasks.value.findIndex(t => t.id === task.id)
     if (index !== -1) {
@@ -539,18 +542,20 @@ async function saveTeamMember() {
 
   try {
     const memberData = {
+      id: `member_${Date.now()}`,
       name: teamMemberModal.formData.value.name,
       role: teamMemberModal.formData.value.role,
       email: teamMemberModal.formData.value.email,
     }
 
-    const result = await projectService.addTeamMember(project.value.id, memberData)
-
     if (!project.value.teamMembers) {
       project.value.teamMembers = []
     }
 
-    project.value.teamMembers.push(result)
+    const updatedMembers = [...project.value.teamMembers, memberData]
+    // Sub-resource operation: team members are stored as part of the project
+    const result = await projectStore.updateProject(project.value.id, { teamMembers: updatedMembers })
+    project.value = { ...project.value, ...result }
     toast.success('Team member added successfully')
 
     teamMemberModal.close()
@@ -564,12 +569,10 @@ async function saveTeamMember() {
 // Remove team member
 async function removeTeamMember(member) {
   try {
-    await projectService.removeTeamMember(project.value.id, member.id)
-
-    const index = project.value.teamMembers.findIndex(m => m.id === member.id)
-    if (index !== -1) {
-      project.value.teamMembers.splice(index, 1)
-    }
+    // Sub-resource operation: team members are stored as part of the project
+    const updatedMembers = project.value.teamMembers.filter(m => m.id !== member.id)
+    const result = await projectStore.updateProject(project.value.id, { teamMembers: updatedMembers })
+    project.value = { ...project.value, ...result }
 
     toast.success('Team member removed successfully')
   } catch (err) {
@@ -587,7 +590,7 @@ async function confirmDeleteProject() {
 
 async function executeDeleteProject() {
   try {
-    await projectService.deleteProject(project.value.id)
+    await projectStore.deleteProject(project.value.id)
 
     toast.success('Project deleted successfully')
 

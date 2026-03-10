@@ -80,12 +80,13 @@
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import onboardingService from '@/services/onboarding.service'
+import { useOnboardingStore } from '@/stores/onboarding'
 import LoadingSpinner from '@/components/LoadingSpinner.vue'
 
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
+const onboardingStore = useOnboardingStore()
 
 const loading = ref(false)
 const error = ref(null)
@@ -119,7 +120,7 @@ async function handleSubmit() {
   submitting.value = true
 
   try {
-    const result = await onboardingService.acceptInvitation(inviteToken.value, password.value)
+    const result = await onboardingStore.acceptInvitation(inviteToken.value, password.value)
 
     if (result.token) {
       // Set auth session (token + user data)

@@ -3,17 +3,17 @@
 ## 1. Authentication Flow
 
 ```
-┌─────────┐    POST /auth-login     ┌──────────┐
-│  Login   │ ──────────────────────→ │  Server  │
-│  Page    │                         │          │
-│          │ ← { token, user, teamId}│          │
-└────┬─────┘                         └──────────┘
+┌─────────┐   supabase.auth.signIn()  ┌──────────────┐
+│  Login   │ ─────────────────────────→│ Supabase Auth│
+│  Page    │                           │  (GoTrue)    │
+│          │ ← { session, user }       │              │
+└────┬─────┘                           └──────────────┘
      │
      ▼
 ┌─────────────────┐
 │  authStore       │
 │  .login()        │
-│  ├─ token → sessionStorage
+│  ├─ session → stored in sessionStorage
 │  ├─ user → state
 │  ├─ currentTeam → state
 │  └─ router.push('/dashboard')
@@ -21,36 +21,30 @@
 
 Session Restore (on page load):
   main.ts → authStore.initAuth()
-    ├─ Check sessionStorage for token
-    ├─ Decode JWT, check exp
-    ├─ If expired → logout()
-    └─ If valid → restore user/team state
+    ├─ Read user/token/teams from sessionStorage
+    ├─ Decode JWT payload (atob) to check expiry
+    ├─ If valid → restore user/team state, set token on adapter
+    └─ If expired or missing → redirect to login
+
+Session Persistence:
+  Tokens stored in sessionStorage (not localStorage).
+  Manual JWT decode checks expiry via atob(jwt.split('.')[1]).
 
 Logout Flow:
   authStore.logout()
-    ├─ POST /auth-logout (revoke jti)
-    ├─ Clear sessionStorage
+    ├─ supabase.auth.signOut()
+    ├─ Clear local state
     ├─ Dispose all Pinia stores
     └─ router.push('/')
-
-401 Handling:
-  api.service.ts interceptor
-    ├─ Any 401 response
-    ├─ Set _logoutTriggered flag (debounce)
-    ├─ Call onUnauthorized callback
-    └─ authStore.logout()
 ```
 
 ## 2. Team Switching Flow
 
 ```
   authStore.switchTeam(teamId)
-    ├─ POST /auth-switch-team { teamId }
-    │   ├─ Server revokes old JWT
-    │   └─ Returns new JWT with new team role
-    ├─ Update sessionStorage token
-    ├─ Update user/team state
-    └─ window.location.reload() ← Full page reload for clean data
+    ├─ Update current team in state
+    ├─ Supabase custom claims updated (team_id, role)
+    └─ Reload all stores with new team context
 ```
 
 ## 3. CRUD Data Flow (Example: Tasks)
@@ -65,90 +59,114 @@ Logout Flow:
                                                                  │
                                                                  ▼
                                                       ┌──────────────────┐
-                                                      │ task.service.ts  │
-                                                      │ .createTask()    │
+                                                      │ getContainer()   │
+                                                      │ .resolve(        │
+                                                      │   TASK_REPO)     │
                                                       └────────┬─────────┘
                                                                │
-                                                        apiService.post()
+                                                      Supabase adapter
                                                                │
                                                                ▼
                                                       ┌──────────────────┐
-                                                      │ api.service.ts   │
-                                                      │ axios + auth     │
-                                                      │ header + retry   │
+                                                      │ supabase         │
+                                                      │ .from('tasks')   │
+                                                      │ .insert(data)    │
                                                       └────────┬─────────┘
                                                                │
-                                                    POST /.netlify/functions/tasks
+                                                      PostgREST + RLS
                                                                │
                                                                ▼
                                                       ┌──────────────────┐
-                                                      │  tasks.js        │
-                                                      │  (Netlify Fn)    │
-                                                      │  ├─ authenticate │
-                                                      │  ├─ validate Zod │
-                                                      │  ├─ db.insertOne │
-                                                      │  ├─ audit log    │
-                                                      │  └─ calendar sync│
+                                                      │  PostgreSQL      │
+                                                      │  ├─ RLS check    │
+                                                      │  ├─ INSERT       │
+                                                      │  └─ Return row   │
                                                       └────────┬─────────┘
                                                                │
-                                                          Response 201
+                                                          Response
                                                                │
                                          ┌─────────────────────┘
                                          ▼
                                store.tasks.push(newTask)
+                               eventBus.emit('task.created')
                                → Vue reactivity updates UI
                                → toast.success()
 ```
 
-## 4. Store Dependency Graph
+## 4. DI Resolution Flow
 
 ```
-authStore (standalone)
-  ↑ used by: all pages, DefaultLayout, Sidebar, api.service.ts (callback)
+  App Boot (main.ts):
+    ├─ createServiceContainer()
+    ├─ registerSupabaseAdapters(container)
+    │   └─ container.register(TASK_REPO, () => new SupabaseTaskRepository())
+    │      container.register(CLIENT_REPO, () => new SupabaseClientRepository())
+    │      ... (22 adapters)
+    ├─ registry.initialize(container)
+    │   └─ Topological sort by dependencies
+    │      Each module.setup(container) called in order
+    └─ createApp(App).mount('#app')
 
-clientStore → authStore (currentTeam check)
+  Runtime Resolution:
+    store action → getContainer().resolve(TASK_REPO)
+      └─ Lazy singleton: factory called once, cached thereafter
+```
+
+## 5. Store Dependency Graph
+
+```
+authStore (Supabase Auth adapter)
+  ↑ used by: all pages, DefaultLayout, Sidebar
+
+clientStore → CLIENT_REPO via DI
   ↑ used by: Clients, ClientDetail, Dashboard, useEntityLookup
 
-projectStore (standalone)
+projectStore → PROJECT_REPO via DI
   ↑ used by: Projects, ProjectDetail, ProjectForm, Dashboard, useEntityLookup
 
-taskStore (standalone)
+taskStore → TASK_REPO via DI
   ↑ used by: Tasks, TaskDetail, Dashboard, Calendar
 
-scopeStore → invoiceStore (createFromScope)
+scopeStore → SCOPE_REPO via DI
   ↑ used by: ScopeBuilder, ScopeTemplates
 
-invoiceStore (standalone)
+invoiceStore → INVOICE_REPO + SCOPE_REPO via DI
   ↑ used by: Invoices, InvoiceBuilder, Dashboard (OutstandingInvoices)
 
-calendarStore (standalone)
+calendarStore → CALENDAR_EVENT_REPO via DI
   ↑ used by: Calendar
 
-noteStore (standalone)
+noteStore → NOTE_REPO via DI
   ↑ used by: Notes
 
-resourceStore (standalone)
+campaignStore → CAMPAIGN_REPO via DI
+  ↑ used by: Campaigns
+
+commentStore → COMMENT_REPO via DI
+  ↑ used by: CommentThread
+
+notificationStore → NOTIFICATION_REPO via DI + 60s polling
+  ↑ used by: DefaultLayout, NotificationBell
+
+resourceStore → RESOURCE_REPO via DI
   ↑ used by: Resources
 
-onboardingStore (standalone)
+onboardingStore → ONBOARDING_REPO via DI
   ↑ used by: client portal pages
-
-notificationStore (standalone, JS)
-  ↑ used by: DefaultLayout (polling), NotificationBell
 ```
 
-## 5. Global Search Flow
+## 6. Global Search Flow
 
 ```
   Cmd+K / Ctrl+K → GlobalSearch.vue opens
 
   Mode 1: Search (no prefix)
     ├─ Debounce 300ms
-    ├─ GET /search?q={query}
-    │   └─ Server searches 5 collections (text index)
+    ├─ getContainer().resolve(SEARCH_ADAPTER).search(query)
+    │   └─ Supabase full-text search across 5 tables
     │       tasks, projects, clients, notes, campaigns
-    │       Returns 5 results each, 20 max
     └─ Display grouped results → click navigates
+        (notes navigate with ?highlight=id query param)
 
   Mode 2: Command Palette (prefix ">")
     ├─ Filter local command list
@@ -156,7 +174,7 @@ notificationStore (standalone, JS)
     └─ Execute command → router.push or dispatch event
 ```
 
-## 6. Client Portal Access Control
+## 7. Client Portal Access Control
 
 ```
   Router beforeEach guard:
@@ -166,55 +184,21 @@ notificationStore (standalone, JS)
 
   Client Login:
     ├─ AcceptInvite page (no auth required)
-    │   └─ POST /client-invitations?action=accept
-    │       ├─ Creates user with client role
-    │       └─ Returns JWT with { role: 'client', projectIds: [...] }
-    └─ Normal login → JWT contains role + projectIds
+    │   └─ Supabase Auth signup with client role
+    └─ Normal login → session contains role + team context
 
   Client Layout:
     └─ ClientLayout.vue (restricted nav: dashboard, projects, onboarding)
 ```
 
-## 7. API Key Authentication Flow
-
-```
-  Request with Authorization: Bearer lc_sk_xxxxx...
-    │
-    ▼
-  authenticate() in authHandler.js
-    ├─ Detect lc_sk_ prefix
-    ├─ Extract prefix (first 16 chars)
-    ├─ Query apiKeys by prefix + teamId + notDeleted
-    ├─ bcrypt.compare(fullKey, hashedKey)
-    ├─ Check expiresAt
-    ├─ Validate scopes against required scopes
-    ├─ Fire-and-forget: update lastUsedAt
-    └─ Return { userId, teamId, scopes, authType: 'apiKey' }
-```
-
-## 8. Soft Delete + Cascade Pattern
-
-```
-  DELETE /teams/:id (owner only)
-    ├─ Soft delete team document
-    └─ Cascade soft delete across 14 collections:
-        projects, tasks, clients, calendarEvents, notes,
-        campaigns, invoices, scopes, resources, apiKeys,
-        webhooks, comments, scopeTemplates, onboarding
-
-  All queries include: { deletedAt: null } (notDeleted filter)
-  Restore: Set deletedAt=null, deletedBy=null
-```
-
-## 9. Notification Polling
+## 8. Notification Flow (Polling)
 
 ```
   DefaultLayout.vue onMounted:
     └─ notificationStore.startPolling(60000)
-        ├─ Immediate fetch
-        └─ setInterval(fetchNotifications, 60s)
-            ├─ GET /notifications?read=false
-            └─ Update unreadCount badge
+        ├─ Initial fetch via NOTIFICATION_REPO
+        └─ setInterval(fetchNotifications, 60000)
+            └─ Every 60s → fetch unread → update state → update badge
 
   NotificationBell.vue:
     ├─ Click → dropdown with notifications
@@ -222,50 +206,41 @@ notificationStore (standalone, JS)
     └─ "Mark all read" → bulk update
 ```
 
-## 10. Invoice Auto-Numbering
-
-```
-  POST /invoices
-    ├─ Query: db.find({ teamId }).sort({ invoiceNumber: -1 }).limit(1)
-    ├─ Extract last number: "INV-005" → 5
-    ├─ Next: "INV-006" (zero-padded to 3 digits)
-    └─ If no invoices: "INV-001"
-```
-
-## 11. Scope Status Workflow
+## 9. Scope Status Workflow
 
 ```
   draft ──→ sent ──→ approved (terminal)
                  └──→ revised ──→ sent (loop)
 
   Validated in scopeStore.validateStatusTransition()
-  Enforced in PUT /scopes (backend)
+  Enforced via RLS policies in PostgreSQL
 ```
 
-## 12. Calendar Sync
+## 10. Invoice Creation from Scope
 
 ```
-  Project Create/Update:
-    ├─ If project has startDate/dueDate
-    │   └─ Upsert calendarEvent { projectId, taskId: null }
-    └─ Project delete → soft delete synced event
-
-  Task Create/Update:
-    ├─ If task has dueDate
-    │   └─ Upsert calendarEvent { taskId, projectId }
-    └─ Task delete → soft delete synced event
+  ScopeBuilder.vue:
+    1. User clicks "Generate Invoice"
+    2. invoiceStore.createFromScope(scopeId)
+       ├─ Fetch scope via SCOPE_REPO
+       ├─ Map deliverables → line items
+       └─ Create invoice via INVOICE_REPO
+    3. Separate action: user changes scope status via updateScope()
+       (Two-step flow — invoice failure doesn't affect scope status)
 ```
 
-## 13. Rate Limiting Flow
+## 11. Express API Flow (AI Processing)
 
 ```
-  Request arrives
-    ├─ Extract identifier: userId || x-forwarded-for || client-ip || 'unknown'
-    ├─ Determine category: auth (5/15min) | general (100/min) | ai (10/min)
-    ├─ Count: db.rateLimits.countDocuments({ key, createdAt >= windowStart })
-    ├─ If count >= max:
-    │   └─ Return 429 { error, retryAfter }
-    └─ Else:
-        ├─ Insert rate limit record (with TTL expiresAt)
-        └─ Continue to handler
+  BrainDump.vue → fetch('/api/ai/process', { ... })
+    │
+    ├─ Vite proxy (dev): /api → localhost:3001
+    ├─ DO App Platform (prod): /api route → API service
+    │
+    ▼
+  Express server (server/src/routes/ai.ts)
+    ├─ Validate Supabase JWT from Authorization header
+    ├─ Call Anthropic Claude API (server-side key)
+    ├─ Proxy to Anthropic Messages API
+    └─ Return raw Anthropic response
 ```

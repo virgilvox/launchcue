@@ -303,7 +303,7 @@
           <ul class="footer-links">
             <li><a href="https://github.com/virgilvox/launchcue" target="_blank" rel="noopener noreferrer">GitHub</a></li>
             <li><a href="https://github.com/virgilvox/launchcue/blob/main/API-DOCS.md" target="_blank" rel="noopener noreferrer">API Docs</a></li>
-            <li><a href="https://launchcue.netlify.app/" target="_blank" rel="noopener noreferrer">Live Demo</a></li>
+            <li><a href="https://launchcue.app/" target="_blank" rel="noopener noreferrer">Live Demo</a></li>
           </ul>
         </div>
       </div>

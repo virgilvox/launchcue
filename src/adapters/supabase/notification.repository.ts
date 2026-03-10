@@ -32,6 +32,14 @@ export class SupabaseNotificationRepository implements NotificationRepository {
     if (error) throw new Error(error.message)
   }
 
+  async delete(id: string): Promise<void> {
+    const { error } = await getSupabase()
+      .from('notifications')
+      .delete()
+      .eq('id', id)
+    if (error) throw new Error(error.message)
+  }
+
   /**
    * Subscribe to real-time notifications via Supabase Realtime.
    * Replaces 60s polling with instant push.

@@ -99,11 +99,12 @@
 
 <script setup>
 import { ref, onMounted } from 'vue';
-import auditLogService from '@/services/auditLog.service';
+import { useAuditLogStore } from '@/stores/audit-log';
 import { useToast } from 'vue-toastification';
 import LoadingSpinner from '@/components/LoadingSpinner.vue';
 
 const toast = useToast();
+const auditLogStore = useAuditLogStore();
 
 const logs = ref([]);
 const loading = ref(false);
@@ -121,7 +122,7 @@ async function loadLogs(page = 1) {
     if (filters.value.resourceType) params.resourceType = filters.value.resourceType;
     if (filters.value.action) params.action = filters.value.action;
 
-    const result = await auditLogService.getAuditLogs(params);
+    const result = await auditLogStore.fetchLogs(params);
 
     if (result && result.data) {
       logs.value = result.data;

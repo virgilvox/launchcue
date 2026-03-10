@@ -4,11 +4,77 @@
 
 | File | Purpose | Key Dependencies |
 |------|---------|-----------------|
-| `src/main.ts` | App bootstrap: create Vue, init auth before router, install plugins | Pinia, Router, Toastification |
+| `src/main.ts` | App bootstrap: create Vue, register plugins via PluginRegistry, init Supabase auth | Pinia, Router, Toastification, PluginRegistry |
 | `src/App.vue` | Root component, RouterView wrapper, CSS var application | — |
-| `vite.config.ts` | Build config, @ alias, MIME type fix | — |
+| `vite.config.ts` | Build config, @ alias, proxy /api → localhost:3001 | — |
 | `tailwind.config.js` | Design tokens: 0 radius, 2px borders, brutal shadows, fonts | — |
 | `index.html` | HTML shell, Google Fonts (Space Grotesk, Inter, JetBrains Mono) | — |
+
+## Core Infrastructure (4)
+
+| File | Purpose |
+|------|---------|
+| `src/core/service-container.ts` | Symbol-keyed DI container, lazy singleton resolution |
+| `src/core/event-bus.ts` | Typed event emitter for cross-module communication |
+| `src/core/plugin-registry.ts` | Feature module registration with topological dependency sort |
+| `src/core/types.ts` | FeatureModule, NavItem, SearchProvider interfaces |
+
+## Adapters
+
+### Repository Keys
+| File | Purpose |
+|------|---------|
+| `src/adapters/repository-keys.ts` | 22 Symbol keys for DI resolution |
+| `src/adapters/types.ts` | Repository<T, CreateDTO, UpdateDTO> interface + extended interfaces |
+
+### Supabase Adapters (25 files: 19 repos + 3 adapters + base + index + client)
+| File | Repository Key | Table |
+|------|---------------|-------|
+| `src/adapters/supabase/ai.adapter.ts` | AI_ADAPTER | Anthropic AI proxy |
+| `src/adapters/supabase/auth.adapter.ts` | AUTH_ADAPTER | GoTrue auth |
+| `src/adapters/supabase/base.repository.ts` | — | Abstract base class |
+| `src/adapters/supabase/brain-dump.repository.ts` | BRAIN_DUMP_REPO | brain_dumps |
+| `src/adapters/supabase/calendar-event.repository.ts` | CALENDAR_EVENT_REPO | calendar_events |
+| `src/adapters/supabase/campaign.repository.ts` | CAMPAIGN_REPO | campaigns |
+| `src/adapters/supabase/client.repository.ts` | CLIENT_REPO | clients |
+| `src/adapters/supabase/client-invitation.repository.ts` | CLIENT_INVITATION_REPO | client_invitations |
+| `src/adapters/supabase/comment.repository.ts` | COMMENT_REPO | comments |
+| `src/adapters/supabase/index.ts` | — | Registers all adapters in container |
+| `src/adapters/supabase/invoice.repository.ts` | INVOICE_REPO | invoices |
+| `src/adapters/supabase/note.repository.ts` | NOTE_REPO | notes |
+| `src/adapters/supabase/notification.repository.ts` | NOTIFICATION_REPO | notifications |
+| `src/adapters/supabase/client.ts` | — | Supabase JS client singleton |
+| `src/adapters/supabase/onboarding.repository.ts` | ONBOARDING_REPO | onboarding_checklists |
+| `src/adapters/supabase/project.repository.ts` | PROJECT_REPO | projects |
+| `src/adapters/supabase/resource.repository.ts` | RESOURCE_REPO | resources |
+| `src/adapters/supabase/scope.repository.ts` | SCOPE_REPO | scopes |
+| `src/adapters/supabase/scope-template.repository.ts` | SCOPE_TEMPLATE_REPO | scope_templates |
+| `src/adapters/supabase/search.adapter.ts` | SEARCH_ADAPTER | Full-text search |
+| `src/adapters/supabase/task.repository.ts` | TASK_REPO | tasks |
+| `src/adapters/supabase/team.repository.ts` | TEAM_REPO | teams, team_members |
+| `src/adapters/supabase/webhook.repository.ts` | WEBHOOK_REPO | webhooks |
+| `src/adapters/supabase/audit-log.repository.ts` | AUDIT_LOG_REPO | audit_logs |
+| `src/adapters/supabase/api-key.repository.ts` | API_KEY_REPO | api_keys |
+
+## Feature Modules (15 directories, 14 registered)
+
+| Module | Routes | Nav | Search | Registered |
+|--------|--------|-----|--------|-----------|
+| `src/modules/tasks/` | tasks, task-detail | WORK | tasks | Yes |
+| `src/modules/projects/` | projects, project-detail, project-form | WORK | projects | Yes |
+| `src/modules/clients/` | clients, client-detail | WORK | clients | Yes |
+| `src/modules/campaigns/` | campaigns-list, campaign-new, campaign-detail | WORK | campaigns | Yes |
+| `src/modules/calendar/` | calendar | PLAN | — | Yes |
+| `src/modules/notes/` | notes | CAPTURE | notes | Yes |
+| `src/modules/brain-dump/` | brain-dump | CAPTURE | — | Yes |
+| `src/modules/scopes/` | scopes, scope-builder, scope-templates | BUSINESS | — | Yes |
+| `src/modules/invoices/` | invoices, invoice-builder | BUSINESS | — | Yes |
+| `src/modules/settings/` | settings, profile | — | — | Yes |
+| `src/modules/team/` | team | — | — | Yes |
+| `src/modules/dashboard/` | dashboard | — | — | No (loaded directly by router) |
+| `src/modules/resources/` | resources | CAPTURE | — | Yes |
+| `src/modules/onboarding/` | — | — | — | Yes |
+| `src/modules/notifications/` | — | — | — | Yes |
 
 ## Layouts (3)
 
@@ -18,108 +84,39 @@
 | `src/layouts/AuthLayout.vue` | Minimal centered layout for login/register/reset |
 | `src/layouts/ClientLayout.vue` | Restricted portal layout for client role users |
 
-## Pages (21)
+## Stores (18)
 
-### Authenticated (DefaultLayout)
-| File | Purpose | Stores Used | Key Components |
-|------|---------|-------------|----------------|
-| `Dashboard.vue` | Home: greeting, quick actions, stats, charts, activity, health, invoices | task, project, client, invoice | StatsGrid, TasksByStatusChart, ProjectCompletionChart, TasksDueChart, GettingStarted, ActivityFeed, ClientHealthWidget, OutstandingInvoices |
-| `Tasks.vue` | Task list/kanban with filters, create/edit modal | task, project, client | TaskList, TaskKanban, TaskFilters, TaskForm |
-| `TaskDetail.vue` | Single task detail (route param) | task | CommentThread |
-| `Projects.vue` | Project cards with filters | project, client | — |
-| `ProjectDetail.vue` | Project info + team + tasks sections | project, task, client | ProjectStatsCard, ProjectDetailsCard, ProjectTeamSection, ProjectTasksSection |
-| `ProjectForm.vue` | Create/edit project with unsaved warning | project, client | — |
-| `Clients.vue` | Client cards with color dots | client | ClientColorDot |
-| `ClientDetail.vue` | Client info + contacts + projects | client, project | ClientInfoSection, ClientContactsSection, ClientProjectsTable |
-| `Calendar.vue` | Month/week/day views + event sidebar | calendar | CalendarMonthView, CalendarWeekView, CalendarDayView, CalendarEventSidebar, CalendarFilters |
-| `Notes.vue` | Note list with rich text editing (Tiptap) | note | RichTextEditor |
-| `BrainDump.vue` | AI brain dump with context | — (service direct) | BrainDumpForm, BrainDumpResults, ActionableItems, ContextOptions, SaveNoteModal |
-| `Campaigns.vue` | Campaign builder with timeline | campaign, client, project | CampaignCard, CampaignForm, CampaignTimeline |
-| `CampaignDetail.vue` | Single campaign detail | campaign | — |
-| `CampaignsList.vue` | Campaign list (redirects/alias) | campaign | — |
-| `ScopeTemplates.vue` | Scope template list | scope | — |
-| `ScopeBuilder.vue` | Scope/template editor with print, unsaved warning | scope, client, project | ScopePreview, ScopeDeliverableRow, ScopeTermsEditor |
-| `Invoices.vue` | Invoice list with outstanding totals | invoice, client | InvoiceStatusBadge |
-| `InvoiceBuilder.vue` | Invoice builder with line items, print, unsaved warning | invoice, client, scope | InvoiceLineItemRow, InvoiceSummary, InvoicePreview |
-| `Resources.vue` | Resource/link library | resource | ResourceDialog |
-| `Settings.vue` | Team settings: API keys, webhooks, audit log | auth | ApiKeyManager, WebhookManager, AuditLogViewer |
-| `Team.vue` | Team members + invites | auth, team | — |
-| `Profile.vue` | User profile editing | auth | — |
-
-### Auth (AuthLayout)
-| File | Purpose |
-|------|---------|
-| `Login.vue` | Email/password login |
-| `Register.vue` | Create account + team |
-| `ForgotPassword.vue` | Request password reset |
-| `ResetPassword.vue` | Set new password via token |
-| `VerifyEmail.vue` | Email verification |
-| `AcceptInvite.vue` | Client invitation acceptance (no auth) |
-
-### Client Portal (ClientLayout)
-| File | Purpose |
-|------|---------|
-| `PortalDashboard.vue` | Client overview: projects, onboarding, invoices |
-| `PortalProject.vue` | Client project view (restricted) |
-| `PortalOnboarding.vue` | Onboarding steps completion |
-
-### Other
-| File | Purpose |
-|------|---------|
-| `Home.vue` | Landing page, redirects to /dashboard if authenticated |
-| `NotFound.vue` | 404 page |
-
-## Stores (11)
-
-| File | State Shape | Key Actions | Dependencies |
-|------|-------------|-------------|--------------|
-| `auth.ts` | user, token, userTeams, currentTeam, isLoading | login, logout, register, switchTeam, initAuth | sessionStorage |
-| `task.ts` | tasks[], isLoading, error | fetchTasks, createTask, updateTask, deleteTask | taskService |
-| `project.ts` | projects[], isLoading | fetchProjects, createProject, updateProject, deleteProject | projectService |
-| `client.ts` | clients[], loading, error | fetchClients, createClient, updateClient, deleteClient | clientService |
-| `invoice.ts` | invoices[], isLoading | fetchInvoices, createInvoice, createFromScope, updateInvoice | invoiceService |
-| `scope.ts` | templates[], scopes[], isLoading | fetchTemplates, fetchScopes, createScope, validateStatusTransition | scopeService, invoiceStore |
-| `calendar.ts` | events[], isLoading | fetchEvents, createEvent, updateEvent, deleteEvent | calendarService |
-| `note.ts` | notes[], isLoading | fetchNotes, createNote, updateNote, deleteNote | noteService |
-| `resource.ts` | resources[], isLoading | fetchResources, createResource, updateResource, deleteResource | resourceService |
-| `onboarding.ts` | checklists[], isLoading | fetchChecklists, createChecklist, updateStep, completeStep | onboardingService |
-| `notification.js` | notifications[], unreadCount, lastPolledAt | fetchNotifications, markAsRead, startPolling(60s) | notificationService |
-
-## Services (20)
-
-| File | Endpoints Called | Key Methods |
-|------|-----------------|-------------|
-| `api.service.ts` | — (base wrapper) | get, post, put, delete + auth interceptor + 401 handler + retry |
-| `client.service.ts` | /clients | CRUD + contacts (add/update/delete) + getClientProjects |
-| `task.service.ts` | /tasks | CRUD + getTasks(filter) + comments |
-| `project.service.ts` | /projects, /project-detail | CRUD |
-| `campaign.service.ts` | /campaigns | CRUD |
-| `calendar.service.ts` | /calendar-events | CRUD + getTaskDeadlines + recurrence helpers |
-| `note.service.ts` | /notes | CRUD |
-| `resource.service.ts` | /resources | CRUD |
-| `scope.service.ts` | /scope-templates, /scopes | Templates CRUD + Scopes CRUD + createFromTemplate |
-| `invoice.service.ts` | /invoices | CRUD + createFromScope + auto-number |
-| `onboarding.service.ts` | /onboarding | Checklists CRUD + step completion |
-| `brain-dump.service.ts` | /braindumps, /brain-dump-context, /brain-dump-create-items | submitBrainDump, getContext, createItems |
-| `user.service.ts` | /user-profile | getProfile, updateProfile, changePassword |
-| `comment.service.js` | /comments | CRUD |
-| `notification.service.js` | /notifications | list, markAsRead, delete |
-| `apiKey.service.ts` | /api-keys | CRUD + rotateKey |
-| `auditLog.service.js` | /audit-logs | getLogs |
-| `webhook.service.js` | /webhooks | CRUD + testWebhook |
-| `team.service.ts` | /teams | CRUD + inviteMember + updateMember + removeMember |
-| `settings.service.ts` | — | getSettings, updateSettings |
+| File | Pattern | Key Actions |
+|------|---------|-------------|
+| `src/stores/auth.ts` | Supabase Auth adapter | login, logout, register, switchTeam, initAuth |
+| `src/stores/task.ts` | TASK_REPO via DI | fetchTasks, createTask, updateTask, deleteTask |
+| `src/stores/project.ts` | PROJECT_REPO via DI | fetchProjects, createProject, updateProject, deleteProject |
+| `src/stores/client.ts` | CLIENT_REPO via DI | fetchClients, createClient, updateClient, deleteClient |
+| `src/stores/invoice.ts` | INVOICE_REPO via DI | fetchInvoices, createInvoice, createFromScope |
+| `src/stores/scope.ts` | SCOPE_REPO via DI | fetchTemplates, fetchScopes, createScope |
+| `src/stores/calendar.ts` | CALENDAR_EVENT_REPO via DI | fetchEvents, createEvent, updateEvent, deleteEvent |
+| `src/stores/note.ts` | NOTE_REPO via DI | fetchNotes, createNote, updateNote, deleteNote |
+| `src/stores/campaign.ts` | CAMPAIGN_REPO via DI | fetchCampaigns, createCampaign |
+| `src/stores/comment.ts` | COMMENT_REPO via DI | fetchComments, createComment |
+| `src/stores/notification.ts` | NOTIFICATION_REPO via DI | fetchNotifications, markAsRead, startPolling |
+| `src/stores/onboarding.ts` | ONBOARDING_REPO via DI | fetchChecklists, updateStep |
+| `src/stores/team.ts` | TEAM_REPO via DI | fetchTeam, inviteMember, updateMember |
+| `src/stores/webhook.ts` | WEBHOOK_REPO via DI | fetchWebhooks, createWebhook |
+| `src/stores/audit-log.ts` | AUDIT_LOG_REPO via DI | fetchLogs |
+| `src/stores/api-key.ts` | API_KEY_REPO via DI | fetchKeys, createKey |
+| `src/stores/brain-dump.ts` | BRAIN_DUMP_REPO via DI | submitBrainDump |
+| `src/stores/resource.ts` | RESOURCE_REPO via DI | fetchResources, createResource |
 
 ## Composables (6)
 
 | File | Provides | Used By |
 |------|----------|---------|
-| `useModalState.ts` | isOpen, editingItem, formData, open(), close() | TaskForm, CampaignForm, and modal-based CRUD |
+| `useModalState.ts` | isOpen, editingItem, formData, open(), close() | Modal-based CRUD |
 | `useConfirmDialog.ts` | isOpen, item, requestConfirm(), confirm(), cancel() | All delete confirmations |
 | `useKeyboardShortcuts.ts` | showHelp, shortcuts[] | DefaultLayout (g-chords, c, ?, Esc) |
 | `useResponsive.ts` | isMobile, isTablet, isDesktop | Sidebar, Modal, DataTable |
 | `useTooltips.ts` | activeTooltip, shouldShow(), dismiss() | Dashboard onboarding |
-| `useEntityLookup.ts` | getClientName(), getProjectName(), getClientColorId() | TaskList, TaskKanban, Invoices, Campaigns |
+| `useEntityLookup.ts` | getClientName(), getProjectName(), getClientColorId() | TaskList, Invoices, Campaigns |
 
 ## Types (4 files)
 
@@ -130,73 +127,39 @@
 | `enums.ts` | 12 enum constants: TaskStatus, TaskPriority, ProjectStatus, CampaignStatus, TeamRole, etc. |
 | `index.ts` | Re-exports all |
 
-## Constants & Utils
+## Express API Server
 
-| File | Exports |
+| File | Purpose |
 |------|---------|
-| `constants/clientColors.ts` | CLIENT_COLORS (10 colors), getNextClientColor(), getClientColor() |
-| `utils/formatters.ts` | getInitials(), formatCurrency() |
-| `utils/dateFormatter.ts` | Date/time formatting helpers |
-| `utils/statusColors.ts` | Status → CSS class maps (task, project, invoice) |
+| `server/src/index.ts` | Express entry: cors, rate-limit, routes, webhook processor start |
+| `server/src/supabase.ts` | Supabase client (service role) |
+| `server/src/middleware/auth.ts` | JWT validation via Supabase |
+| `server/src/routes/ai.ts` | AI brain dump processing (Anthropic Claude SDK) |
+| `server/src/routes/webhooks.ts` | Webhook CRUD + test delivery |
+| `server/src/routes/email.ts` | Email sending (nodemailer) |
+| `server/src/webhook-processor.ts` | Cron-style webhook queue processor (30s interval) |
+| `server/Dockerfile` | Docker build for DO App Platform |
 
-## Backend Functions (33)
+## Infrastructure
 
-| Function | Methods | Auth | Collections | Key Operations |
-|----------|---------|------|-------------|----------------|
-| `auth-login.js` | POST | None | users | bcrypt compare, JWT generation |
-| `auth-register.js` | POST | None | users, teams, emailVerifications | Create user+team, email token |
-| `auth-logout.js` | POST | JWT | tokenBlocklist | Revoke jti |
-| `auth-change-password.js` | POST | JWT | users | Verify current, hash new |
-| `auth-forgot-password.js` | POST | None | passwordResets | Generate reset token |
-| `auth-reset-password.js` | POST | None | passwordResets, users | Validate prefix+token, update |
-| `auth-verify-email.js` | GET/POST | None | emailVerifications | Verify+hard delete token |
-| `auth-switch-team.js` | POST | JWT | teams, tokenBlocklist | Revoke old, gen new JWT |
-| `user-profile.js` | GET/PUT | JWT | users | Profile CRUD (no password) |
-| `teams.js` | GET/POST/PUT/DELETE | JWT | teams + 14 cascade | Full team mgmt + cascade delete |
-| `clients.js` | GET/POST/PUT/DELETE | JWT | clients | CRUD + contacts + auto-color |
-| `projects.js` | GET/POST/PUT/DELETE | JWT | projects, calendarEvents | CRUD + calendar sync |
-| `project-detail.js` | GET/PUT/DELETE | JWT | projects, tasks, calendarEvents | Single project + cascade |
-| `tasks.js` | GET/POST/PUT/DELETE | JWT | tasks, calendarEvents | CRUD + checklist + calendar sync |
-| `notes.js` | GET/POST/PUT/DELETE | JWT | notes | CRUD + tag/link filters |
-| `comments.js` | GET/POST/PUT/DELETE | JWT | comments, users | CRUD by resourceType/Id |
-| `notifications.js` | GET/PUT/DELETE | JWT | notifications | List/read/hard-delete |
-| `campaigns.js` | GET/POST/PUT/DELETE | JWT | campaigns | CRUD + steps array |
-| `calendar-events.js` | GET/POST/PUT/DELETE | JWT | calendarEvents | CRUD + recurrence expansion |
-| `scopes.js` | GET/POST/PUT/DELETE | JWT | scopes | CRUD + deliverables + status workflow |
-| `invoices.js` | GET/POST/PUT/DELETE | JWT | invoices | CRUD + auto-numbering |
-| `api-keys.js` | GET/POST/DELETE | JWT | apiKeys | Hash+prefix, scope validation |
-| `webhooks.js` | GET/POST/PUT/DELETE | JWT | webhooks | CRUD + secret masking |
-| `search.js` | GET | JWT | 5 collections | Text search, 100 char limit |
-| `audit-logs.js` | GET | JWT (owner/admin) | auditLogs | Read-only + filters |
-| `braindumps.js` | Various | JWT | braindumps | Brain dump CRUD |
-| `brain-dump-context.js` | GET | JWT | multiple | Fetch context for AI |
-| `brain-dump-create-items.js` | POST | JWT | multiple | AI item generation |
-| `resources.js` | Various | JWT | resources | Resource library CRUD |
-| `client-invitations.js` | GET/POST/PUT/DELETE | JWT/None | clientInvitations | Invite+accept flow |
-| `onboarding.js` | Various | JWT | onboarding | Checklist CRUD |
-| `scope-templates.js` | Various | JWT | scopeTemplates | Template CRUD |
+| File | Purpose |
+|------|---------|
+| `.do/app.yaml` | DigitalOcean App Platform config (static site + API service) |
+| `infra/droplet-setup.sh` | Self-hosted Supabase Droplet provisioning |
+| `docker-compose.dev.yml` | Local Supabase stack for development |
 
-## Backend Utilities (13)
+## Tests (4 files, 52 tests)
 
-| File | Exports | Used By |
-|------|---------|---------|
-| `utils/db.js` | connectToDatabase(), getDb() | All functions |
-| `utils/authHandler.js` | authenticate(), requireRole(), authenticateWithJwt(), authenticateWithApiKey() | All authenticated functions |
-| `utils/response.js` | createResponse(), createErrorResponse(), getCorsHeaders() | All functions |
-| `utils/pagination.js` | getPaginationParams(), createPaginatedResponse() | All list endpoints |
-| `utils/softDelete.js` | softDelete(), restoreDocument(), notDeleted | All CRUD functions |
-| `utils/auditLog.js` | createAuditLog() | CRUD functions |
-| `utils/rateLimiter.js` | rateLimit() with categories (auth/general/ai) | Auth + CRUD functions |
-| `utils/errorHandler.js` | withErrorHandling(), safeErrorDetails() | Some functions |
-| `utils/indexManager.js` | ensureIndexes() | db.js (cold start) |
-| `utils/validateEnv.js` | validateEnv() | All functions (imported) |
-| `utils/webhookDispatcher.js` | dispatchWebhooks() | NOT YET INTEGRATED |
-| `utils/calendarSync.js` | syncProjectWithCalendar(), syncTaskWithCalendar() | projects.js, tasks.js |
-| `utils/schemas.js` | Zod schemas for validation | CRUD functions |
+| File | Tests | Purpose |
+|------|-------|---------|
+| `tests/core/service-container.test.ts` | 8 | DI container resolution, singletons, errors |
+| `tests/core/event-bus.test.ts` | 8 | Event emission, subscription, unsubscribe |
+| `tests/core/plugin-registry.test.ts` | 19 | Module registration, dependency sort, boot |
+| `tests/stores/auth.test.ts` | 17 | Auth store actions, state management |
 
 ## CSS & Assets
 
 | File | Purpose |
 |------|---------|
-| `src/assets/main.css` | Design tokens (CSS vars), base styles, utility classes (200+ lines) |
+| `src/assets/main.css` | Design tokens (CSS vars), base styles, utility classes |
 | `public/logo-placeholder.png` | Sidebar logo |

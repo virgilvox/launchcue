@@ -71,7 +71,9 @@
       <div
         v-for="note in filteredNotes"
         :key="note.id"
-        class="card flex flex-col"
+        :id="'note-' + note.id"
+        class="card flex flex-col transition-shadow duration-300"
+        :class="{ 'ring-2 ring-[var(--accent-primary)]': route.query.highlight === note.id }"
       >
         <div class="flex justify-between items-start mb-3">
           <h3 class="text-lg font-semibold text-[var(--text-primary)] flex-1 mr-2 break-words">{{ note.title }}</h3>
@@ -181,9 +183,10 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue';
+import { ref, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue';
+import { useRoute } from 'vue-router';
 import DOMPurify from 'dompurify';
-import noteService from '@/services/note.service';
+import { useNoteStore } from '@/stores/note';
 import { useClientStore } from '@/stores/client';
 import { useProjectStore } from '@/stores/project';
 import { useToast } from 'vue-toastification';
@@ -198,6 +201,8 @@ import EmptyState from '@/components/ui/EmptyState.vue';
 import { PlusIcon, DocumentTextIcon } from '@heroicons/vue/24/outline';
 
 import { useAuthStore } from '@/stores/auth';
+const route = useRoute();
+const noteStore = useNoteStore();
 const clientStore = useClientStore();
 const projectStore = useProjectStore();
 const toast = useToast();
@@ -326,7 +331,7 @@ async function loadNotes() {
   error.value = null;
   try {
     // Fetch all notes for the team
-    notes.value = await noteService.getNotes();
+    notes.value = await noteStore.fetchNotes();
   } catch (err) {
     error.value = 'Failed to load notes. Please try again.';
     toast.error(error.value);
@@ -389,14 +394,14 @@ async function saveNote() {
     };
 
     if (editingNote.value) {
-      const updatedNote = await noteService.updateNote(editingNote.value.id, noteData);
+      const updatedNote = await noteStore.updateNote(editingNote.value.id, noteData);
       const index = notes.value.findIndex(n => n.id === editingNote.value.id);
       if (index !== -1) {
         notes.value.splice(index, 1, updatedNote);
       }
        toast.success('Note updated');
     } else {
-      const newNote = await noteService.createNote(noteData);
+      const newNote = await noteStore.createNote(noteData);
       notes.value.unshift(newNote); // Add to start of list
       toast.success('Note added');
     }
@@ -425,7 +430,7 @@ async function deleteNote() {
   deleting.value = true;
 
   try {
-    await noteService.deleteNote(noteToDelete.value.id);
+    await noteStore.deleteNote(noteToDelete.value.id);
 
     const index = notes.value.findIndex(n => n.id === noteToDelete.value.id);
     if (index !== -1) {
@@ -460,6 +465,15 @@ onMounted(async () => {
   await loadDependencies(); // Load clients/projects first
   await loadNotes(); // Then load notes
   document.addEventListener('click', handleOutsideClick);
+
+  // Scroll to highlighted note from search
+  if (route.query.highlight) {
+    await nextTick();
+    const el = document.getElementById('note-' + route.query.highlight);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }
 });
 
 onBeforeUnmount(() => {

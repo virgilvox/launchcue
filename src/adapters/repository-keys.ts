@@ -18,6 +18,8 @@ export const API_KEY_REPO = Symbol('ApiKeyRepository')
 export const WEBHOOK_REPO = Symbol('WebhookRepository')
 export const CLIENT_INVITATION_REPO = Symbol('ClientInvitationRepository')
 
+export const AUDIT_LOG_REPO = Symbol('AuditLogRepository')
+
 // Non-entity adapters
 export const AUTH_ADAPTER = Symbol('AuthAdapter')
 export const SEARCH_ADAPTER = Symbol('SearchAdapter')

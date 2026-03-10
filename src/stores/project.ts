@@ -5,14 +5,14 @@ import { getEventBus } from '@/core/event-bus'
 import { PROJECT_REPO } from '@/adapters/repository-keys'
 import type { Repository } from '@/adapters/types'
 import type { Project } from '../types/models'
-import type { ProjectCreateRequest, ProjectUpdateRequest } from '../types/api'
+import type { ProjectCreateRequest } from '../types/api'
 
 export const useProjectStore = defineStore('project', () => {
   const projects = ref<Project[]>([])
   const isLoading = ref<boolean>(false)
 
   function getRepo() {
-    return getContainer().resolve<Repository<Project, ProjectCreateRequest, ProjectUpdateRequest>>(PROJECT_REPO)
+    return getContainer().resolve<Repository<Project, ProjectCreateRequest, Partial<ProjectCreateRequest>>>(PROJECT_REPO)
   }
 
   const fetchProjects = async (): Promise<Project[]> => {

@@ -1,23 +1,24 @@
 # LaunchCue Architecture Index
 
-> Auto-generated architecture map. Source of truth for all state flows, file purposes, and system diagrams.
+> Architecture map for the Supabase + Express + Vue 3 stack.
 
 ## Documents
 
 | File | Purpose |
 |------|---------|
-| [state-flows.md](./state-flows.md) | Data flow diagrams, store relationships, API call chains |
+| [state-flows.md](./state-flows.md) | Data flow diagrams, store relationships, DI resolution |
 | [file-manifest.md](./file-manifest.md) | Every file in the project with purpose and dependencies |
-| [backend-map.md](./backend-map.md) | All 33 Netlify functions, collections, auth flow, RBAC |
-| [frontend-map.md](./frontend-map.md) | All components, pages, stores, services, composables |
-| [gaps-and-issues.md](./gaps-and-issues.md) | Broken flows, missing features, inconsistencies |
-| [migration-plan.md](./migration-plan.md) | Convex + Digital Ocean migration strategy |
+| [gaps-and-issues.md](./gaps-and-issues.md) | Open gaps, resolved items, remaining work |
 | [rules.md](./rules.md) | AI coding rules, self-prompting guidelines, safety checks |
+| [rearchitecture-plan.md](./rearchitecture-plan.md) | Netlify→Supabase migration plan (historical) |
 
 ## Quick Stats
 
-- **Frontend**: 72 Vue components, 21 pages, 10 stores, 20 services, 6 composables
-- **Backend**: 33 Netlify Functions, 19 MongoDB collections, 13 utility modules
-- **Auth**: JWT (24h) + API keys (bcrypt+prefix) + RBAC (5 roles)
+- **Frontend**: 107 Vue files, 15 feature modules, 18 Pinia stores, 25 Supabase adapter files, 6 composables
+- **Backend**: Supabase (PostgreSQL + GoTrue + PostgREST), Express API (3 route modules)
+- **Core**: ServiceContainer (symbol-keyed DI), EventBus, PluginRegistry (topological sort)
+- **Auth**: Supabase Auth (sessionStorage persistence) + RBAC (5 roles) + RLS policies
+- **Notifications**: Polling (60s interval), not Realtime
+- **Tests**: 52 tests across 4 files (core + stores)
 - **Design**: Brutalist (0 border-radius, 2px borders, hard shadows)
-- **Stack**: Vue 3 + Pinia + Tailwind + Vite | Node.js + MongoDB + Netlify Functions
+- **Deploy**: DigitalOcean App Platform + self-hosted Supabase Droplet

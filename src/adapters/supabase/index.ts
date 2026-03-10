@@ -4,6 +4,7 @@ import {
   CALENDAR_EVENT_REPO, NOTE_REPO, RESOURCE_REPO, BRAIN_DUMP_REPO,
   SCOPE_REPO, SCOPE_TEMPLATE_REPO, INVOICE_REPO, TEAM_REPO,
   ONBOARDING_REPO, API_KEY_REPO, WEBHOOK_REPO, CLIENT_INVITATION_REPO,
+  AUDIT_LOG_REPO,
   AUTH_ADAPTER, SEARCH_ADAPTER, AI_ADAPTER, COMMENT_REPO, NOTIFICATION_REPO
 } from '../repository-keys'
 
@@ -28,13 +29,10 @@ import { SupabaseSearchAdapter } from './search.adapter'
 import { SupabaseAiAdapter } from './ai.adapter'
 import { SupabaseCommentRepository } from './comment.repository'
 import { SupabaseNotificationRepository } from './notification.repository'
+import { SupabaseAuditLogRepository } from './audit-log.repository'
 
 /**
  * Register all Supabase/PostgreSQL adapters into the service container.
- *
- * Swap in main.ts:
- *   - import { registerNetlifyAdapters } from '@/adapters/netlify'
- *   + import { registerSupabaseAdapters } from '@/adapters/supabase'
  */
 export function registerSupabaseAdapters(container: ServiceContainer): void {
   // Entity repositories
@@ -54,6 +52,7 @@ export function registerSupabaseAdapters(container: ServiceContainer): void {
   container.register(API_KEY_REPO, () => new SupabaseApiKeyRepository())
   container.register(WEBHOOK_REPO, () => new SupabaseWebhookRepository())
   container.register(CLIENT_INVITATION_REPO, () => new SupabaseClientInvitationRepository())
+  container.register(AUDIT_LOG_REPO, () => new SupabaseAuditLogRepository())
 
   // Non-entity adapters
   container.register(AUTH_ADAPTER, () => new SupabaseAuthAdapter())

@@ -29,6 +29,17 @@ export class SupabaseCommentRepository implements CommentRepository {
     return this.mapFromDb(row as Record<string, unknown>)
   }
 
+  async updateComment(id: string, data: { content: string }): Promise<Comment> {
+    const { data: row, error } = await getSupabase()
+      .from('comments')
+      .update({ content: data.content })
+      .eq('id', id)
+      .select('*, users(name)')
+      .single()
+    if (error) throw new Error(error.message)
+    return this.mapFromDb(row as Record<string, unknown>)
+  }
+
   async deleteComment(id: string): Promise<void> {
     const { error } = await getSupabase()
       .from('comments')

@@ -33,12 +33,17 @@ export interface AuthResponse {
     id: string
     name: string
     email: string
+    role?: string
+    createdAt?: string
+    updatedAt?: string
   }
-  teams: Array<{
+  teams?: Array<{
     id: string
     name: string
     role: string
   }>
+  currentTeamId?: string
+  message?: string
 }
 
 export interface SwitchTeamRequest {

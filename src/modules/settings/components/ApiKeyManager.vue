@@ -150,7 +150,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue';
-import apiKeyService from '@/services/apiKey.service'; // Use the new service
+import { useApiKeyStore } from '@/stores/api-key';
 import { useToast } from 'vue-toastification';
 import { formatDate } from '@/utils/dateFormatter';
 import Modal from '@/components/Modal.vue';
@@ -158,6 +158,7 @@ import LoadingSpinner from '@/components/LoadingSpinner.vue';
 import { TrashIcon, ClipboardDocumentIcon } from '@heroicons/vue/24/outline';
 
 const toast = useToast();
+const apiKeyStore = useApiKeyStore();
 const apiKeys = ref([]);
 const loadingKeys = ref(false);
 const isGenerating = ref(false);
@@ -201,7 +202,7 @@ async function loadApiKeys() {
     // Do not clear newlyGeneratedKey here, allow user to copy it after list refresh
     // newlyGeneratedKey.value = null; 
     try {
-        apiKeys.value = await apiKeyService.getKeys();
+        apiKeys.value = await apiKeyStore.fetchApiKeys();
     } catch (error) {
         toast.error("Failed to load API keys.");
     } finally {
@@ -229,7 +230,7 @@ async function generateKey() {
         if (newKeyExpiresAt.value) {
             payload.expiresAt = new Date(newKeyExpiresAt.value + 'T23:59:59.999Z').toISOString();
         }
-        const result = await apiKeyService.createKey(payload);
+        const result = await apiKeyStore.generateKey(payload);
         if (result && result.apiKey) {
             newlyGeneratedKey.value = result.apiKey; // Display the full key
             toast.success(`API Key "${result.name}" generated successfully!`);
@@ -256,7 +257,7 @@ async function deleteKey() {
     if (!keyToDelete.value) return;
     isDeleting.value = true;
     try {
-        await apiKeyService.deleteKey(keyToDelete.value.prefix);
+        await apiKeyStore.deleteKey(keyToDelete.value.prefix);
         toast.success(`API Key "${keyToDelete.value.name}" deleted.`);
         showDeleteModal.value = false;
         keyToDelete.value = null;

@@ -71,14 +71,14 @@
                   :to="item.href"
                   :class="[
                     'group flex items-center px-2 py-2 text-sm font-medium transition-colors',
-                    item.current
+                    isItemActive(item)
                       ? 'bg-white/10 text-[var(--sidebar-text-active)] border-l-[3px] border-[var(--accent-primary)]'
                       : 'text-[var(--sidebar-text)] hover:bg-[var(--sidebar-hover)] hover:text-[var(--sidebar-text-active)] border-l-[3px] border-transparent'
                   ]"
                   :title="item.name"
                   @click="isMobile && closeMobile()"
                 >
-                  <component :is="item.icon" class="flex-shrink-0 h-5 w-5" aria-hidden="true" />
+                  <component :is="resolveNavIcon(item.icon)" class="flex-shrink-0 h-5 w-5" aria-hidden="true" />
                   <span class="ml-3">{{ item.name }}</span>
                   <span
                     v-if="shortcutMap[item.name]"
@@ -98,13 +98,13 @@
               :to="item.href"
               :class="[
                 'group flex items-center justify-center py-2 transition-colors relative',
-                item.current
+                isItemActive(item)
                   ? 'bg-white/10 text-[var(--sidebar-text-active)] border-l-[3px] border-[var(--accent-primary)]'
                   : 'text-[var(--sidebar-text)] hover:bg-[var(--sidebar-hover)] hover:text-[var(--sidebar-text-active)] border-l-[3px] border-transparent'
               ]"
               :title="item.name"
             >
-              <component :is="item.icon" class="flex-shrink-0 h-5 w-5" aria-hidden="true" />
+              <component :is="resolveNavIcon(item.icon)" class="flex-shrink-0 h-5 w-5" aria-hidden="true" />
             </router-link>
           </div>
         </template>
@@ -136,26 +136,14 @@
 </template>
 
 <script setup>
-import { computed, ref, watch, reactive, onMounted } from 'vue'
+import { computed, ref, watch, reactive, inject } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { useResponsive } from '@/composables/useResponsive'
 import { getInitials } from '@/utils/formatters'
+import { resolveIcon } from '@/utils/icons'
 import {
     HomeIcon,
-    UsersIcon,
-    UserGroupIcon,
-    BriefcaseIcon,
-    CalendarIcon,
-    SparklesIcon,
-    DocumentTextIcon,
-    ChatBubbleLeftEllipsisIcon as AnnotationIcon,
-    CogIcon,
-    ChartBarSquareIcon,
-    ClipboardDocumentListIcon,
-    CurrencyDollarIcon,
-    FolderOpenIcon,
-    LightBulbIcon,
     ArrowLeftOnRectangleIcon as LogoutIcon,
     ChevronDownIcon
 } from '@heroicons/vue/24/outline'
@@ -163,6 +151,9 @@ import {
 const route = useRoute()
 const authStore = useAuthStore()
 const { isMobile } = useResponsive()
+
+/** @type {import('@/core/plugin-registry').PluginRegistry} */
+const registry = inject('registry')
 
 const isCollapsed = ref(false)
 const isOpen = ref(false)
@@ -212,41 +203,47 @@ watch(isMobile, (mobile) => {
   emitState()
 }, { immediate: true })
 
-const navGroups = computed(() => [
-  {
-    label: 'CORE',
-    items: [
-      { name: 'Dashboard', href: '/', icon: HomeIcon, current: route.name === 'dashboard' },
-      { name: 'Tasks', href: '/tasks', icon: ChartBarSquareIcon, current: route.name === 'tasks' },
-      { name: 'Calendar', href: '/calendar', icon: CalendarIcon, current: route.name === 'calendar' },
-    ]
-  },
-  {
-    label: 'WORK',
-    items: [
-      { name: 'Clients', href: '/clients', icon: UsersIcon, current: route.name === 'clients' || route.name === 'client-detail' },
-      { name: 'Projects', href: '/projects', icon: BriefcaseIcon, current: route.name === 'projects' || route.name === 'project-detail' },
-      { name: 'Campaigns', href: '/campaigns', icon: SparklesIcon, current: route.name?.startsWith('campaign') },
-      { name: 'Scopes', href: '/scopes', icon: ClipboardDocumentListIcon, current: route.name?.toString().startsWith('scope') },
-      { name: 'Invoices', href: '/invoices', icon: CurrencyDollarIcon, current: route.name?.toString().startsWith('invoice') },
-    ]
-  },
-  {
-    label: 'KNOWLEDGE',
-    items: [
-      { name: 'Notes', href: '/notes', icon: DocumentTextIcon, current: route.name === 'notes' },
-      { name: 'Brain Dump', href: '/brain-dump', icon: LightBulbIcon, current: route.name === 'braindump' },
-      { name: 'Resources', href: '/resources', icon: FolderOpenIcon, current: route.name === 'resources' },
-    ]
-  },
-  {
-    label: 'ADMIN',
-    items: [
-      { name: 'Team', href: '/team', icon: UserGroupIcon, current: route.name === 'team' },
-      { name: 'Settings', href: '/settings', icon: CogIcon, current: route.name === 'settings' },
-    ]
+// Dashboard is static (not part of any module), prepend it to CORE group
+const dashboardItem = { name: 'Dashboard', href: '/dashboard', icon: 'HomeIcon' }
+
+const navGroups = computed(() => {
+  const moduleGroups = registry ? registry.getNavGroups() : []
+
+  // Merge dashboard into the first CORE group (or create one)
+  const groups = moduleGroups.map(g => ({ label: g.label, items: [...g.items] }))
+  const coreGroup = groups.find(g => g.label === 'CORE')
+  if (coreGroup) {
+    coreGroup.items.unshift(dashboardItem)
+  } else {
+    groups.unshift({ label: 'CORE', items: [dashboardItem] })
   }
-])
+
+  return groups
+})
+
+// Resolve icon string → component (modules declare icons as strings)
+function resolveNavIcon(icon) {
+  if (typeof icon === 'string') {
+    return resolveIcon(icon)
+  }
+  return icon // Already a component
+}
+
+// Active state detection for nav items
+function isItemActive(item) {
+  const path = route.path
+  if (item.href === '/dashboard') {
+    return route.name === 'dashboard'
+  }
+  if (item.matchPath) {
+    if (item.matchPath instanceof RegExp) {
+      return item.matchPath.test(path)
+    }
+    return path.startsWith(item.matchPath)
+  }
+  // Default: match the href as a prefix
+  return path === item.href || path.startsWith(item.href + '/')
+}
 
 // Keyboard shortcut hints for nav items (from useKeyboardShortcuts g-chords)
 const shortcutMap = {

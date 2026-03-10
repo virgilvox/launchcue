@@ -169,7 +169,6 @@
 import { ref, reactive, computed, onMounted, onBeforeUnmount } from 'vue';
 import { useClientStore } from '@/stores/client';
 import { useProjectStore } from '@/stores/project';
-import clientService from '@/services/client.service';
 import { useToast } from 'vue-toastification';
 import { getStatusColor } from '@/utils/statusColors';
 import { PlusIcon, UsersIcon, EllipsisVerticalIcon, XMarkIcon } from '@heroicons/vue/24/outline';
@@ -298,17 +297,19 @@ async function saveClient() {
 
   try {
     if (editingClient.value) {
-      const updatedClient = await clientService.updateClient(editingClient.value.id, clientForm.value);
-      const index = clients.value.findIndex(c => c.id === editingClient.value.id);
-      if (index !== -1) {
-        const projects = clients.value[index].projects || [];
-        clients.value[index] = { ...updatedClient, projects };
+      const result = await clientStore.updateClient(editingClient.value.id, clientForm.value);
+      if (result.success) {
+        const index = clients.value.findIndex(c => c.id === editingClient.value.id);
+        if (index !== -1) {
+          const projects = clients.value[index].projects || [];
+          clients.value[index] = { ...result.client, projects };
+        }
       }
-      toast.success('Client updated successfully');
     } else {
-      const newClient = await clientService.createClient(clientForm.value);
-      clients.value.push({ ...newClient, projects: [] });
-      toast.success('Client added successfully');
+      const result = await clientStore.createClient(clientForm.value);
+      if (result.success) {
+        clients.value.push({ ...result.client, projects: [] });
+      }
     }
     closeClientModal();
   } catch (err) {
@@ -339,12 +340,13 @@ async function deleteClient(event) {
   error.value = null;
   
   try {
-    await clientService.deleteClient(clientToDelete.value.id);
-    const index = clients.value.findIndex(c => c.id === clientToDelete.value.id);
-    if (index !== -1) {
-      clients.value.splice(index, 1);
+    const result = await clientStore.deleteClient(clientToDelete.value.id);
+    if (result.success) {
+      const index = clients.value.findIndex(c => c.id === clientToDelete.value.id);
+      if (index !== -1) {
+        clients.value.splice(index, 1);
+      }
     }
-    toast.success('Client deleted successfully');
     closeDeleteModal();
   } catch (err) {
     error.value = 'Failed to delete client. Please try again.';

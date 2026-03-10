@@ -1,11 +1,11 @@
 import type { User } from '@/types/models'
 import type { AuthResponse, ChangePasswordRequest } from '@/types/api'
-import type { AuthAdapter } from '../types'
+import type { AuthAdapter, TeamSummary } from '../types'
 import { getSupabase } from './client'
 
 /**
  * Supabase auth adapter — uses Supabase Auth SDK.
- * Replaces 8 Netlify auth functions entirely.
+ * Uses Supabase Auth (GoTrue) for all authentication operations.
  */
 export class SupabaseAuthAdapter implements AuthAdapter {
   private unauthorizedCallback: (() => void) | null = null
@@ -183,6 +183,33 @@ export class SupabaseAuthAdapter implements AuthAdapter {
         this.unauthorizedCallback()
       }
     })
+  }
+
+  async getTeams(): Promise<TeamSummary[]> {
+    const sb = getSupabase()
+    const { data: session } = await sb.auth.getSession()
+    if (!session.session) throw new Error('Not authenticated')
+
+    const user = await this.getAppUser(session.session.user.id)
+    const teams = await this.getUserTeams(user.id)
+    return teams
+  }
+
+  async forgotPassword(email: string): Promise<void> {
+    const { error } = await getSupabase().auth.resetPasswordForEmail(email)
+    if (error) throw new Error(error.message)
+  }
+
+  async resetPassword(_token: string, password: string): Promise<void> {
+    // Supabase handles the token via the redirect URL — the user arrives already authenticated
+    const { error } = await getSupabase().auth.updateUser({ password })
+    if (error) throw new Error(error.message)
+  }
+
+  async verifyEmail(_token: string): Promise<void> {
+    // Supabase handles email verification automatically via redirect URL
+    // When the user clicks the link, Supabase verifies the email
+    // This is a no-op in the Supabase adapter
   }
 
   // ─── Private helpers ───

@@ -72,10 +72,11 @@ import {
   DocumentTextIcon,
   ChatBubbleLeftIcon,
 } from '@heroicons/vue/24/outline'
-import commentService from '@/services/comment.service'
+import { useCommentStore } from '@/stores/comment'
 
 const router = useRouter()
 const toast = useToast()
+const commentStore = useCommentStore()
 
 const activities = ref([])
 const isLoading = ref(false)
@@ -120,7 +121,7 @@ function navigateToResource(activity) {
 async function fetchActivity() {
   isLoading.value = true
   try {
-    const data = await commentService.getRecentComments()
+    const data = await commentStore.getRecentComments()
     activities.value = Array.isArray(data) ? data : []
   } catch (error) {
     toast.error('Failed to load activity feed. Please try again.')

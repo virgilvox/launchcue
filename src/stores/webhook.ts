@@ -1,0 +1,81 @@
+import { ref } from 'vue'
+import { defineStore } from 'pinia'
+import { getContainer } from '@/core/service-container'
+import { getEventBus } from '@/core/event-bus'
+import { WEBHOOK_REPO } from '@/adapters/repository-keys'
+import type { Repository } from '@/adapters/types'
+import type { Webhook } from '../types/models'
+
+export const useWebhookStore = defineStore('webhook', () => {
+  const webhooks = ref<Webhook[]>([])
+  const isLoading = ref(false)
+
+  function getRepo() {
+    return getContainer().resolve<Repository<Webhook, Partial<Webhook>, Partial<Webhook>>>(WEBHOOK_REPO)
+  }
+
+  const fetchWebhooks = async (): Promise<Webhook[]> => {
+    isLoading.value = true
+    try {
+      const response = await getRepo().findAll()
+      webhooks.value = Array.isArray(response) ? response : []
+      return webhooks.value
+    } catch (error) {
+      webhooks.value = []
+      throw error
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  const createWebhook = async (data: Partial<Webhook>): Promise<Webhook> => {
+    try {
+      const created = await getRepo().create(data)
+      if (created && created.id) {
+        webhooks.value.push(created)
+        getEventBus().emit('webhook.created', { webhook: created })
+      }
+      return created
+    } catch (error) {
+      throw error
+    }
+  }
+
+  const updateWebhook = async (id: string, data: Partial<Webhook>): Promise<Webhook> => {
+    if (!id) throw new Error('Webhook ID is required for updates')
+    isLoading.value = true
+    try {
+      const updated = await getRepo().update(id, data)
+      const index = webhooks.value.findIndex(w => w.id === id)
+      if (index !== -1) {
+        webhooks.value[index] = updated
+      }
+      getEventBus().emit('webhook.updated', { webhook: updated })
+      return updated
+    } catch (error) {
+      throw error
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  const deleteWebhook = async (id: string): Promise<void> => {
+    if (!id) throw new Error('Webhook ID is required for deletion')
+    try {
+      await getRepo().delete(id)
+      webhooks.value = webhooks.value.filter(w => w.id !== id)
+      getEventBus().emit('webhook.deleted', { id })
+    } catch (error) {
+      throw error
+    }
+  }
+
+  return {
+    webhooks,
+    isLoading,
+    fetchWebhooks,
+    createWebhook,
+    updateWebhook,
+    deleteWebhook
+  }
+})

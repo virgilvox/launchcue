@@ -286,7 +286,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue';
 import { useAuthStore } from '@/stores/auth';
-import teamService from '@/services/team.service';
+import { useTeamStore } from '@/stores/team';
 import { useToast } from 'vue-toastification';
 import { getInitials } from '@/utils/formatters';
 import Modal from '@/components/Modal.vue';
@@ -295,6 +295,7 @@ import PageHeader from '@/components/ui/PageHeader.vue';
 import LoadingSpinner from '@/components/LoadingSpinner.vue';
 
 const authStore = useAuthStore();
+const teamStore = useTeamStore();
 const loading = ref(false);
 const members = ref([]);
 const error = ref(null);
@@ -390,15 +391,15 @@ async function switchTeam(teamId) {
 
 async function loadTeamMembers() {
   if (!authStore.currentTeam?.id) return;
-  
+
   isLoadingMembers.value = true;
-  
+
   try {
-    const result = await teamService.getTeamMembers(authStore.currentTeam.id);
+    const result = await teamStore.fetchTeamMembers();
     if (result.success) {
       // Filter out any null or invalid members
-      teamMembers.value = result.members.filter(member => 
-        member && member.id && (member.email || member.displayName)
+      teamMembers.value = (result.members || []).filter(member =>
+        member && (member.id || member.userId) && (member.email || member.displayName || member.name)
       );
     } else {
       toast.error(result.error || 'Failed to load team members');
@@ -415,13 +416,13 @@ async function sendInvite() {
     inviteError.value = "Email and team ID are required";
     return;
   }
-  
+
   sendingInvite.value = true;
   error.value = null;
   inviteError.value = null;
-  
+
   try {
-    const result = await teamService.inviteUser(authStore.currentTeam.id, inviteEmail.value);
+    const result = await teamStore.inviteUser(inviteEmail.value);
 
     if (result.success) {
       showInviteModal.value = false;
@@ -452,12 +453,12 @@ function confirmLeaveTeam(team) {
 
 async function leaveTeam() {
   if (!teamToLeave.value) return;
-  
+
   leavingTeam.value = true;
-  
+
   try {
-    await teamService.leaveTeam(teamToLeave.value.id);
-    
+    await teamStore.leaveTeam(teamToLeave.value.id);
+
     // If this is the current team, we need to switch to another team
     if (teamToLeave.value.id === authStore.currentTeam?.id) {
       // Find the first available other team
@@ -466,10 +467,10 @@ async function leaveTeam() {
         await authStore.switchTeam(otherTeam.id);
       }
     }
-    
+
     // Refresh the user's teams
     await authStore.loadUserTeams();
-    
+
     toast.success('You have left the team successfully');
     showLeaveModal.value = false;
   } catch (err) {
@@ -550,8 +551,7 @@ async function executeRoleChange() {
   changingRole.value = true;
 
   try {
-    const result = await teamService.updateMemberRole(
-      authStore.currentTeam.id,
+    const result = await teamStore.updateMemberRole(
       roleChangeTarget.value.id,
       roleChangeNewRole.value
     );

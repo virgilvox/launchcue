@@ -8,10 +8,7 @@ import { CLIENT_REPO, PROJECT_REPO } from '@/adapters/repository-keys'
 import type { Repository } from '@/adapters/types'
 import { getClientColor } from '../constants/clientColors'
 import type { Client, Project } from '../types/models'
-import type { ClientCreateRequest, ClientUpdateRequest } from '../types/api'
-
-// Keep legacy service import for contact-specific operations not covered by Repository<T>
-import clientService from '../services/client.service'
+import type { ClientCreateRequest } from '../types/api'
 
 interface ClientStoreResult<T = undefined> {
   success: boolean
@@ -31,7 +28,7 @@ export const useClientStore = defineStore('client', () => {
   const toast = useToast()
 
   function getRepo() {
-    return getContainer().resolve<Repository<Client, ClientCreateRequest, ClientUpdateRequest>>(CLIENT_REPO)
+    return getContainer().resolve<Repository<Client, ClientCreateRequest, Partial<ClientCreateRequest>>>(CLIENT_REPO)
   }
 
   function getProjectRepo() {
@@ -139,11 +136,10 @@ export const useClientStore = defineStore('client', () => {
     }
   }
 
-  // Contact operations use legacy service (sub-resource, not standard CRUD)
   async function getClientContacts(clientId: string): Promise<ClientStoreResult> {
     try {
-      const response = await clientService.getClientContacts(clientId)
-      return { success: true, contacts: response }
+      const client = await getRepo().findById(clientId)
+      return { success: true, contacts: client.contacts || [] }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to fetch client contacts'
       toast.error('Failed to load client contacts')
@@ -159,27 +155,6 @@ export const useClientStore = defineStore('client', () => {
       const message = err instanceof Error ? err.message : 'Failed to fetch client projects'
       toast.error('Failed to load client projects')
       return { success: false, error: message }
-    }
-  }
-
-  async function runContactMigration(): Promise<ClientStoreResult<unknown>> {
-    try {
-      loading.value = true
-      error.value = null
-
-      const response: unknown = await clientService.runContactMigration()
-
-      toast.success('Contact migration completed successfully')
-      await fetchClients()
-
-      return { success: true, result: response }
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Failed to run contact migration'
-      error.value = message
-      toast.error('Failed to run contact migration')
-      return { success: false, error: error.value }
-    } finally {
-      loading.value = false
     }
   }
 
@@ -199,7 +174,6 @@ export const useClientStore = defineStore('client', () => {
     deleteClient,
     getClientContacts,
     getClientProjects,
-    runContactMigration,
     getClientColorById
   }
 })

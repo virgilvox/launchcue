@@ -187,7 +187,6 @@ import { useCalendarStore } from '@/stores/calendar';
 import { useProjectStore } from '@/stores/project';
 import { useTaskStore } from '@/stores/task';
 import { useClientStore } from '@/stores/client';
-import apiService from '@/services/api.service';
 import { formatShortDate } from '@/utils/dateFormatter';
 import { useEntityLookup } from '@/composables/useEntityLookup';
 import PageContainer from '@/components/ui/PageContainer.vue';
@@ -759,10 +758,9 @@ async function selectEvent(event) {
         projectContacts.value = project.contacts || [];
       } else {
         try {
-          const projectEndpoint = `/projects/${selectedProjectId.value}`;
-          const response = await apiService.get(projectEndpoint);
+          const response = await projectStore.getProject(selectedProjectId.value);
 
-          if (response && typeof response === 'object' && !response.toString().includes('<!DOCTYPE html>')) {
+          if (response && typeof response === 'object') {
             projectLinks.value = response.links || [];
             projectContacts.value = response.contacts || [];
 

@@ -1,820 +1,935 @@
-# LaunchCue Database Schema Documentation
+# LaunchCue Database Schema
 
-MongoDB database schema reference for the LaunchCue DevRel management platform.
+PostgreSQL database managed by Supabase (GoTrue auth, PostgREST API, Realtime subscriptions). 26 tables, 14 enum types, 17 views, 5 migration files.
 
 ---
 
 ## Table of Contents
 
-1. [Conventions](#conventions)
-2. [Relationships Diagram](#relationships-diagram)
-3. [Collections](#collections)
-   - [users](#users)
-   - [teams](#teams)
-   - [teamInvites](#teaminvites)
-   - [clients](#clients)
-   - [projects](#projects)
-   - [tasks](#tasks)
-   - [campaigns](#campaigns)
-   - [notes](#notes)
-   - [braindumps](#braindumps)
-   - [calendarEvents](#calendarevents)
-   - [resources](#resources)
-   - [comments](#comments)
-   - [notifications](#notifications)
-   - [apiKeys](#apikeys)
-   - [webhooks](#webhooks)
-   - [auditLogs](#auditlogs)
-   - [tokenBlocklist](#tokenblocklist)
-   - [rateLimits](#ratelimits)
-   - [passwordResets](#passwordresets)
-   - [emailVerifications](#emailverifications)
+1. [Overview](#overview)
+2. [Migrations](#migrations)
+3. [Enum Types](#enum-types)
+4. [Tables](#tables)
+5. [Row-Level Security (RLS)](#row-level-security-rls)
+6. [Views](#views)
+7. [Functions & Triggers](#functions--triggers)
+8. [Indexes](#indexes)
 
 ---
 
-## Conventions
+## Overview
 
-### Timestamps
-
-All domain collections include standard timestamp fields:
-
-| Field       | Type   | Description                        |
-|-------------|--------|------------------------------------|
-| `createdAt` | `Date` | Set on document creation           |
-| `updatedAt` | `Date` | Updated on every modification      |
-
-### Multi-Tenancy
-
-Most collections include a `teamId` field (string, required) that scopes documents to a specific team. All queries filter by `teamId` to enforce tenant isolation. Exceptions: `users`, `notifications`, `tokenBlocklist`, `rateLimits`, `passwordResets`, `emailVerifications`.
-
-### Soft Delete
-
-Many collections use soft deletion rather than hard deletion. Soft-deleted documents have:
-
-| Field       | Type            | Description                                    |
-|-------------|-----------------|------------------------------------------------|
-| `deletedAt` | `Date \| null`  | Timestamp of deletion; `null` when not deleted |
-| `deletedBy` | `String \| null`| User ID of the person who deleted              |
-
-All list queries include the filter `{ deletedAt: null }` to exclude soft-deleted documents.
-
-**Collections using soft delete:** `clients`, `projects`, `tasks`, `campaigns`, `notes`, `braindumps`, `comments`.
-
-**Collections using hard delete:** `calendarEvents`, `resources`, `webhooks`, `apiKeys`, `notifications`, `teams`.
-
-### ID Format
-
-MongoDB `_id` (ObjectId) is mapped to a string `id` field in API responses. The `_id` field is stripped before returning documents.
-
-### TTL Collections
-
-Two collections use MongoDB TTL indexes for automatic expiration:
-
-- **`tokenBlocklist`** -- TTL index on `expiresAt` (entries auto-deleted after token expiry)
-- **`rateLimits`** -- TTL index on `expiresAt` (entries auto-deleted after rate limit window)
+- **Engine:** PostgreSQL via Supabase
+- **Extensions:** `uuid-ossp` (UUID generation), `pg_trgm` (trigram full-text search)
+- **Multi-tenancy:** `team_id` column on most tables, enforced by RLS
+- **Soft delete:** `deleted_at` / `deleted_by` columns; filtered by `active_*` views
+- **Timestamps:** `created_at` and `updated_at` (auto-set by trigger) on most tables
+- **IDs:** UUID primary keys everywhere (`uuid_generate_v4()`)
+- **Money:** `NUMERIC(12,2)` for amounts, `NUMERIC(5,4)` for tax rates
+- **Arrays:** `TEXT[]` for tags, scopes, event lists
+- **Structured data:** `JSONB` for checklists, steps, metrics, deliverables, line items, recurrence, reminders, preferences, changes
 
 ---
 
-## Relationships Diagram
+## Migrations
 
-```
-users
-  |
-  +--< teams.members[].userId          (user belongs to many teams)
-  +--< teams.owner                     (user owns a team)
-  +--< notifications.userId            (user receives notifications)
-  +--< comments.userId                 (user authors comments)
-  +--< apiKeys.userId                  (user owns API keys)
-  +--< auditLogs.userId                (user performs audited actions)
-  +--< passwordResets.userId           (user requests password reset)
-  +--< emailVerifications.userId       (user verifies email)
+Files live in `supabase/migrations/` and are applied in order:
 
-teams
-  |
-  +--< clients.teamId                  (team has many clients)
-  +--< projects.teamId                 (team has many projects)
-  +--< tasks.teamId                    (team has many tasks)
-  +--< campaigns.teamId                (team has many campaigns)
-  +--< notes.teamId                    (team has many notes)
-  +--< braindumps.teamId               (team has many brain dumps)
-  +--< calendarEvents.teamId           (team has many calendar events)
-  +--< resources.teamId                (team has many resources)
-  +--< comments.teamId                 (team scopes comments)
-  +--< webhooks.teamId                 (team has many webhooks)
-  +--< apiKeys.teamId                  (team scopes API keys)
-  +--< auditLogs.teamId                (team scopes audit logs)
-  +--< teamInvites.teamId              (team has many invites)
-
-clients
-  |
-  +--< projects.clientId               (client has many projects)
-  +--< campaigns.clientId              (client linked to campaigns)
-  +--< notes.clientId                  (client linked to notes)
-  +--< braindumps.clientId             (client linked to brain dumps)
-  +--< calendarEvents.clientId         (client linked to calendar events)
-
-projects
-  |
-  +--< tasks.projectId                 (project has many tasks)
-  +--< campaigns.projectId             (project linked to campaigns)
-  +--< notes.projectId                 (project linked to notes)
-  +--< braindumps.projectId            (project linked to brain dumps)
-  +--< calendarEvents.projectId        (project linked to calendar events)
-
-tasks
-  |
-  +--< calendarEvents.taskId           (task synced to calendar event)
-  +--< tasks.parentTaskId              (task has subtasks -- self-referencing)
-
-comments -- polymorphic via (resourceType, resourceId)
-  |
-  +---- task | project | client | note  (comments attach to any of these)
-
-notifications -- polymorphic via (resourceType, resourceId)
-  |
-  +---- task | project | client | etc.  (notifications reference any resource)
-
-auditLogs -- polymorphic via (resourceType, resourceId)
-  |
-  +---- task | project | client | etc.  (audit logs track any resource)
-```
+| File | Purpose |
+|------|---------|
+| `supabase/migrations/001_create_tables.sql` | Extensions, 14 enum types, all 26 tables |
+| `supabase/migrations/002_row_level_security.sql` | 5 helper functions, RLS enabled on all 26 tables, all policies |
+| `supabase/migrations/003_indexes.sql` | Performance indexes, partial indexes, GIN indexes, full-text search indexes |
+| `supabase/migrations/004_functions.sql` | `updated_at` trigger, soft delete, cascade delete, invoice numbering, task sync, global search, audit log trigger, webhook queue trigger, task assignment notification |
+| `supabase/migrations/005_views.sql` | 15 `active_*` views, `dashboard_stats` view, `upcoming_deadlines` view |
 
 ---
 
-## Collections
+## Enum Types
+
+All 14 custom enum types defined in `001_create_tables.sql`:
+
+| Enum | Values |
+|------|--------|
+| `task_status` | `'To Do'`, `'In Progress'`, `'Blocked'`, `'Done'` |
+| `task_priority` | `'low'`, `'medium'`, `'high'`, `'urgent'` |
+| `project_status` | `'Planning'`, `'In Progress'`, `'On Hold'`, `'Completed'`, `'Cancelled'` |
+| `campaign_status` | `'draft'`, `'active'`, `'paused'`, `'completed'` |
+| `team_role` | `'owner'`, `'admin'`, `'member'`, `'viewer'`, `'client'` |
+| `event_color` | `'blue'`, `'green'`, `'orange'`, `'red'`, `'purple'` |
+| `notification_type` | `'task_assigned'`, `'deadline_approaching'`, `'team_invite'`, `'mention'`, `'comment'` |
+| `scope_status` | `'draft'`, `'sent'`, `'approved'`, `'revised'` |
+| `deliverable_status` | `'pending'`, `'in-progress'`, `'completed'`, `'approved'` |
+| `invoice_status` | `'draft'`, `'sent'`, `'viewed'`, `'paid'`, `'overdue'` |
+| `onboarding_step_type` | `'info'`, `'form'`, `'upload'`, `'approval'` |
+| `onboarding_status` | `'not-started'`, `'in-progress'`, `'completed'` |
+| `invite_status` | `'pending'`, `'accepted'`, `'rejected'`, `'expired'` |
+| `recurrence_frequency` | `'daily'`, `'weekly'`, `'monthly'`, `'yearly'` |
+
+---
+
+## Tables
 
 ### users
 
-Registered user accounts. Created during registration.
+App-level profile extending `auth.users` (Supabase Auth).
 
-| Field            | Type     | Required | Default | Description                                     |
-|------------------|----------|----------|---------|-------------------------------------------------|
-| `_id`            | ObjectId | auto     |         | MongoDB document ID                             |
-| `name`           | String   | yes      |         | Display name                                    |
-| `email`          | String   | yes      |         | Unique, stored lowercase                        |
-| `password`       | String   | yes      |         | bcrypt-hashed password                          |
-| `emailVerified`  | Boolean  | no       | `false` | Whether email has been verified                 |
-| `jobTitle`       | String   | no       |         | User's job title                                |
-| `bio`            | String   | no       |         | Short biography                                 |
-| `avatarUrl`      | String   | no       |         | URL to avatar image                             |
-| `timezone`       | String   | no       |         | IANA timezone string                            |
-| `preferences`    | Object   | no       |         | User preferences (see sub-fields below)         |
-| `createdAt`      | Date     | yes      |         | Account creation timestamp                      |
-| `updatedAt`      | Date     | yes      |         | Last update timestamp                           |
-
-**`preferences` sub-fields:**
-
-| Field                       | Type    | Description                          |
-|-----------------------------|---------|--------------------------------------|
-| `preferences.theme`         | String  | `'light'`, `'dark'`, or `'system'`   |
-| `preferences.notifications` | Object  | `{ email: Boolean, inApp: Boolean }` |
-
-**Indexes:**
-
-| Fields    | Options          |
-|-----------|------------------|
-| `email`   | `{ unique: true }` |
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| `id` | `UUID` | PK, DEFAULT `uuid_generate_v4()` | |
+| `auth_id` | `UUID` | UNIQUE | Links to `auth.users.id` |
+| `name` | `TEXT` | NOT NULL | Display name |
+| `email` | `TEXT` | NOT NULL, UNIQUE | |
+| `job_title` | `TEXT` | | |
+| `bio` | `TEXT` | | |
+| `avatar_url` | `TEXT` | | Profile image URL |
+| `email_verified` | `BOOLEAN` | DEFAULT FALSE | |
+| `timezone` | `TEXT` | DEFAULT `'UTC'` | |
+| `preferences` | `JSONB` | DEFAULT `'{"theme": "system", "notifications": {"email": true, "inApp": true}}'` | |
+| `created_at` | `TIMESTAMPTZ` | NOT NULL, DEFAULT `NOW()` | |
+| `updated_at` | `TIMESTAMPTZ` | NOT NULL, DEFAULT `NOW()` | |
 
 ---
 
 ### teams
 
-Team/organization for multi-tenancy. Members are stored as an embedded array.
+Top-level tenant. Supports soft delete.
 
-| Field       | Type     | Required | Default | Description                          |
-|-------------|----------|----------|---------|--------------------------------------|
-| `_id`       | ObjectId | auto     |         | MongoDB document ID                  |
-| `name`      | String   | yes      |         | Team display name                    |
-| `owner`     | String   | yes      |         | User ID of the team owner            |
-| `members`   | Array    | yes      |         | Embedded array of `TeamMember`       |
-| `createdAt` | Date     | yes      |         | Team creation timestamp              |
-| `updatedAt` | Date     | no       |         | Last update timestamp                |
-
-**`members[]` sub-fields (TeamMember):**
-
-| Field      | Type   | Required | Description                                        |
-|------------|--------|----------|----------------------------------------------------|
-| `userId`   | String | yes      | References `users._id`                             |
-| `email`    | String | yes      | Member's email                                     |
-| `name`     | String | yes      | Member's display name                              |
-| `role`     | String | yes      | `'owner'`, `'admin'`, `'member'`, or `'viewer'`    |
-| `joinedAt` | Date   | yes      | When the member joined                             |
-
-**Indexes:**
-
-| Fields              | Options |
-|---------------------|---------|
-| `members.userId`    |         |
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| `id` | `UUID` | PK, DEFAULT `uuid_generate_v4()` | |
+| `name` | `TEXT` | NOT NULL | |
+| `owner_id` | `UUID` | NOT NULL, FK -> `users(id)` | |
+| `deleted_at` | `TIMESTAMPTZ` | | Soft delete |
+| `deleted_by` | `UUID` | FK -> `users(id)` | |
+| `created_at` | `TIMESTAMPTZ` | NOT NULL, DEFAULT `NOW()` | |
+| `updated_at` | `TIMESTAMPTZ` | NOT NULL, DEFAULT `NOW()` | |
 
 ---
 
-### teamInvites
+### team_members
 
-Pending invitations to join a team. (Note: the current implementation directly adds users to teams, but the collection and schema exist for future invite-flow support.)
+Join table replacing MongoDB `teams.members[]` array.
 
-| Field       | Type     | Required | Default     | Description                                      |
-|-------------|----------|----------|-------------|--------------------------------------------------|
-| `_id`       | ObjectId | auto     |             | MongoDB document ID                              |
-| `email`     | String   | yes      |             | Invitee email                                    |
-| `teamId`    | String   | yes      |             | References `teams._id`                           |
-| `invitedBy` | String   | yes      |             | User ID of inviter                               |
-| `status`    | String   | yes      | `'pending'` | `'pending'`, `'accepted'`, `'rejected'`, `'expired'` |
-| `role`      | String   | yes      |             | Role to grant on acceptance                      |
-| `expiresAt` | Date     | yes      |             | Invite expiration                                |
-| `createdAt` | Date     | yes      |             | Invite creation timestamp                        |
-| `updatedAt` | Date     | yes      |             | Last update timestamp                            |
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| `id` | `UUID` | PK, DEFAULT `uuid_generate_v4()` | |
+| `team_id` | `UUID` | NOT NULL, FK -> `teams(id)` ON DELETE CASCADE | |
+| `user_id` | `UUID` | NOT NULL, FK -> `users(id)` ON DELETE CASCADE | |
+| `role` | `team_role` | NOT NULL, DEFAULT `'member'` | |
+| `joined_at` | `TIMESTAMPTZ` | NOT NULL, DEFAULT `NOW()` | |
 
-**Indexes:**
+**Unique constraint:** `(team_id, user_id)`
 
-| Fields           | Options |
-|------------------|---------|
-| `email, teamId`  |         |
+---
+
+### team_invites
+
+Invitations for users to join a team.
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| `id` | `UUID` | PK, DEFAULT `uuid_generate_v4()` | |
+| `email` | `TEXT` | NOT NULL | Invitee email |
+| `team_id` | `UUID` | NOT NULL, FK -> `teams(id)` ON DELETE CASCADE | |
+| `invited_by` | `UUID` | NOT NULL, FK -> `users(id)` | |
+| `status` | `invite_status` | NOT NULL, DEFAULT `'pending'` | |
+| `role` | `team_role` | NOT NULL, DEFAULT `'member'` | Role granted on accept |
+| `expires_at` | `TIMESTAMPTZ` | NOT NULL | |
+| `created_at` | `TIMESTAMPTZ` | NOT NULL, DEFAULT `NOW()` | |
+| `updated_at` | `TIMESTAMPTZ` | NOT NULL, DEFAULT `NOW()` | |
 
 ---
 
 ### clients
 
-Client organizations managed by a team.
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| `id` | `UUID` | PK, DEFAULT `uuid_generate_v4()` | |
+| `name` | `TEXT` | NOT NULL | |
+| `industry` | `TEXT` | | |
+| `website` | `TEXT` | | |
+| `description` | `TEXT` | | |
+| `contact_name` | `TEXT` | | Primary contact name |
+| `contact_email` | `TEXT` | | Primary contact email |
+| `contact_phone` | `TEXT` | | Primary contact phone |
+| `address` | `TEXT` | | |
+| `notes` | `TEXT` | | |
+| `color` | `TEXT` | | UI color |
+| `team_id` | `UUID` | NOT NULL, FK -> `teams(id)` | |
+| `created_by` | `UUID` | NOT NULL, FK -> `users(id)` | |
+| `deleted_at` | `TIMESTAMPTZ` | | Soft delete |
+| `deleted_by` | `UUID` | FK -> `users(id)` | |
+| `created_at` | `TIMESTAMPTZ` | NOT NULL, DEFAULT `NOW()` | |
+| `updated_at` | `TIMESTAMPTZ` | NOT NULL, DEFAULT `NOW()` | |
 
-| Field          | Type     | Required | Default | Description                        |
-|----------------|----------|----------|---------|------------------------------------|
-| `_id`          | ObjectId | auto     |         | MongoDB document ID                |
-| `name`         | String   | yes      |         | Client company name                |
-| `industry`     | String   | no       | `''`    | Industry sector                    |
-| `website`      | String   | no       | `''`    | Client website URL                 |
-| `description`  | String   | no       | `''`    | Description of the client          |
-| `contactName`  | String   | no       | `''`    | Primary contact name (legacy)      |
-| `contactEmail` | String   | no       | `''`    | Primary contact email (legacy)     |
-| `contactPhone` | String   | no       | `''`    | Primary contact phone (legacy)     |
-| `address`      | String   | no       | `''`    | Client address                     |
-| `notes`        | String   | no       | `''`    | Free-form notes                    |
-| `contacts`     | Array    | no       | `[]`    | Embedded array of `Contact`        |
-| `teamId`       | String   | yes      |         | References `teams._id`             |
-| `createdBy`    | String   | yes      |         | References `users._id`             |
-| `createdAt`    | Date     | yes      |         | Creation timestamp                 |
-| `updatedAt`    | Date     | yes      |         | Last update timestamp              |
-| `deletedAt`    | Date     | no       | `null`  | Soft delete timestamp              |
-| `deletedBy`    | String   | no       | `null`  | User who soft-deleted              |
+---
 
-**`contacts[]` sub-fields (Contact):**
+### client_contacts
 
-| Field       | Type    | Required | Default | Description                      |
-|-------------|---------|----------|---------|----------------------------------|
-| `id`        | String  | yes      |         | Client-generated or ObjectId     |
-| `name`      | String  | yes      |         | Contact person name              |
-| `email`     | String  | no       |         | Contact email                    |
-| `phone`     | String  | no       |         | Contact phone number             |
-| `role`      | String  | no       |         | Contact's role at the company    |
-| `isPrimary` | Boolean | no       | `false` | Whether this is the primary contact |
-| `notes`     | String  | no       |         | Notes about this contact         |
-| `createdAt` | Date    | yes      |         | Contact creation timestamp       |
-| `updatedAt` | Date    | yes      |         | Contact last update timestamp    |
+Replaces MongoDB embedded `clients.contacts[]` array.
 
-**Indexes:**
-
-| Fields  | Options |
-|---------|---------|
-| `teamId` |       |
-| `name, description` | Text index (full-text search) |
-
-**Cascade protections:** Cannot delete a client that has active (non-Completed, non-Cancelled) projects.
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| `id` | `UUID` | PK, DEFAULT `uuid_generate_v4()` | |
+| `client_id` | `UUID` | NOT NULL, FK -> `clients(id)` ON DELETE CASCADE | |
+| `name` | `TEXT` | NOT NULL | |
+| `email` | `TEXT` | | |
+| `phone` | `TEXT` | | |
+| `role` | `TEXT` | | Contact's role/title |
+| `is_primary` | `BOOLEAN` | DEFAULT FALSE | |
+| `notes` | `TEXT` | | |
+| `created_at` | `TIMESTAMPTZ` | NOT NULL, DEFAULT `NOW()` | |
+| `updated_at` | `TIMESTAMPTZ` | NOT NULL, DEFAULT `NOW()` | |
 
 ---
 
 ### projects
 
-Projects belong to a team and are associated with a client.
-
-| Field        | Type     | Required | Default      | Description                                      |
-|--------------|----------|----------|--------------|--------------------------------------------------|
-| `_id`        | ObjectId | auto     |              | MongoDB document ID                              |
-| `title`      | String   | yes      |              | Project title                                    |
-| `description`| String   | no       | `''`         | Project description                              |
-| `status`     | String   | no       | `'Planning'` | `'Planning'`, `'In Progress'`, `'On Hold'`, `'Completed'`, `'Cancelled'` |
-| `clientId`   | String   | yes      |              | References `clients._id`                         |
-| `startDate`  | Date     | no       | `null`       | Project start date                               |
-| `dueDate`    | Date     | no       | `null`       | Project due date                                 |
-| `tags`       | Array    | no       | `[]`         | Array of string tags                             |
-| `budget`     | Number   | no       | `null`       | Project budget                                   |
-| `goals`      | Array    | no       |              | Array of goal strings                            |
-| `ownerId`    | String   | no       |              | References `users._id` (project owner)           |
-| `teamId`     | String   | yes      |              | References `teams._id`                           |
-| `createdBy`  | String   | yes      |              | References `users._id`                           |
-| `createdAt`  | Date     | yes      |              | Creation timestamp                               |
-| `updatedAt`  | Date     | yes      |              | Last update timestamp                            |
-| `deletedAt`  | Date     | no       | `null`       | Soft delete timestamp                            |
-| `deletedBy`  | String   | no       | `null`       | User who soft-deleted                            |
-
-**Indexes:**
-
-| Fields              | Options |
-|---------------------|---------|
-| `teamId`            |         |
-| `teamId, clientId`  |         |
-| `teamId, status`    |         |
-| `teamId, dueDate`   |         |
-| `title, description`| Text index (full-text search) |
-
-**Side effects:** Creating/updating a project with a `dueDate` syncs a calendar event (auto-creates/updates a `calendarEvents` document with `taskId: null`). Deleting a project removes its synced calendar event.
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| `id` | `UUID` | PK, DEFAULT `uuid_generate_v4()` | |
+| `title` | `TEXT` | NOT NULL | |
+| `description` | `TEXT` | | |
+| `status` | `project_status` | NOT NULL, DEFAULT `'Planning'` | |
+| `client_id` | `UUID` | FK -> `clients(id)` | |
+| `start_date` | `DATE` | | |
+| `due_date` | `DATE` | | |
+| `tags` | `TEXT[]` | DEFAULT `'{}'` | |
+| `budget` | `NUMERIC(12,2)` | | |
+| `goals` | `TEXT[]` | DEFAULT `'{}'` | |
+| `owner_id` | `UUID` | FK -> `users(id)` | |
+| `team_id` | `UUID` | NOT NULL, FK -> `teams(id)` | |
+| `created_by` | `UUID` | NOT NULL, FK -> `users(id)` | |
+| `deleted_at` | `TIMESTAMPTZ` | | Soft delete |
+| `deleted_by` | `UUID` | FK -> `users(id)` | |
+| `created_at` | `TIMESTAMPTZ` | NOT NULL, DEFAULT `NOW()` | |
+| `updated_at` | `TIMESTAMPTZ` | NOT NULL, DEFAULT `NOW()` | |
 
 ---
 
 ### tasks
 
-Tasks belong to a team, optionally linked to a project. Supports assignees, priorities, checklists, and subtasks.
-
-| Field          | Type     | Required | Default     | Description                                            |
-|----------------|----------|----------|-------------|--------------------------------------------------------|
-| `_id`          | ObjectId | auto     |             | MongoDB document ID                                    |
-| `title`        | String   | yes      |             | Task title (max 200 chars)                             |
-| `description`  | String   | no       |             | Task description (max 5000 chars)                      |
-| `status`       | String   | no       | `'To Do'`   | `'To Do'`, `'In Progress'`, `'Blocked'`, `'Done'`      |
-| `type`         | String   | no       | `'task'`    | Task type (free-form string)                           |
-| `priority`     | String   | no       | `'medium'`  | `'low'`, `'medium'`, `'high'`, `'urgent'`              |
-| `projectId`    | String   | no       | `null`      | References `projects._id`                              |
-| `assigneeId`   | String   | no       | `null`      | References `users._id` (assigned team member)          |
-| `parentTaskId` | String   | no       | `null`      | References `tasks._id` (for subtasks)                  |
-| `dueDate`      | Date     | no       | `null`      | Task due date                                          |
-| `checklist`    | Array    | no       | `[]`        | Embedded array of `ChecklistItem`                      |
-| `tags`         | Array    | no       | `[]`        | Array of string tags                                   |
-| `timeEstimate` | Number   | no       |             | Estimated time in minutes                              |
-| `timeSpent`    | Number   | no       |             | Actual time spent in minutes                           |
-| `teamId`       | String   | yes      |             | References `teams._id`                                 |
-| `createdBy`    | String   | yes      |             | References `users._id`                                 |
-| `createdAt`    | Date     | yes      |             | Creation timestamp                                     |
-| `updatedAt`    | Date     | yes      |             | Last update timestamp                                  |
-| `deletedAt`    | Date     | no       | `null`      | Soft delete timestamp                                  |
-| `deletedBy`    | String   | no       | `null`      | User who soft-deleted                                  |
-
-**`checklist[]` sub-fields (ChecklistItem):**
-
-| Field       | Type    | Required | Default | Description              |
-|-------------|---------|----------|---------|--------------------------|
-| `id`        | String  | no       |         | Client-generated ID      |
-| `title`     | String  | yes      |         | Checklist item text      |
-| `completed` | Boolean | no       | `false` | Whether item is done     |
-
-**Indexes:**
-
-| Fields                | Options |
-|-----------------------|---------|
-| `teamId`              |         |
-| `teamId, projectId`   |         |
-| `teamId, status`      |         |
-| `teamId, dueDate`     |         |
-| `teamId, assigneeId`  |         |
-| `title, description`  | Text index (full-text search) |
-
-**Side effects:** Creating/updating a task with a `dueDate` syncs a calendar event (auto-creates/updates a `calendarEvents` document with `taskId` set). Deleting a task removes its synced calendar event.
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| `id` | `UUID` | PK, DEFAULT `uuid_generate_v4()` | |
+| `title` | `TEXT` | NOT NULL | |
+| `description` | `TEXT` | | |
+| `status` | `task_status` | NOT NULL, DEFAULT `'To Do'` | |
+| `type` | `TEXT` | | Task type |
+| `priority` | `task_priority` | DEFAULT `'medium'` | |
+| `project_id` | `UUID` | FK -> `projects(id)` | |
+| `assignee_id` | `UUID` | FK -> `users(id)` | |
+| `parent_task_id` | `UUID` | FK -> `tasks(id)` | Subtask support |
+| `due_date` | `DATE` | | |
+| `completed` | `BOOLEAN` | DEFAULT FALSE | Synced with status via trigger |
+| `checklist` | `JSONB` | DEFAULT `'[]'` | |
+| `tags` | `TEXT[]` | DEFAULT `'{}'` | |
+| `time_estimate` | `INTEGER` | | Minutes |
+| `time_spent` | `INTEGER` | | Minutes |
+| `team_id` | `UUID` | NOT NULL, FK -> `teams(id)` | |
+| `created_by` | `UUID` | NOT NULL, FK -> `users(id)` | |
+| `deleted_at` | `TIMESTAMPTZ` | | Soft delete |
+| `deleted_by` | `UUID` | FK -> `users(id)` | |
+| `created_at` | `TIMESTAMPTZ` | NOT NULL, DEFAULT `NOW()` | |
+| `updated_at` | `TIMESTAMPTZ` | NOT NULL, DEFAULT `NOW()` | |
 
 ---
 
 ### campaigns
 
-Marketing/DevRel campaigns with steps, budgets, and metrics.
-
-| Field        | Type     | Required | Default   | Description                                          |
-|--------------|----------|----------|-----------|------------------------------------------------------|
-| `_id`        | ObjectId | auto     |           | MongoDB document ID                                  |
-| `title`      | String   | yes      |           | Campaign title (max 200 chars)                       |
-| `description`| String   | no       |           | Campaign description                                 |
-| `status`     | String   | no       | `'draft'` | `'draft'`, `'active'`, `'paused'`, `'completed'`     |
-| `types`      | Array    | no       |           | Array of campaign type strings (e.g. "Docs", "Blog") |
-| `clientId`   | String   | no       | `null`    | References `clients._id`                             |
-| `projectId`  | String   | no       | `null`    | References `projects._id`                            |
-| `startDate`  | Date     | no       | `null`    | Campaign start date                                  |
-| `endDate`    | Date     | no       | `null`    | Campaign end date                                    |
-| `steps`      | Array    | no       | `[]`      | Embedded array of `CampaignStep`                     |
-| `budget`     | Number   | no       | `null`    | Campaign budget                                      |
-| `metrics`    | Object   | no       |           | Campaign performance metrics (see below)             |
-| `teamId`     | String   | yes      |           | References `teams._id`                               |
-| `userId`     | String   | yes      |           | References `users._id` (creator)                     |
-| `createdAt`  | Date     | yes      |           | Creation timestamp                                   |
-| `updatedAt`  | Date     | yes      |           | Last update timestamp                                |
-| `deletedAt`  | Date     | no       | `null`    | Soft delete timestamp                                |
-| `deletedBy`  | String   | no       | `null`    | User who soft-deleted                                |
-
-**`steps[]` sub-fields (CampaignStep):**
-
-| Field         | Type   | Required | Description                          |
-|---------------|--------|----------|--------------------------------------|
-| `id`          | ObjectId/String | yes | Step ID (auto-generated ObjectId)  |
-| `title`       | String | yes      | Step title                           |
-| `description` | String | no       | Step description                     |
-| `date`        | String | yes      | ISO 8601 datetime for the step       |
-| `assigneeId`  | String | no       | References `users._id`               |
-
-**`metrics` sub-fields (CampaignMetrics):**
-
-| Field         | Type   | Description         |
-|---------------|--------|---------------------|
-| `reach`       | Number | Audience reach      |
-| `engagement`  | Number | Engagement metric   |
-| `conversions` | Number | Conversion count    |
-
-**Indexes:**
-
-| Fields            | Options |
-|-------------------|---------|
-| `teamId`          |         |
-| `teamId, clientId`|         |
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| `id` | `UUID` | PK, DEFAULT `uuid_generate_v4()` | |
+| `title` | `TEXT` | NOT NULL | |
+| `description` | `TEXT` | | |
+| `status` | `campaign_status` | DEFAULT `'draft'` | |
+| `types` | `TEXT[]` | DEFAULT `'{}'` | Campaign types (blog, video, etc.) |
+| `client_id` | `UUID` | FK -> `clients(id)` | |
+| `project_id` | `UUID` | FK -> `projects(id)` | |
+| `start_date` | `DATE` | | |
+| `end_date` | `DATE` | | |
+| `steps` | `JSONB` | DEFAULT `'[]'` | Workflow steps |
+| `budget` | `NUMERIC(12,2)` | | |
+| `metrics` | `JSONB` | DEFAULT `'{"reach": 0, "engagement": 0, "conversions": 0}'` | |
+| `team_id` | `UUID` | NOT NULL, FK -> `teams(id)` | |
+| `user_id` | `UUID` | NOT NULL, FK -> `users(id)` | Creator |
+| `deleted_at` | `TIMESTAMPTZ` | | Soft delete |
+| `deleted_by` | `UUID` | FK -> `users(id)` | |
+| `created_at` | `TIMESTAMPTZ` | NOT NULL, DEFAULT `NOW()` | |
+| `updated_at` | `TIMESTAMPTZ` | NOT NULL, DEFAULT `NOW()` | |
 
 ---
 
 ### notes
 
-Rich text notes linked to clients/projects.
-
-| Field        | Type     | Required | Default | Description                     |
-|--------------|----------|----------|---------|---------------------------------|
-| `_id`        | ObjectId | auto     |         | MongoDB document ID             |
-| `title`      | String   | yes      |         | Note title (max 200 chars)      |
-| `content`    | String   | yes      |         | Note content (HTML/rich text)   |
-| `tags`       | Array    | no       | `[]`    | Array of string tags            |
-| `clientId`   | String   | no       | `null`  | References `clients._id`        |
-| `projectId`  | String   | no       | `null`  | References `projects._id`       |
-| `teamId`     | String   | yes      |         | References `teams._id`          |
-| `userId`     | String   | yes      |         | References `users._id` (author) |
-| `createdAt`  | Date     | yes      |         | Creation timestamp              |
-| `updatedAt`  | Date     | yes      |         | Last update timestamp           |
-| `deletedAt`  | Date     | no       | `null`  | Soft delete timestamp           |
-| `deletedBy`  | String   | no       | `null`  | User who soft-deleted           |
-
-**Indexes:**
-
-| Fields              | Options |
-|---------------------|---------|
-| `teamId`            |         |
-| `teamId, projectId` |         |
-| `title, content`    | Text index (full-text search) |
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| `id` | `UUID` | PK, DEFAULT `uuid_generate_v4()` | |
+| `title` | `TEXT` | NOT NULL | |
+| `content` | `TEXT` | NOT NULL, DEFAULT `''` | |
+| `tags` | `TEXT[]` | DEFAULT `'{}'` | |
+| `client_id` | `UUID` | FK -> `clients(id)` | Optional |
+| `project_id` | `UUID` | FK -> `projects(id)` | Optional |
+| `team_id` | `UUID` | NOT NULL, FK -> `teams(id)` | |
+| `user_id` | `UUID` | NOT NULL, FK -> `users(id)` | |
+| `deleted_at` | `TIMESTAMPTZ` | | Soft delete |
+| `deleted_by` | `UUID` | FK -> `users(id)` | |
+| `created_at` | `TIMESTAMPTZ` | NOT NULL, DEFAULT `NOW()` | |
+| `updated_at` | `TIMESTAMPTZ` | NOT NULL, DEFAULT `NOW()` | |
 
 ---
 
-### braindumps
+### brain_dumps
 
-Quick idea captures / brain dumps.
+Quick-capture entries. No soft delete.
 
-| Field        | Type     | Required | Default | Description                     |
-|--------------|----------|----------|---------|---------------------------------|
-| `_id`        | ObjectId | auto     |         | MongoDB document ID             |
-| `title`      | String   | yes      |         | Brain dump title (max 200)      |
-| `content`    | String   | no       |         | Brain dump content              |
-| `tags`       | Array    | no       |         | Array of string tags            |
-| `clientId`   | String   | no       | `null`  | References `clients._id`        |
-| `projectId`  | String   | no       | `null`  | References `projects._id`       |
-| `teamId`     | String   | yes      |         | References `teams._id`          |
-| `userId`     | String   | yes      |         | References `users._id` (author) |
-| `createdAt`  | Date     | yes      |         | Creation timestamp              |
-| `updatedAt`  | Date     | yes      |         | Last update timestamp           |
-| `deletedAt`  | Date     | no       | `null`  | Soft delete timestamp           |
-| `deletedBy`  | String   | no       | `null`  | User who soft-deleted           |
-
-**Indexes:**
-
-| Fields   | Options |
-|----------|---------|
-| `teamId` |         |
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| `id` | `UUID` | PK, DEFAULT `uuid_generate_v4()` | |
+| `title` | `TEXT` | NOT NULL | |
+| `content` | `TEXT` | | |
+| `tags` | `TEXT[]` | DEFAULT `'{}'` | |
+| `client_id` | `UUID` | FK -> `clients(id)` | Optional |
+| `project_id` | `UUID` | FK -> `projects(id)` | Optional |
+| `team_id` | `UUID` | NOT NULL, FK -> `teams(id)` | |
+| `user_id` | `UUID` | NOT NULL, FK -> `users(id)` | |
+| `created_at` | `TIMESTAMPTZ` | NOT NULL, DEFAULT `NOW()` | |
+| `updated_at` | `TIMESTAMPTZ` | NOT NULL, DEFAULT `NOW()` | |
 
 ---
 
-### calendarEvents
+### calendar_events
 
-Calendar events with optional recurrence and reminders. Includes both user-created events and auto-synced events from tasks/projects.
-
-| Field        | Type     | Required | Default | Description                                           |
-|--------------|----------|----------|---------|-------------------------------------------------------|
-| `_id`        | ObjectId | auto     |         | MongoDB document ID                                   |
-| `title`      | String   | yes      |         | Event title (max 200 chars)                           |
-| `start`      | Date     | yes      |         | Event start date/time                                 |
-| `end`        | Date     | no       | `null`  | Event end date/time                                   |
-| `allDay`     | Boolean  | no       | `false` | Whether this is an all-day event                      |
-| `description`| String   | no       |         | Event description                                     |
-| `color`      | String   | no       |         | `'blue'`, `'green'`, `'orange'`, `'red'`, `'purple'`  |
-| `clientId`   | String   | no       | `null`  | References `clients._id`                              |
-| `projectId`  | String   | no       | `null`  | References `projects._id`                             |
-| `taskId`     | String   | no       | `null`  | References `tasks._id` (for task-synced events)       |
-| `recurrence` | Object   | no       | `null`  | Recurrence rule (see below)                           |
-| `reminders`  | Array    | no       | `[]`    | Array of reminder objects (see below)                 |
-| `teamId`     | String   | yes      |         | References `teams._id`                                |
-| `userId`     | String   | yes      |         | References `users._id` (creator)                      |
-| `createdAt`  | Date     | yes      |         | Creation timestamp                                    |
-| `updatedAt`  | Date     | yes      |         | Last update timestamp                                 |
-
-**`recurrence` sub-fields (EventRecurrence):**
-
-| Field       | Type   | Required | Description                                       |
-|-------------|--------|----------|---------------------------------------------------|
-| `frequency` | String | yes      | `'daily'`, `'weekly'`, `'monthly'`, `'yearly'`    |
-| `interval`  | Number | yes      | Repeat every N frequency units (min 1)            |
-| `endDate`   | String | no       | ISO 8601 date when recurrence ends                |
-
-**`reminders[]` sub-fields (EventReminder):**
-
-| Field           | Type   | Required | Description                       |
-|-----------------|--------|----------|-----------------------------------|
-| `type`          | String | yes      | `'email'` or `'inApp'`           |
-| `minutesBefore` | Number | yes     | Minutes before event to trigger   |
-
-**Indexes:**
-
-| Fields                  | Options |
-|-------------------------|---------|
-| `teamId, start, end`    |         |
-| `teamId, projectId`     |         |
-
-**Note:** Calendar events are hard-deleted (no soft delete). Task-synced events are identified by having a non-null `taskId`. Project-synced events have a `projectId` and `taskId: null`.
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| `id` | `UUID` | PK, DEFAULT `uuid_generate_v4()` | |
+| `title` | `TEXT` | NOT NULL | |
+| `start_time` | `TIMESTAMPTZ` | NOT NULL | |
+| `end_time` | `TIMESTAMPTZ` | | |
+| `all_day` | `BOOLEAN` | DEFAULT FALSE | |
+| `description` | `TEXT` | | |
+| `color` | `event_color` | DEFAULT `'blue'` | |
+| `client_id` | `UUID` | FK -> `clients(id)` | Optional |
+| `project_id` | `UUID` | FK -> `projects(id)` | Optional |
+| `task_id` | `UUID` | FK -> `tasks(id)` | Optional linked task |
+| `recurrence` | `JSONB` | | `{frequency, interval, endDate}` |
+| `reminders` | `JSONB` | DEFAULT `'[]'` | `[{type, minutesBefore}]` |
+| `team_id` | `UUID` | NOT NULL, FK -> `teams(id)` | |
+| `user_id` | `UUID` | NOT NULL, FK -> `users(id)` | |
+| `deleted_at` | `TIMESTAMPTZ` | | Soft delete |
+| `deleted_by` | `UUID` | FK -> `users(id)` | |
+| `created_at` | `TIMESTAMPTZ` | NOT NULL, DEFAULT `NOW()` | |
+| `updated_at` | `TIMESTAMPTZ` | NOT NULL, DEFAULT `NOW()` | |
 
 ---
 
 ### resources
 
-External links and resource bookmarks.
+Shared links, files, and reference materials.
 
-| Field        | Type     | Required | Default | Description                        |
-|--------------|----------|----------|---------|------------------------------------|
-| `_id`        | ObjectId | auto     |         | MongoDB document ID                |
-| `name`       | String   | yes      |         | Resource name                      |
-| `type`       | String   | yes      |         | Resource type (e.g. "doc", "tool") |
-| `url`        | String   | yes      |         | Resource URL (must be valid URL)   |
-| `description`| String   | no       |         | Resource description               |
-| `tags`       | Array    | no       | `[]`    | Array of string tags               |
-| `teamId`     | String   | yes      |         | References `teams._id`             |
-| `createdBy`  | String   | yes      |         | References `users._id`             |
-| `updatedBy`  | String   | no       |         | References `users._id` (last editor) |
-| `createdAt`  | Date     | yes      |         | Creation timestamp                 |
-| `updatedAt`  | Date     | yes      |         | Last update timestamp              |
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| `id` | `UUID` | PK, DEFAULT `uuid_generate_v4()` | |
+| `name` | `TEXT` | NOT NULL | |
+| `type` | `TEXT` | NOT NULL | e.g. link, doc, file |
+| `url` | `TEXT` | NOT NULL | |
+| `description` | `TEXT` | | |
+| `tags` | `TEXT[]` | DEFAULT `'{}'` | |
+| `team_id` | `UUID` | NOT NULL, FK -> `teams(id)` | |
+| `created_by` | `UUID` | NOT NULL, FK -> `users(id)` | |
+| `updated_by` | `UUID` | FK -> `users(id)` | |
+| `deleted_at` | `TIMESTAMPTZ` | | Soft delete |
+| `deleted_by` | `UUID` | FK -> `users(id)` | |
+| `created_at` | `TIMESTAMPTZ` | NOT NULL, DEFAULT `NOW()` | |
+| `updated_at` | `TIMESTAMPTZ` | NOT NULL, DEFAULT `NOW()` | |
 
-**Indexes:**
+---
 
-| Fields   | Options |
-|----------|---------|
-| `teamId` |         |
+### scope_templates
 
-**Note:** Resources are hard-deleted (no soft delete).
+Reusable templates for creating scopes.
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| `id` | `UUID` | PK, DEFAULT `uuid_generate_v4()` | |
+| `title` | `TEXT` | NOT NULL | |
+| `description` | `TEXT` | | |
+| `deliverables` | `JSONB` | DEFAULT `'[]'` | |
+| `terms` | `TEXT` | | |
+| `tags` | `TEXT[]` | DEFAULT `'{}'` | |
+| `team_id` | `UUID` | NOT NULL, FK -> `teams(id)` | |
+| `created_by` | `UUID` | NOT NULL, FK -> `users(id)` | |
+| `deleted_at` | `TIMESTAMPTZ` | | Soft delete |
+| `deleted_by` | `UUID` | FK -> `users(id)` | |
+| `created_at` | `TIMESTAMPTZ` | NOT NULL, DEFAULT `NOW()` | |
+| `updated_at` | `TIMESTAMPTZ` | NOT NULL, DEFAULT `NOW()` | |
+
+---
+
+### scopes
+
+Scope of work documents bound to a project/client.
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| `id` | `UUID` | PK, DEFAULT `uuid_generate_v4()` | |
+| `title` | `TEXT` | NOT NULL | |
+| `description` | `TEXT` | | |
+| `project_id` | `UUID` | FK -> `projects(id)` | |
+| `client_id` | `UUID` | FK -> `clients(id)` | |
+| `template_id` | `UUID` | FK -> `scope_templates(id)` | Source template |
+| `deliverables` | `JSONB` | DEFAULT `'[]'` | |
+| `terms` | `TEXT` | | |
+| `total_amount` | `NUMERIC(12,2)` | NOT NULL, DEFAULT `0` | |
+| `status` | `scope_status` | NOT NULL, DEFAULT `'draft'` | |
+| `sent_at` | `TIMESTAMPTZ` | | |
+| `approved_at` | `TIMESTAMPTZ` | | |
+| `team_id` | `UUID` | NOT NULL, FK -> `teams(id)` | |
+| `created_by` | `UUID` | NOT NULL, FK -> `users(id)` | |
+| `deleted_at` | `TIMESTAMPTZ` | | Soft delete |
+| `deleted_by` | `UUID` | FK -> `users(id)` | |
+| `created_at` | `TIMESTAMPTZ` | NOT NULL, DEFAULT `NOW()` | |
+| `updated_at` | `TIMESTAMPTZ` | NOT NULL, DEFAULT `NOW()` | |
+
+---
+
+### invoices
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| `id` | `UUID` | PK, DEFAULT `uuid_generate_v4()` | |
+| `team_id` | `UUID` | NOT NULL, FK -> `teams(id)` | |
+| `client_id` | `UUID` | NOT NULL, FK -> `clients(id)` | |
+| `project_id` | `UUID` | FK -> `projects(id)` | |
+| `scope_id` | `UUID` | FK -> `scopes(id)` | |
+| `invoice_number` | `TEXT` | NOT NULL | Auto-generated `INV-001` format |
+| `line_items` | `JSONB` | DEFAULT `'[]'` | |
+| `subtotal` | `NUMERIC(12,2)` | NOT NULL, DEFAULT `0` | |
+| `tax` | `NUMERIC(12,2)` | | |
+| `tax_rate` | `NUMERIC(5,4)` | | e.g. 0.0825 = 8.25% |
+| `total` | `NUMERIC(12,2)` | NOT NULL, DEFAULT `0` | |
+| `currency` | `TEXT` | NOT NULL, DEFAULT `'USD'` | |
+| `status` | `invoice_status` | NOT NULL, DEFAULT `'draft'` | |
+| `notes` | `TEXT` | | |
+| `due_date` | `DATE` | | |
+| `sent_at` | `TIMESTAMPTZ` | | |
+| `paid_at` | `TIMESTAMPTZ` | | |
+| `paid_amount` | `NUMERIC(12,2)` | | |
+| `created_by` | `UUID` | NOT NULL, FK -> `users(id)` | |
+| `deleted_at` | `TIMESTAMPTZ` | | Soft delete |
+| `deleted_by` | `UUID` | FK -> `users(id)` | |
+| `created_at` | `TIMESTAMPTZ` | NOT NULL, DEFAULT `NOW()` | |
+| `updated_at` | `TIMESTAMPTZ` | NOT NULL, DEFAULT `NOW()` | |
+
+**Unique constraint:** `(team_id, invoice_number)`
+
+---
+
+### api_keys
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| `id` | `UUID` | PK, DEFAULT `uuid_generate_v4()` | |
+| `name` | `TEXT` | NOT NULL | Human-readable key name |
+| `prefix` | `TEXT` | NOT NULL | First 8 chars for lookup |
+| `key_hash` | `TEXT` | NOT NULL | bcrypt hash of full key |
+| `scopes` | `TEXT[]` | NOT NULL, DEFAULT `'{}'` | Permitted operations |
+| `user_id` | `UUID` | NOT NULL, FK -> `users(id)` | Key creator |
+| `team_id` | `UUID` | NOT NULL, FK -> `teams(id)` | |
+| `last_used_at` | `TIMESTAMPTZ` | | |
+| `expires_at` | `TIMESTAMPTZ` | | Null = no expiry |
+| `deleted_at` | `TIMESTAMPTZ` | | Soft delete |
+| `deleted_by` | `UUID` | FK -> `users(id)` | |
+| `created_at` | `TIMESTAMPTZ` | NOT NULL, DEFAULT `NOW()` | |
 
 ---
 
 ### comments
 
-Polymorphic comments that can attach to tasks, projects, clients, or notes.
+Polymorphic comment system.
 
-| Field          | Type     | Required | Default | Description                                   |
-|----------------|----------|----------|---------|-----------------------------------------------|
-| `_id`          | ObjectId | auto     |         | MongoDB document ID                           |
-| `resourceType` | String   | yes      |         | `'task'`, `'project'`, `'client'`, `'note'`   |
-| `resourceId`   | String   | yes      |         | ID of the parent resource                     |
-| `userId`       | String   | yes      |         | References `users._id` (author)               |
-| `content`      | String   | yes      |         | Comment text (max 5000 chars)                 |
-| `teamId`       | String   | yes      |         | References `teams._id`                        |
-| `createdAt`    | Date     | yes      |         | Creation timestamp                            |
-| `updatedAt`    | Date     | yes      |         | Last update timestamp                         |
-| `deletedAt`    | Date     | no       | `null`  | Soft delete timestamp                         |
-| `deletedBy`    | String   | no       | `null`  | User who soft-deleted                         |
-
-**Indexes:**
-
-| Fields                      | Options |
-|-----------------------------|---------|
-| `resourceType, resourceId`  |         |
-| `userId`                    |         |
-
-**Access control:** Users can only edit or delete their own comments.
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| `id` | `UUID` | PK, DEFAULT `uuid_generate_v4()` | |
+| `resource_type` | `TEXT` | NOT NULL, CHECK IN (`'task'`, `'project'`, `'client'`, `'note'`) | |
+| `resource_id` | `UUID` | NOT NULL | |
+| `user_id` | `UUID` | NOT NULL, FK -> `users(id)` | Author |
+| `content` | `TEXT` | NOT NULL | |
+| `team_id` | `UUID` | NOT NULL, FK -> `teams(id)` | |
+| `created_at` | `TIMESTAMPTZ` | NOT NULL, DEFAULT `NOW()` | |
+| `updated_at` | `TIMESTAMPTZ` | NOT NULL, DEFAULT `NOW()` | |
 
 ---
 
 ### notifications
 
-In-app notifications delivered to specific users.
+Ephemeral -- hard deleted when dismissed (no soft delete). Scoped by both `user_id` and `team_id`.
 
-| Field          | Type     | Required | Default | Description                                         |
-|----------------|----------|----------|---------|-----------------------------------------------------|
-| `_id`          | ObjectId | auto     |         | MongoDB document ID                                 |
-| `userId`       | String   | yes      |         | References `users._id` (recipient)                  |
-| `type`         | String   | yes      |         | `'task_assigned'`, `'deadline_approaching'`, `'team_invite'`, `'mention'`, `'comment'` |
-| `title`        | String   | yes      |         | Short notification title                            |
-| `message`      | String   | yes      |         | Notification body text                              |
-| `read`         | Boolean  | yes      | `false` | Whether the notification has been read              |
-| `resourceType` | String   | no       |         | Related resource type (e.g. `'task'`, `'project'`)  |
-| `resourceId`   | String   | no       |         | Related resource ID                                 |
-| `createdAt`    | Date     | yes      |         | Creation timestamp                                  |
-
-**Indexes:**
-
-| Fields               | Options |
-|----------------------|---------|
-| `userId, read`       |         |
-| `userId, createdAt`  | `{ createdAt: -1 }` (descending) |
-
-**Note:** Notifications do not have `teamId` scoping -- they are scoped to `userId`. They are hard-deleted.
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| `id` | `UUID` | PK, DEFAULT `uuid_generate_v4()` | |
+| `user_id` | `UUID` | NOT NULL, FK -> `users(id)` | Recipient |
+| `type` | `notification_type` | NOT NULL | |
+| `title` | `TEXT` | NOT NULL | |
+| `message` | `TEXT` | NOT NULL | |
+| `read` | `BOOLEAN` | DEFAULT FALSE | |
+| `resource_type` | `TEXT` | | Optional link to entity |
+| `resource_id` | `UUID` | | |
+| `team_id` | `UUID` | NOT NULL, FK -> `teams(id)` | |
+| `created_at` | `TIMESTAMPTZ` | NOT NULL, DEFAULT `NOW()` | |
 
 ---
 
-### apiKeys
+### client_invitations
 
-API keys for programmatic access. The full key is shown once on creation; only the bcrypt hash is stored.
+Invitations for clients to join the portal.
 
-| Field        | Type     | Required | Default | Description                                     |
-|--------------|----------|----------|---------|-------------------------------------------------|
-| `_id`        | ObjectId | auto     |         | MongoDB document ID                             |
-| `name`       | String   | yes      |         | Human-readable key name (max 100)               |
-| `prefix`     | String   | yes      |         | Key prefix for lookup (e.g. `lc_sk_abcdef12`)   |
-| `hashedKey`  | String   | yes      |         | bcrypt hash of the full API key                 |
-| `scopes`     | Array    | yes      |         | Array of scope strings (see Scopes below)       |
-| `userId`     | String   | yes      |         | References `users._id` (key owner)              |
-| `teamId`     | String   | yes      |         | References `teams._id`                          |
-| `expiresAt`  | Date     | no       | `null`  | Optional expiration date                        |
-| `createdAt`  | Date     | yes      |         | Creation timestamp                              |
-| `lastUsedAt` | Date     | no       | `null`  | Last time the key was used for authentication   |
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| `id` | `UUID` | PK, DEFAULT `uuid_generate_v4()` | |
+| `team_id` | `UUID` | NOT NULL, FK -> `teams(id)` | |
+| `client_id` | `UUID` | NOT NULL, FK -> `clients(id)` | |
+| `project_ids` | `UUID[]` | DEFAULT `'{}'` | Granted project access |
+| `email` | `TEXT` | NOT NULL | |
+| `name` | `TEXT` | NOT NULL | |
+| `role` | `TEXT` | NOT NULL, DEFAULT `'client'` | |
+| `invited_by` | `UUID` | NOT NULL, FK -> `users(id)` | |
+| `token` | `TEXT` | | Plaintext token (transient) |
+| `token_hash` | `TEXT` | | bcrypt hash for secure lookup |
+| `status` | `invite_status` | NOT NULL, DEFAULT `'pending'` | |
+| `expires_at` | `TIMESTAMPTZ` | NOT NULL | |
+| `deleted_at` | `TIMESTAMPTZ` | | Soft delete |
+| `deleted_by` | `UUID` | FK -> `users(id)` | |
+| `created_at` | `TIMESTAMPTZ` | NOT NULL, DEFAULT `NOW()` | |
+| `updated_at` | `TIMESTAMPTZ` | NOT NULL, DEFAULT `NOW()` | |
 
-**Available scopes:**
+---
 
-```
-read:projects, write:projects, read:tasks, write:tasks,
-read:clients, write:clients, read:campaigns, write:campaigns,
-read:notes, write:notes, read:teams, write:teams,
-read:resources, write:resources, read:calendar-events, write:calendar-events,
-read:braindumps, write:braindumps, read:api-keys, write:api-keys
-```
+### onboarding_checklists
 
-**Indexes:**
+Client onboarding checklists.
 
-| Fields   | Options            |
-|----------|--------------------|
-| `prefix` | `{ unique: true }` |
-| `userId` |                    |
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| `id` | `UUID` | PK, DEFAULT `uuid_generate_v4()` | |
+| `team_id` | `UUID` | NOT NULL, FK -> `teams(id)` | |
+| `client_id` | `UUID` | NOT NULL, FK -> `clients(id)` | |
+| `project_id` | `UUID` | FK -> `projects(id)` | Optional |
+| `title` | `TEXT` | NOT NULL | |
+| `steps` | `JSONB` | DEFAULT `'[]'` | |
+| `status` | `onboarding_status` | NOT NULL, DEFAULT `'not-started'` | |
+| `deleted_at` | `TIMESTAMPTZ` | | Soft delete |
+| `deleted_by` | `UUID` | FK -> `users(id)` | |
+| `created_at` | `TIMESTAMPTZ` | NOT NULL, DEFAULT `NOW()` | |
+| `updated_at` | `TIMESTAMPTZ` | NOT NULL, DEFAULT `NOW()` | |
+
+---
+
+### audit_logs
+
+Immutable action log. Insert-only (no UPDATE/DELETE policies for users).
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| `id` | `UUID` | PK, DEFAULT `uuid_generate_v4()` | |
+| `user_id` | `UUID` | NOT NULL, FK -> `users(id)` | Actor |
+| `team_id` | `UUID` | NOT NULL, FK -> `teams(id)` | |
+| `action` | `TEXT` | NOT NULL | `'created'`, `'updated'`, `'deleted'` |
+| `resource_type` | `TEXT` | NOT NULL | Table name |
+| `resource_id` | `UUID` | | |
+| `changes` | `JSONB` | | `{field: {from, to}}` |
+| `created_at` | `TIMESTAMPTZ` | NOT NULL, DEFAULT `NOW()` | |
 
 ---
 
 ### webhooks
 
-Outbound webhook subscriptions for team event notifications.
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| `id` | `UUID` | PK, DEFAULT `uuid_generate_v4()` | |
+| `team_id` | `UUID` | NOT NULL, FK -> `teams(id)` | |
+| `url` | `TEXT` | NOT NULL | Delivery endpoint |
+| `events` | `TEXT[]` | NOT NULL, DEFAULT `'{}'` | Subscribed event types |
+| `secret` | `TEXT` | NOT NULL | HMAC signing secret |
+| `active` | `BOOLEAN` | DEFAULT TRUE | |
+| `deleted_at` | `TIMESTAMPTZ` | | Soft delete |
+| `deleted_by` | `UUID` | FK -> `users(id)` | |
+| `created_at` | `TIMESTAMPTZ` | NOT NULL, DEFAULT `NOW()` | |
+| `updated_at` | `TIMESTAMPTZ` | NOT NULL, DEFAULT `NOW()` | |
 
-| Field       | Type     | Required | Default | Description                                   |
-|-------------|----------|----------|---------|-----------------------------------------------|
-| `_id`       | ObjectId | auto     |         | MongoDB document ID                           |
-| `url`       | String   | yes      |         | Webhook endpoint URL                          |
-| `events`    | Array    | yes      |         | Array of event type strings (see below)       |
-| `secret`    | String   | yes      |         | HMAC signing secret (auto-generated if omitted) |
-| `active`    | Boolean  | no       | `true`  | Whether the webhook is active                 |
-| `teamId`    | String   | yes      |         | References `teams._id`                        |
-| `userId`    | String   | yes      |         | References `users._id` (creator)              |
-| `createdAt` | Date     | yes      |         | Creation timestamp                            |
-| `updatedAt` | Date     | yes      |         | Last update timestamp                         |
+---
 
-**Available events:**
+### webhook_queue
 
+Reliable webhook delivery queue. Service role only (no user access via RLS).
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| `id` | `UUID` | PK, DEFAULT `uuid_generate_v4()` | |
+| `webhook_id` | `UUID` | NOT NULL, FK -> `webhooks(id)` | |
+| `event` | `TEXT` | NOT NULL | e.g. `tasks.created` |
+| `payload` | `JSONB` | NOT NULL | |
+| `attempts` | `INTEGER` | DEFAULT `0` | |
+| `max_attempts` | `INTEGER` | DEFAULT `5` | |
+| `next_retry_at` | `TIMESTAMPTZ` | NOT NULL, DEFAULT `NOW()` | |
+| `completed_at` | `TIMESTAMPTZ` | | |
+| `failed_at` | `TIMESTAMPTZ` | | |
+| `last_error` | `TEXT` | | |
+| `created_at` | `TIMESTAMPTZ` | NOT NULL, DEFAULT `NOW()` | |
+
+---
+
+### password_reset_tokens
+
+Single-use, hard-deleted after use.
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| `id` | `UUID` | PK, DEFAULT `uuid_generate_v4()` | |
+| `user_id` | `UUID` | NOT NULL, FK -> `users(id)` | |
+| `token_prefix` | `TEXT` | NOT NULL | First 8 chars for lookup |
+| `token_hash` | `TEXT` | NOT NULL | bcrypt hash |
+| `expires_at` | `TIMESTAMPTZ` | NOT NULL | |
+| `used_at` | `TIMESTAMPTZ` | | |
+| `created_at` | `TIMESTAMPTZ` | NOT NULL, DEFAULT `NOW()` | |
+
+---
+
+### email_verification_tokens
+
+Single-use, hard-deleted after use.
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| `id` | `UUID` | PK, DEFAULT `uuid_generate_v4()` | |
+| `user_id` | `UUID` | NOT NULL, FK -> `users(id)` | |
+| `token_hash` | `TEXT` | NOT NULL | |
+| `expires_at` | `TIMESTAMPTZ` | NOT NULL | |
+| `created_at` | `TIMESTAMPTZ` | NOT NULL, DEFAULT `NOW()` | |
+
+---
+
+## Row-Level Security (RLS)
+
+RLS is enabled on all 26 tables. Policies use 5 helper functions defined in the `auth` schema.
+
+### Helper Functions
+
+```sql
+-- Get current team ID from JWT user_metadata
+auth.current_team_id() -> UUID
+  -- reads auth.jwt() -> 'user_metadata' ->> 'current_team_id'
+
+-- Get app-level user ID (public.users.id) from auth.uid()
+auth.app_user_id() -> UUID
+  -- SELECT id FROM public.users WHERE auth_id = auth.uid()
+
+-- Get current user's role in their active team
+auth.current_team_role() -> team_role
+  -- looks up role from team_members for current_team_id + app_user_id
+
+-- Check if current user can write (owner, admin, or member)
+auth.can_write() -> BOOLEAN
+
+-- Check if current user is admin or owner
+auth.is_admin() -> BOOLEAN
 ```
-task.created, task.updated, task.deleted,
-project.created, project.updated, project.deleted,
-client.created, client.updated, client.deleted,
-campaign.created, campaign.updated
-```
 
-**Note:** Webhooks are hard-deleted. The `secret` is returned in full only on creation; subsequent GET requests return a masked version (`secretMask`).
+All helper functions are `STABLE SECURITY DEFINER`.
 
----
+### Policy Patterns
 
-### auditLogs
+**Standard team-scoped entity** (clients, projects, tasks, campaigns, notes, calendar_events, resources, scope_templates, scopes, invoices):
+- SELECT: `team_id = auth.current_team_id() AND deleted_at IS NULL`
+- INSERT: `team_id = auth.current_team_id() AND auth.can_write()`
+- UPDATE: `team_id = auth.current_team_id() AND auth.can_write()`
+- DELETE: `team_id = auth.current_team_id() AND auth.can_write()`
 
-Immutable audit trail of actions performed within a team. Read-only via the API.
+**brain_dumps** (no soft delete):
+- SELECT: `team_id = auth.current_team_id()` (no `deleted_at` check)
+- INSERT/UPDATE/DELETE: `team_id = auth.current_team_id() AND auth.can_write()`
 
-| Field          | Type     | Required | Description                                        |
-|----------------|----------|----------|----------------------------------------------------|
-| `_id`          | ObjectId | auto     | MongoDB document ID                                |
-| `userId`       | String   | yes      | References `users._id` (actor)                     |
-| `teamId`       | String   | yes      | References `teams._id`                             |
-| `action`       | String   | yes      | `'create'`, `'update'`, `'delete'`                 |
-| `resourceType` | String   | yes      | Resource type (e.g. `'task'`, `'project'`, `'client'`) |
-| `resourceId`   | String   | yes      | ID of the affected resource                        |
-| `changes`      | Object   | no       | `{ field: { from: oldValue, to: newValue } }`      |
-| `timestamp`    | Date     | yes      | When the action occurred                           |
+**users**:
+- SELECT: own row OR any user in the same team
+- UPDATE: own row only
 
-**Indexes:**
+**teams**:
+- SELECT: any team the user is a member of
+- INSERT: `owner_id = auth.app_user_id()`
+- UPDATE: current team + `auth.is_admin()`
+- DELETE: `owner_id = auth.app_user_id()`
 
-| Fields                     | Options                        |
-|----------------------------|--------------------------------|
-| `teamId, timestamp`        | `{ timestamp: -1 }` (descending) |
-| `resourceType, resourceId` |                                |
+**team_members, team_invites**:
+- SELECT: current team
+- INSERT/UPDATE/DELETE: current team + `auth.is_admin()`
 
-**Note:** Audit logs use `timestamp` rather than `createdAt`/`updatedAt` since they are immutable.
+**client_contacts** (no `team_id` column -- resolved via parent):
+- All operations: `client_id IN (SELECT id FROM clients WHERE team_id = auth.current_team_id())`
+- Write operations additionally require `auth.can_write()`
 
----
+**api_keys**:
+- SELECT: current team + not deleted
+- INSERT: current team + own `user_id`
+- UPDATE/DELETE: current team + (own key OR `auth.is_admin()`)
 
-### tokenBlocklist
+**comments**:
+- SELECT: current team
+- INSERT: current team + `auth.can_write()`
+- UPDATE: current team + own comment only
+- DELETE: current team + (own comment OR `auth.is_admin()`)
 
-Revoked JWT tokens. Uses a TTL index for automatic cleanup after token expiration.
+**notifications**:
+- SELECT: own user + current team
+- INSERT: current team (any authenticated user)
+- UPDATE/DELETE: own user only
 
-| Field       | Type     | Required | Description                                  |
-|-------------|----------|----------|----------------------------------------------|
-| `_id`       | ObjectId | auto     | MongoDB document ID                          |
-| `jti`       | String   | yes      | JWT ID (`jti` claim) of the revoked token    |
-| `revokedAt` | Date     | yes      | When the token was revoked                   |
-| `expiresAt` | Date     | yes      | Token expiration (TTL index auto-deletes)    |
+**client_invitations, onboarding_checklists**:
+- SELECT: current team + not deleted
+- INSERT/UPDATE/DELETE: current team + `auth.is_admin()` (client_invitations) or `auth.can_write()` (onboarding_checklists)
 
-**Indexes:**
+**audit_logs**:
+- SELECT: current team + `auth.is_admin()` (admin read-only)
+- INSERT: current team (system creates these)
 
-| Fields      | Options                        |
-|-------------|--------------------------------|
-| `expiresAt` | `{ expireAfterSeconds: 0 }` (TTL) |
+**webhooks**:
+- SELECT: current team + not deleted
+- INSERT/UPDATE/DELETE: current team + `auth.is_admin()`
 
----
+**webhook_queue**:
+- `USING (FALSE)` -- service_role key only, no user access
 
-### rateLimits
-
-Rate limiting records. Uses a TTL index for automatic cleanup.
-
-| Field       | Type     | Required | Description                                      |
-|-------------|----------|----------|--------------------------------------------------|
-| `_id`       | ObjectId | auto     | MongoDB document ID                              |
-| `key`       | String   | yes      | Rate limit key (format: `{category}:{identifier}`) |
-| `createdAt` | Date     | yes      | When the request was recorded                    |
-| `expiresAt` | Date     | yes      | When the record expires (TTL index auto-deletes) |
-
-**Rate limit categories:**
-
-| Category  | Max Requests | Window      |
-|-----------|-------------|-------------|
-| `auth`    | 5           | 15 minutes  |
-| `general` | 100         | 1 minute    |
-| `ai`      | 10          | 1 minute    |
-
-**Indexes:**
-
-| Fields      | Options                        |
-|-------------|--------------------------------|
-| `expiresAt` | `{ expireAfterSeconds: 0 }` (TTL) |
+**password_reset_tokens, email_verification_tokens**:
+- SELECT: own user
+- INSERT: `WITH CHECK (TRUE)` -- system creates these
 
 ---
 
-### passwordResets
+## Views
 
-Password reset tokens. Tokens are bcrypt-hashed; the plaintext is never stored.
+17 views defined in `005_views.sql`. Views inherit RLS policies from their base tables.
 
-| Field       | Type     | Required | Default | Description                              |
-|-------------|----------|----------|---------|------------------------------------------|
-| `_id`       | ObjectId | auto     |         | MongoDB document ID                      |
-| `userId`    | String   | yes      |         | References `users._id`                   |
-| `tokenHash` | String   | yes      |         | bcrypt hash of the reset token           |
-| `expiresAt` | Date     | yes      |         | Token expiry (1 hour after creation)     |
-| `used`      | Boolean  | yes      | `false` | Whether the token has been consumed      |
-| `createdAt` | Date     | yes      |         | Creation timestamp                       |
+### Active Views (15)
+
+Filter out soft-deleted rows (`WHERE deleted_at IS NULL`):
+
+| View | Base Table |
+|------|------------|
+| `active_clients` | `clients` |
+| `active_projects` | `projects` |
+| `active_tasks` | `tasks` |
+| `active_campaigns` | `campaigns` |
+| `active_notes` | `notes` |
+| `active_calendar_events` | `calendar_events` |
+| `active_resources` | `resources` |
+| `active_scope_templates` | `scope_templates` |
+| `active_scopes` | `scopes` |
+| `active_invoices` | `invoices` |
+| `active_api_keys` | `api_keys` |
+| `active_webhooks` | `webhooks` |
+| `active_client_invitations` | `client_invitations` |
+| `active_onboarding_checklists` | `onboarding_checklists` |
+| `active_teams` | `teams` |
+
+### dashboard_stats
+
+Pre-computed counts for the dashboard stats grid, grouped by `team_id`:
+
+| Column | Description |
+|--------|-------------|
+| `team_id` | |
+| `total_tasks` | Active tasks |
+| `completed_tasks` | Tasks with status `'Done'` |
+| `overdue_tasks` | Active non-done tasks with `due_date < CURRENT_DATE` |
+| `total_projects` | Active projects |
+| `active_projects` | Projects with status `'In Progress'` |
+| `total_clients` | Active clients |
+| `outstanding_invoices` | Active invoices with status `'sent'` or `'viewed'` |
+| `outstanding_amount` | Sum of `total` for outstanding invoices |
+
+Uses `FULL OUTER JOIN` across tasks, projects, clients, invoices with `FILTER` aggregates.
+
+### upcoming_deadlines
+
+Union of tasks and projects with future due dates, ordered by `due_date ASC`:
+
+| Column | Description |
+|--------|-------------|
+| `id` | Entity ID |
+| `title` | |
+| `entity_type` | `'task'` or `'project'` |
+| `due_date` | |
+| `status` | Cast to TEXT |
+| `team_id` | |
+| `owner_id` | `assignee_id` for tasks, `owner_id` for projects |
+
+Filters: not deleted, `due_date >= CURRENT_DATE`, status not `'Done'` (tasks) or not `'Completed'`/`'Cancelled'` (projects).
 
 ---
 
-### emailVerifications
+## Functions & Triggers
 
-Email verification tokens. Tokens are bcrypt-hashed; the plaintext is never stored.
+All defined in `004_functions.sql`.
 
-| Field       | Type     | Required | Description                                |
-|-------------|----------|----------|--------------------------------------------|
-| `_id`       | ObjectId | auto     | MongoDB document ID                        |
-| `userId`    | String   | yes      | References `users._id`                     |
-| `tokenHash` | String   | yes      | bcrypt hash of the verification token      |
-| `expiresAt` | Date     | yes      | Token expiry (24 hours after creation)     |
-| `createdAt` | Date     | yes      | Creation timestamp                         |
+### trigger_set_updated_at()
 
-**Note:** The verification record is deleted after successful verification.
+Auto-sets `updated_at = NOW()` on every UPDATE. Applied dynamically to all tables that have an `updated_at` column via a `DO` block that iterates `information_schema.columns`.
+
+**Trigger:** `set_updated_at` BEFORE UPDATE on each applicable table.
+
+### soft_delete(p_table TEXT, p_id UUID, p_user_id UUID)
+
+Generic soft delete function. Sets `deleted_at = NOW()` and `deleted_by = p_user_id` on the specified row. `SECURITY DEFINER`.
+
+### cascade_soft_delete_team()
+
+When a team's `deleted_at` is set (transitions from NULL to non-NULL), cascades soft delete to all team-scoped entities: clients, projects, tasks, campaigns, notes, calendar_events, resources, scope_templates, scopes, invoices, api_keys, webhooks, client_invitations, onboarding_checklists. Hard deletes notifications and team_invites.
+
+**Trigger:** `cascade_team_soft_delete` AFTER UPDATE on `teams`.
+
+### generate_invoice_number(p_team_id UUID) -> TEXT
+
+Generates sequential invoice numbers in `INV-001` format, per team. Finds the max existing number and increments.
+
+### sync_task_completed()
+
+Keeps `completed` boolean and `status` enum in sync bidirectionally:
+- Setting `status = 'Done'` sets `completed = TRUE`
+- Setting `completed = TRUE` sets `status = 'Done'`
+- Unsetting either resets the other (`status` resets to `'To Do'`)
+
+**Trigger:** `sync_task_completed_trigger` BEFORE INSERT OR UPDATE on `tasks`.
+
+### global_search(p_team_id UUID, p_query TEXT, p_limit INTEGER DEFAULT 20)
+
+Full-text search across 6 entity types using `plainto_tsquery`. Returns `(id, entity_type, title, description, rank)` ordered by `ts_rank` descending. Searches: tasks, projects, clients, notes, campaigns, resources. Filters out soft-deleted rows. `STABLE SECURITY DEFINER`.
+
+### create_audit_log()
+
+Auto-creates audit log entries on INSERT or UPDATE. Detects soft delete (UPDATE where `deleted_at` transitions to non-NULL) and logs as `'deleted'`. Uses `COALESCE(auth.app_user_id(), NEW.created_by, NEW.user_id)` for the actor. `SECURITY DEFINER`.
+
+**Triggers applied to:** tasks, projects, clients, invoices, scopes.
+
+| Trigger Name | Table |
+|--------------|-------|
+| `audit_tasks` | `tasks` |
+| `audit_projects` | `projects` |
+| `audit_clients` | `clients` |
+| `audit_invoices` | `invoices` |
+| `audit_scopes` | `scopes` |
+
+### queue_webhooks()
+
+When an entity changes, finds all active webhooks for the team that subscribe to the matching event name (format: `{table_name}.created`, `{table_name}.updated`, `{table_name}.deleted`) and inserts a row into `webhook_queue` with the full row as JSON payload. `SECURITY DEFINER`.
+
+**Triggers applied to:** tasks, projects, clients, invoices, scopes.
+
+| Trigger Name | Table |
+|--------------|-------|
+| `webhook_tasks` | `tasks` |
+| `webhook_projects` | `projects` |
+| `webhook_clients` | `clients` |
+| `webhook_invoices` | `invoices` |
+| `webhook_scopes` | `scopes` |
+
+### notify_task_assigned()
+
+When a task's `assignee_id` is set or changed, inserts a notification for the new assignee with type `'task_assigned'`.
+
+**Trigger:** `notify_on_task_assign` AFTER INSERT OR UPDATE on `tasks`.
 
 ---
 
-## Full Index Reference
+## Indexes
 
-Summary of all indexes defined in `netlify/functions/utils/db.js` and runtime-created indexes:
+All defined in `003_indexes.sql`. Strategy: team-scoped partial indexes (excluding soft-deleted rows), foreign key indexes, composite indexes for common queries, GIN indexes for arrays and full-text search.
 
-| Collection         | Index Fields                    | Options               | Source     |
-|--------------------|---------------------------------|-----------------------|------------|
-| `users`            | `email`                         | `unique: true`        | db.js      |
-| `teams`            | `members.userId`                |                       | db.js      |
-| `teamInvites`      | `email, teamId`                 |                       | db.js      |
-| `clients`          | `teamId`                        |                       | db.js      |
-| `clients`          | `name, description`             | Text index            | db.js      |
-| `projects`         | `teamId`                        |                       | db.js      |
-| `projects`         | `teamId, clientId`              |                       | db.js      |
-| `projects`         | `teamId, status`                |                       | db.js      |
-| `projects`         | `teamId, dueDate`               |                       | db.js      |
-| `projects`         | `title, description`            | Text index            | db.js      |
-| `tasks`            | `teamId`                        |                       | db.js      |
-| `tasks`            | `teamId, projectId`             |                       | db.js      |
-| `tasks`            | `teamId, status`                |                       | db.js      |
-| `tasks`            | `teamId, dueDate`               |                       | db.js      |
-| `tasks`            | `teamId, assigneeId`            |                       | db.js      |
-| `tasks`            | `title, description`            | Text index            | db.js      |
-| `campaigns`        | `teamId`                        |                       | db.js      |
-| `campaigns`        | `teamId, clientId`              |                       | db.js      |
-| `notes`            | `teamId`                        |                       | db.js      |
-| `notes`            | `teamId, projectId`             |                       | db.js      |
-| `notes`            | `title, content`                | Text index            | db.js      |
-| `braindumps`       | `teamId`                        |                       | db.js      |
-| `calendarEvents`   | `teamId, start, end`            |                       | db.js      |
-| `calendarEvents`   | `teamId, projectId`             |                       | db.js      |
-| `resources`        | `teamId`                        |                       | db.js      |
-| `apiKeys`          | `prefix`                        | `unique: true`        | db.js      |
-| `apiKeys`          | `userId`                        |                       | db.js      |
-| `comments`         | `resourceType, resourceId`      |                       | db.js      |
-| `comments`         | `userId`                        |                       | db.js      |
-| `notifications`    | `userId, read`                  |                       | db.js      |
-| `notifications`    | `userId, createdAt`             | `{ createdAt: -1 }`   | db.js      |
-| `auditLogs`        | `teamId, timestamp`             | `{ timestamp: -1 }`   | db.js      |
-| `auditLogs`        | `resourceType, resourceId`      |                       | db.js      |
-| `tokenBlocklist`   | `expiresAt`                     | TTL (`expireAfterSeconds: 0`) | authHandler.js |
-| `rateLimits`       | `expiresAt`                     | TTL (`expireAfterSeconds: 0`) | rateLimit.js   |
+### Standard Indexes
+
+| Index | Table | Column(s) | Notes |
+|-------|-------|-----------|-------|
+| `idx_users_auth_id` | `users` | `auth_id` | |
+| `idx_users_email` | `users` | `email` | |
+| `idx_teams_owner_id` | `teams` | `owner_id` | |
+| `idx_teams_not_deleted` | `teams` | `id` | Partial: `WHERE deleted_at IS NULL` |
+| `idx_team_members_team_id` | `team_members` | `team_id` | |
+| `idx_team_members_user_id` | `team_members` | `user_id` | |
+| `idx_team_invites_team_id` | `team_invites` | `team_id` | |
+| `idx_team_invites_email` | `team_invites` | `email` | |
+| `idx_team_invites_status` | `team_invites` | `status` | Partial: `WHERE status = 'pending'` |
+| `idx_clients_team_id` | `clients` | `team_id` | Partial: `WHERE deleted_at IS NULL` |
+| `idx_clients_name` | `clients` | `team_id, name` | Composite |
+| `idx_client_contacts_client_id` | `client_contacts` | `client_id` | |
+| `idx_projects_team_id` | `projects` | `team_id` | Partial: `WHERE deleted_at IS NULL` |
+| `idx_projects_client_id` | `projects` | `client_id` | |
+| `idx_projects_status` | `projects` | `team_id, status` | Partial: `WHERE deleted_at IS NULL` |
+| `idx_projects_owner_id` | `projects` | `owner_id` | |
+| `idx_tasks_team_id` | `tasks` | `team_id` | Partial: `WHERE deleted_at IS NULL` |
+| `idx_tasks_project_id` | `tasks` | `project_id` | |
+| `idx_tasks_assignee_id` | `tasks` | `assignee_id` | |
+| `idx_tasks_status` | `tasks` | `team_id, status` | Partial: `WHERE deleted_at IS NULL` |
+| `idx_tasks_due_date` | `tasks` | `due_date` | Partial: `WHERE deleted_at IS NULL AND due_date IS NOT NULL` |
+| `idx_tasks_parent_task_id` | `tasks` | `parent_task_id` | |
+| `idx_campaigns_team_id` | `campaigns` | `team_id` | Partial: `WHERE deleted_at IS NULL` |
+| `idx_campaigns_client_id` | `campaigns` | `client_id` | |
+| `idx_campaigns_project_id` | `campaigns` | `project_id` | |
+| `idx_campaigns_status` | `campaigns` | `team_id, status` | Partial: `WHERE deleted_at IS NULL` |
+| `idx_notes_team_id` | `notes` | `team_id` | Partial: `WHERE deleted_at IS NULL` |
+| `idx_notes_client_id` | `notes` | `client_id` | |
+| `idx_notes_project_id` | `notes` | `project_id` | |
+| `idx_notes_user_id` | `notes` | `user_id` | |
+| `idx_notes_tags` | `notes` | `tags` | GIN |
+| `idx_brain_dumps_team_id` | `brain_dumps` | `team_id` | |
+| `idx_brain_dumps_user_id` | `brain_dumps` | `user_id` | |
+| `idx_calendar_events_team_id` | `calendar_events` | `team_id` | Partial: `WHERE deleted_at IS NULL` |
+| `idx_calendar_events_dates` | `calendar_events` | `start_time, end_time` | Partial: `WHERE deleted_at IS NULL` |
+| `idx_calendar_events_user_id` | `calendar_events` | `user_id` | |
+| `idx_calendar_events_task_id` | `calendar_events` | `task_id` | |
+| `idx_resources_team_id` | `resources` | `team_id` | Partial: `WHERE deleted_at IS NULL` |
+| `idx_resources_type` | `resources` | `team_id, type` | Partial: `WHERE deleted_at IS NULL` |
+| `idx_resources_tags` | `resources` | `tags` | GIN |
+| `idx_scope_templates_team_id` | `scope_templates` | `team_id` | Partial: `WHERE deleted_at IS NULL` |
+| `idx_scopes_team_id` | `scopes` | `team_id` | Partial: `WHERE deleted_at IS NULL` |
+| `idx_scopes_client_id` | `scopes` | `client_id` | |
+| `idx_scopes_project_id` | `scopes` | `project_id` | |
+| `idx_scopes_status` | `scopes` | `team_id, status` | Partial: `WHERE deleted_at IS NULL` |
+| `idx_invoices_team_id` | `invoices` | `team_id` | Partial: `WHERE deleted_at IS NULL` |
+| `idx_invoices_client_id` | `invoices` | `client_id` | |
+| `idx_invoices_status` | `invoices` | `team_id, status` | Partial: `WHERE deleted_at IS NULL` |
+| `idx_invoices_due_date` | `invoices` | `due_date` | Partial: `WHERE deleted_at IS NULL AND status IN ('sent', 'viewed')` |
+| `idx_api_keys_prefix` | `api_keys` | `prefix` | Partial: `WHERE deleted_at IS NULL` |
+| `idx_api_keys_team_id` | `api_keys` | `team_id` | Partial: `WHERE deleted_at IS NULL` |
+| `idx_api_keys_user_id` | `api_keys` | `user_id` | |
+| `idx_comments_resource` | `comments` | `resource_type, resource_id` | |
+| `idx_comments_team_id` | `comments` | `team_id` | |
+| `idx_comments_user_id` | `comments` | `user_id` | |
+| `idx_notifications_user_id` | `notifications` | `user_id` | |
+| `idx_notifications_unread` | `notifications` | `user_id, read` | Partial: `WHERE read = FALSE` |
+| `idx_notifications_team_id` | `notifications` | `team_id` | |
+| `idx_client_invitations_team_id` | `client_invitations` | `team_id` | Partial: `WHERE deleted_at IS NULL` |
+| `idx_client_invitations_token_prefix` | `client_invitations` | `token_hash` | Partial: `WHERE status = 'pending'` |
+| `idx_client_invitations_email` | `client_invitations` | `email` | |
+| `idx_onboarding_team_id` | `onboarding_checklists` | `team_id` | Partial: `WHERE deleted_at IS NULL` |
+| `idx_onboarding_client_id` | `onboarding_checklists` | `client_id` | |
+| `idx_audit_logs_team_id` | `audit_logs` | `team_id` | |
+| `idx_audit_logs_user_id` | `audit_logs` | `user_id` | |
+| `idx_audit_logs_resource` | `audit_logs` | `resource_type, resource_id` | |
+| `idx_audit_logs_created_at` | `audit_logs` | `team_id, created_at DESC` | |
+| `idx_webhooks_team_id` | `webhooks` | `team_id` | Partial: `WHERE deleted_at IS NULL` |
+| `idx_webhooks_active` | `webhooks` | `team_id, active` | Partial: `WHERE deleted_at IS NULL AND active = TRUE` |
+| `idx_webhook_queue_pending` | `webhook_queue` | `next_retry_at` | Partial: `WHERE completed_at IS NULL AND failed_at IS NULL` |
+| `idx_webhook_queue_webhook_id` | `webhook_queue` | `webhook_id` | |
+| `idx_password_reset_prefix` | `password_reset_tokens` | `token_prefix` | Partial: `WHERE used_at IS NULL` |
+
+### Full-Text Search Indexes (GIN)
+
+All use `to_tsvector('english', ...)`:
+
+| Index | Table | Columns searched |
+|-------|-------|------------------|
+| `idx_tasks_fts` | `tasks` | `title`, `description` |
+| `idx_projects_fts` | `projects` | `title`, `description` |
+| `idx_clients_fts` | `clients` | `name`, `description` |
+| `idx_notes_fts` | `notes` | `title`, `content` |
+| `idx_campaigns_fts` | `campaigns` | `title`, `description` |
+| `idx_resources_fts` | `resources` | `name`, `description` |

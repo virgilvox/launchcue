@@ -7,9 +7,6 @@ import type { Repository } from '@/adapters/types'
 import type { ScopeTemplate, Scope } from '../types/models'
 import type { ScopeTemplateCreateRequest, ScopeCreateRequest } from '../types/api'
 
-// Keep legacy service for createScopeFromTemplate (non-standard endpoint)
-import scopeService from '../services/scope.service'
-
 export const useScopeStore = defineStore('scope', () => {
   const templates = ref<ScopeTemplate[]>([])
   const scopes = ref<Scope[]>([])
@@ -111,7 +108,23 @@ export const useScopeStore = defineStore('scope', () => {
 
   const createScopeFromTemplate = async (templateId: string, overrides?: Partial<ScopeCreateRequest>): Promise<Scope> => {
     try {
-      const created: Scope = await scopeService.createScopeFromTemplate(templateId, overrides)
+      const template = await getTemplateRepo().findById(templateId)
+      const merged: ScopeCreateRequest = {
+        title: template.title,
+        description: template.description,
+        deliverables: template.deliverables?.map(d => ({
+          title: d.title,
+          description: d.description,
+          quantity: d.quantity,
+          unit: d.unit,
+          rate: d.rate,
+          estimatedHours: d.estimatedHours,
+        })),
+        terms: template.terms,
+        templateId,
+        ...overrides,
+      }
+      const created = await getScopeRepo().create(merged)
       if (created && created.id) {
         scopes.value.push(created)
         getEventBus().emit('scope.created', { scope: created })

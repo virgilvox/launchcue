@@ -182,8 +182,6 @@
 import { ref, computed, watch, onMounted } from 'vue';
 import { useRoute, useRouter, onBeforeRouteLeave } from 'vue-router';
 import { useToast } from 'vue-toastification';
-import projectService from '@/services/project.service';
-import clientService from '@/services/client.service';
 import { useClientStore } from '@/stores/client';
 import { useProjectStore } from '@/stores/project';
 import { formatDate } from '@/utils/dateFormatter';
@@ -270,7 +268,7 @@ async function loadProject() {
   if (isEditing.value) {
     try {
       const projectId = route.params.id;
-      const project = await projectService.getProject(projectId);
+      const project = await projectStore.getProject(projectId);
       
       projectForm.value = {
         title: project.name || project.title || '',  // Handle both name and title properties
@@ -296,12 +294,12 @@ async function loadProject() {
     
     // Optional: Load client details
     try {
-      const client = await clientService.getClient(route.params.clientId);
-      
+      const result = await clientStore.getClient(route.params.clientId);
+
       // You can use client details if needed
       // e.g., set project name to include client name
-      if (client && client.name) {
-        projectForm.value.title = `${client.name} - `;
+      if (result.success && result.client && result.client.name) {
+        projectForm.value.title = `${result.client.name} - `;
       }
     } catch (err) {
       toast.error('Failed to load client details. Please try again.');

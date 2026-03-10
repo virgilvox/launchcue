@@ -101,8 +101,8 @@
 <script setup>
 import { ref, onMounted, computed, watch } from 'vue';
 import { useAuthStore } from '@/stores/auth';
-import campaignService from '@/services/campaign.service';
-import teamService from '@/services/team.service';
+import { useCampaignStore } from '@/stores/campaign';
+import { useTeamStore } from '@/stores/team';
 import { useClientStore } from '@/stores/client';
 import { useProjectStore } from '@/stores/project';
 import { useRoute, useRouter } from 'vue-router';
@@ -118,6 +118,8 @@ import { useToast } from 'vue-toastification';
 const toast = useToast();
 
 const authStore = useAuthStore();
+const campaignStore = useCampaignStore();
+const teamStore = useTeamStore();
 const clientStore = useClientStore();
 const projectStore = useProjectStore();
 const { getClientName, getProjectName } = useEntityLookup();
@@ -217,7 +219,7 @@ async function loadCampaign(id) {
   error.value = null;
 
   try {
-    const campaignData = await campaignService.getCampaign(id);
+    const campaignData = await campaignStore.getCampaign(id);
     campaign.value = {
       ...campaignData,
       id: campaignData._id?.toString() || campaignData.id,
@@ -258,7 +260,8 @@ async function loadTimelineEvents(campaignId) {
   if (!campaignId) return;
 
   try {
-    timelineEvents.value = await campaignService.getCampaignSteps(campaignId);
+    const campaignData = await campaignStore.getCampaign(campaignId);
+    timelineEvents.value = campaignData.steps || [];
   } catch (err) {
     toast.error('Failed to load timeline events. Please try again.');
   }
@@ -270,12 +273,12 @@ async function loadTeamMembers() {
   loadingTeam.value = true;
 
   try {
-    const result = await teamService.getTeamMembers(authStore.currentTeam.id);
+    const result = await teamStore.fetchTeamMembers();
     if (result.success) {
-      teamMembers.value = result.members.map(member => ({
-        id: member.id,
-        userId: member.id,
-        name: member.displayName || member.email || 'Unknown User',
+      teamMembers.value = (result.members || []).map(member => ({
+        id: member.id || member.userId,
+        userId: member.id || member.userId,
+        name: member.displayName || member.name || member.email || 'Unknown User',
         email: member.email,
         avatar: member.photoURL || null
       }));
@@ -339,10 +342,10 @@ async function saveCampaign() {
 
     let savedCampaign;
     if (campaign.value.id) {
-      savedCampaign = await campaignService.updateCampaign(campaign.value.id, campaignDataToSave);
+      savedCampaign = await campaignStore.updateCampaign(campaign.value.id, campaignDataToSave);
       toast.success('Campaign updated successfully!');
     } else {
-      savedCampaign = await campaignService.createCampaign(campaignDataToSave);
+      savedCampaign = await campaignStore.createCampaign(campaignDataToSave);
       toast.success('Campaign created successfully!');
       campaign.value.id = savedCampaign.id;
       router.replace(`/campaigns/${savedCampaign.id}`);
@@ -364,10 +367,43 @@ async function exportRecap() {
   if (!campaign.value.id) return;
 
   try {
-    const result = await campaignService.exportCampaign(campaign.value.id, 'markdown');
-    if (result.downloadUrl) {
-      window.open(result.downloadUrl, '_blank');
+    // Generate markdown recap client-side from the campaign data
+    let markdown = `# ${campaign.value.title || 'Campaign'}\n\n`;
+    if (campaign.value.description) markdown += `${campaign.value.description}\n\n`;
+    markdown += `**Timeline:** ${formatShortDate(campaign.value.startDate) || 'N/A'} - ${formatShortDate(campaign.value.endDate) || 'N/A'}\n\n`;
+    const activeTypes = campaignTypes.value.filter(t => t.active).map(t => t.name);
+    if (activeTypes.length > 0) markdown += `**Types:** ${activeTypes.join(', ')}\n\n`;
+    const clientName = getClientName(campaign.value.clientId);
+    if (clientName) {
+      markdown += `**Client:** ${clientName}`;
+      const projName = getProjectName(campaign.value.projectId);
+      if (projName) markdown += ` | **Project:** ${projName}`;
+      markdown += '\n\n';
     }
+    if (teamMembers.value.length > 0) {
+      markdown += `## Team Members\n`;
+      teamMembers.value.forEach(m => { markdown += `- ${m.name}\n`; });
+      markdown += '\n';
+    }
+    if (campaign.value.steps && campaign.value.steps.length > 0) {
+      markdown += `## Timeline Steps\n`;
+      sortedCampaignSteps.value.forEach(step => {
+        markdown += `- **${formatShortDate(step.date) || 'Date TBD'}:** ${step.title}`;
+        if (step.assigneeId) markdown += ` (${getAssigneeName(step.assigneeId)})`;
+        markdown += '\n';
+        if (step.description) markdown += `  ${step.description}\n`;
+      });
+      markdown += '\n';
+    }
+
+    // Download as file
+    const blob = new Blob([markdown], { type: 'text/markdown' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${campaign.value.title || 'campaign'}-recap.md`;
+    a.click();
+    URL.revokeObjectURL(url);
 
     showRecapModal.value = false;
   } catch (err) {

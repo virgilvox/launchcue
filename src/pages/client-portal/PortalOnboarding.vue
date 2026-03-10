@@ -167,7 +167,8 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useToast } from 'vue-toastification'
-import onboardingService from '@/services/onboarding.service'
+import { getContainer } from '@/core/service-container'
+import { ONBOARDING_REPO } from '@/adapters/repository-keys'
 import LoadingSpinner from '@/components/LoadingSpinner.vue'
 import OnboardingProgress from '@/modules/onboarding/components/OnboardingProgress.vue'
 import OnboardingStepForm from '@/modules/onboarding/components/OnboardingStepForm.vue'
@@ -221,11 +222,12 @@ async function completeCurrentStep(response) {
 
   stepLoading.value = true
   try {
-    const updated = await onboardingService.completeStep(
-      checklist.value.id,
-      currentStep.value.id,
-      response || undefined
-    )
+    const repo = getContainer().resolve(ONBOARDING_REPO)
+    const updated = await repo.update(checklist.value.id, {
+      stepId: currentStep.value.id,
+      action: 'completeStep',
+      response: response || undefined
+    })
     checklist.value = updated
     toast.success('Step completed')
 
@@ -247,7 +249,8 @@ async function loadChecklist() {
   loading.value = true
   try {
     const id = route.params.id
-    checklist.value = await onboardingService.getChecklist(id)
+    const repo = getContainer().resolve(ONBOARDING_REPO)
+    checklist.value = await repo.findById(id)
 
     // Start on the first incomplete step
     if (checklist.value && checklist.value.steps) {

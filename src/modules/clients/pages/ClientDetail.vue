@@ -222,8 +222,8 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useToast } from 'vue-toastification'
-import clientService from '@/services/client.service'
-import projectService from '@/services/project.service'
+import { useClientStore } from '@/stores/client'
+import { useProjectStore } from '@/stores/project'
 import Modal from '@/components/Modal.vue'
 import PageContainer from '@/components/ui/PageContainer.vue'
 import PageHeader from '@/components/ui/PageHeader.vue'
@@ -237,6 +237,8 @@ import LoadingSpinner from '@/components/LoadingSpinner.vue'
 const route = useRoute()
 const router = useRouter()
 const toast = useToast()
+const clientStore = useClientStore()
+const projectStore = useProjectStore()
 
 // State
 const loading = ref(true)
@@ -318,7 +320,12 @@ async function loadClient() {
 
   try {
     const clientId = route.params.id
-    client.value = await clientService.getClient(clientId)
+    const result = await clientStore.getClient(clientId)
+    if (result.success) {
+      client.value = result.client
+    } else {
+      throw new Error(result.error || 'Failed to load client')
+    }
 
     // Load projects for this client
     await loadClientProjects(clientId)
@@ -339,7 +346,12 @@ async function loadClientProjects(clientId) {
   projectsLoading.value = true
 
   try {
-    clientProjects.value = await projectService.getProjectsByClient(clientId)
+    const result = await clientStore.getClientProjects(clientId)
+    if (result.success) {
+      clientProjects.value = result.projects || []
+    } else {
+      throw new Error(result.error || 'Failed to load projects')
+    }
   } catch (err) {
     toast.error('Failed to load client projects')
   } finally {
@@ -355,14 +367,14 @@ async function loadClientContacts(clientId) {
 
   contactsLoading.value = true
   try {
-    const response = await clientService.getClientContacts(clientId)
+    const result = await clientStore.getClientContacts(clientId)
 
     if (!client.value.contacts) {
       client.value.contacts = []
     }
 
-    if (Array.isArray(response) && response.length > 0) {
-      client.value.contacts = response
+    if (result.success && Array.isArray(result.contacts) && result.contacts.length > 0) {
+      client.value.contacts = result.contacts
     }
   } catch (err) {
     toast.error('Failed to load client contacts')
@@ -393,9 +405,10 @@ async function saveClient() {
   error.value = null
 
   try {
-    const updatedClient = await clientService.updateClient(client.value.id, clientForm.value)
-    client.value = updatedClient
-    toast.success('Client updated successfully')
+    const result = await clientStore.updateClient(client.value.id, clientForm.value)
+    if (result.success) {
+      client.value = result.client
+    }
     closeClientModal()
   } catch (err) {
     error.value = 'Failed to update client. Please try again.'
@@ -428,7 +441,7 @@ async function deleteProject() {
   error.value = null
 
   try {
-    await projectService.deleteProject(projectToDelete.value.id)
+    await projectStore.deleteProject(projectToDelete.value.id)
 
     const index = clientProjects.value.findIndex(p => p.id === projectToDelete.value.id)
     if (index !== -1) {
@@ -499,10 +512,10 @@ async function saveContact() {
       clientToUpdate.contacts.push(newContact)
     }
 
-    const updatedClient = await clientService.updateClient(clientId, clientToUpdate)
-    client.value = updatedClient
-
-    toast.success(editingContact.value ? 'Contact updated' : 'Contact added')
+    const result = await clientStore.updateClient(clientId, clientToUpdate)
+    if (result.success) {
+      client.value = result.client
+    }
     closeContactModal()
   } catch (err) {
     if (!err.silentError) {
@@ -537,8 +550,10 @@ async function deleteContact() {
       c => c.id !== contactToDelete.value.id
     )
 
-    const updatedClient = await clientService.updateClient(client.value.id, clientToUpdate)
-    client.value = updatedClient
+    const result = await clientStore.updateClient(client.value.id, clientToUpdate)
+    if (result.success) {
+      client.value = result.client
+    }
 
     toast.success('Contact deleted')
     closeDeleteContactModal()

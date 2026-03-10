@@ -2,13 +2,10 @@ import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
 import { getContainer } from '@/core/service-container'
 import { getEventBus } from '@/core/event-bus'
-import { INVOICE_REPO } from '@/adapters/repository-keys'
+import { INVOICE_REPO, SCOPE_REPO } from '@/adapters/repository-keys'
 import type { Repository } from '@/adapters/types'
-import type { Invoice } from '../types/models'
+import type { Invoice, Scope } from '../types/models'
 import type { InvoiceCreateRequest } from '../types/api'
-
-// Keep legacy service for createFromScope (non-standard endpoint)
-import invoiceService from '../services/invoice.service'
 
 export const useInvoiceStore = defineStore('invoice', () => {
   const invoices = ref<Invoice[]>([])
@@ -55,9 +52,25 @@ export const useInvoiceStore = defineStore('invoice', () => {
     }
   }
 
+  // Note: This only creates an invoice from scope data. Scope status changes
+  // happen separately in ScopeBuilder.vue via updateScope() as a distinct user action.
+  // The two-step flow means a failed invoice creation does not leave scope status inconsistent.
   const createFromScope = async (scopeId: string, overrides?: Partial<InvoiceCreateRequest>): Promise<Invoice> => {
     try {
-      const created: Invoice = await invoiceService.createFromScope(scopeId, overrides)
+      const scopeRepo = getContainer().resolve<Repository<Scope>>(SCOPE_REPO)
+      const scope = await scopeRepo.findById(scopeId)
+      const data: InvoiceCreateRequest = {
+        clientId: scope.clientId!,
+        scopeId,
+        lineItems: scope.deliverables?.map(d => ({
+          description: d.title,
+          quantity: d.quantity,
+          unit: d.unit,
+          rate: d.rate,
+        })),
+        ...overrides,
+      }
+      const created = await getRepo().create(data)
       if (created && created.id) {
         invoices.value.push(created)
         getEventBus().emit('invoice.created', { invoice: created })

@@ -57,9 +57,7 @@ export const useNotificationStore = defineStore('notification', () => {
 
   const deleteNotification = async (id: string): Promise<void> => {
     try {
-      // Delete via legacy service — NotificationRepository doesn't expose delete
-      const { default: notificationService } = await import('../services/notification.service')
-      await notificationService.deleteNotification(id)
+      await getRepo().delete(id)
       notifications.value = notifications.value.filter(n => n.id !== id)
     } catch (err: unknown) {
       error.value = err instanceof Error ? err.message : 'Failed to delete notification'

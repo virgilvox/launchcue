@@ -40,6 +40,7 @@ export const TeamRole = {
   ADMIN: 'admin',
   MEMBER: 'member',
   VIEWER: 'viewer',
+  CLIENT: 'client',
 } as const
 export type TeamRole = (typeof TeamRole)[keyof typeof TeamRole]
 

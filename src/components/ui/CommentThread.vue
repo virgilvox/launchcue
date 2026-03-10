@@ -154,7 +154,12 @@ import { ref, computed, onMounted } from 'vue'
 import { formatDistanceToNow } from 'date-fns'
 import { useToast } from 'vue-toastification'
 import { useAuthStore } from '../../stores/auth'
-import commentService from '../../services/comment.service'
+import { getContainer } from '@/core/service-container'
+import { COMMENT_REPO } from '@/adapters/repository-keys'
+
+function getCommentRepo() {
+  return getContainer().resolve(COMMENT_REPO)
+}
 
 const props = defineProps({
   resourceType: {
@@ -217,7 +222,7 @@ function isOwnComment(comment) {
 async function fetchComments() {
   isLoading.value = true
   try {
-    const data = await commentService.getComments(props.resourceType, props.resourceId)
+    const data = await getCommentRepo().getComments(props.resourceType, props.resourceId)
     comments.value = Array.isArray(data) ? data : []
   } catch (error) {
     toast.error('Failed to load comments. Please try again.')
@@ -232,9 +237,7 @@ async function submitComment() {
 
   isSaving.value = true
   try {
-    const created = await commentService.createComment({
-      resourceType: props.resourceType,
-      resourceId: props.resourceId,
+    const created = await getCommentRepo().createComment(props.resourceType, props.resourceId, {
       content: newComment.value.trim(),
     })
     comments.value.push(created)
@@ -261,7 +264,7 @@ async function saveEdit(id) {
 
   isSaving.value = true
   try {
-    const updated = await commentService.updateComment(id, {
+    const updated = await getCommentRepo().updateComment(id, {
       content: editContent.value.trim(),
     })
     const idx = comments.value.findIndex(c => c.id === id)
@@ -281,7 +284,7 @@ async function deleteComment(id) {
   if (!confirm('Are you sure you want to delete this comment?')) return
 
   try {
-    await commentService.deleteComment(id)
+    await getCommentRepo().deleteComment(id)
     comments.value = comments.value.filter(c => c.id !== id)
   } catch (error) {
     toast.error('Failed to delete comment. Please try again.')

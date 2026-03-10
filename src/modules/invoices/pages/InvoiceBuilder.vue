@@ -140,7 +140,8 @@ import { useInvoiceStore } from '@/stores/invoice';
 import { useClientStore } from '@/stores/client';
 import { useProjectStore } from '@/stores/project';
 import { useScopeStore } from '@/stores/scope';
-import invoiceService from '@/services/invoice.service';
+import { getContainer } from '@/core/service-container';
+import { INVOICE_REPO } from '@/adapters/repository-keys';
 import { formatCurrency } from '@/utils/formatters';
 import { useEntityLookup } from '@/composables/useEntityLookup';
 import InvoiceStatusBadge from '@/modules/invoices/components/InvoiceStatusBadge.vue';
@@ -281,7 +282,8 @@ async function loadInvoice(id) {
   error.value = null;
 
   try {
-    const invoiceData = await invoiceService.getInvoice(id);
+    const repo = getContainer().resolve(INVOICE_REPO);
+    const invoiceData = await repo.findById(id);
     formData.value = {
       id: invoiceData._id?.toString() || invoiceData.id,
       invoiceNumber: invoiceData.invoiceNumber || '',

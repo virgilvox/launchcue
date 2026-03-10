@@ -1,318 +1,417 @@
 # LaunchCue Production Deployment Guide
 
-This guide covers deploying LaunchCue to production using Netlify (hosting + serverless functions) and MongoDB Atlas (database).
+Two deployment paths — choose based on your needs.
 
 ---
 
-## 1. Prerequisites
+## Table of Contents
 
-Before starting, ensure you have:
-
-- **Node.js 18+** installed locally (for building and testing)
-- **A Netlify account** at [netlify.com](https://www.netlify.com/)
-- **A MongoDB Atlas account** at [mongodb.com/atlas](https://www.mongodb.com/atlas)
-- **An Anthropic API key** from [console.anthropic.com](https://console.anthropic.com/) (required for AI features such as brain dump processing)
-- **Git** with your LaunchCue repository pushed to GitHub (or GitLab/Bitbucket)
-
----
-
-## 2. MongoDB Atlas Setup
-
-### 2.1 Create a Cluster
-
-1. Log in to [MongoDB Atlas](https://cloud.mongodb.com/).
-2. Click **Build a Database**.
-3. Select the **M0 Free** tier (or a paid tier for production workloads).
-4. Choose a cloud provider and region close to your Netlify functions region (AWS us-east-1 is a common default for Netlify).
-5. Name the cluster (e.g., `launchcue-prod`) and click **Create Cluster**.
-
-### 2.2 Configure Network Access
-
-1. Navigate to **Network Access** in the left sidebar.
-2. Click **Add IP Address**.
-3. For Netlify Functions (which use dynamic IPs), whitelist all IPs:
-   - Enter `0.0.0.0/0` and add a comment like "Netlify Functions - all IPs".
-4. Alternatively, if you are on a Netlify paid plan with static IPs, whitelist only those specific IPs for tighter security.
-
-> **Note:** The `0.0.0.0/0` whitelist is safe when combined with strong database user credentials, because Atlas still requires authentication. However, using specific IPs is always preferable when possible.
-
-### 2.3 Create a Database User
-
-1. Navigate to **Database Access** in the left sidebar.
-2. Click **Add New Database User**.
-3. Choose **Password** authentication.
-4. Set a username (e.g., `launchcue-app`) and generate a strong password.
-5. Under **Database User Privileges**, select **Read and write to any database** (or scope to a specific database if preferred).
-6. Click **Add User**.
-
-### 2.4 Get the Connection String
-
-1. Go back to **Database** (Deployments) and click **Connect** on your cluster.
-2. Select **Drivers** and choose **Node.js**.
-3. Copy the connection string. It will look like:
-   ```
-   mongodb+srv://launchcue-app:<password>@launchcue-prod.xxxxx.mongodb.net/?retryWrites=true&w=majority
-   ```
-4. Replace `<password>` with the database user password you created.
-5. Optionally append a database name to the URI path (e.g., `.../launchcue?retryWrites=true&w=majority`). If no database name is specified, the MongoDB driver will use the default database from the URI, and LaunchCue calls `client.db()` without arguments, which selects the database from the connection string.
-
-> **Tip:** Store this connection string securely. You will set it as the `MONGODB_URI` environment variable in Netlify. LaunchCue automatically creates all required indexes on first connection (see `netlify/functions/utils/db.js`), so no manual index creation is needed.
+1. [Prerequisites](#prerequisites)
+2. [Generate Secrets](#generate-secrets)
+3. [Path A: DigitalOcean App Platform + Droplet](#path-a-digitalocean-app-platform--droplet)
+4. [Path B: Self-hosted Docker Compose](#path-b-self-hosted-docker-compose)
+5. [Post-deploy Verification](#post-deploy-verification)
+6. [Troubleshooting](#troubleshooting)
+7. [Environment Variable Reference](#environment-variable-reference)
 
 ---
 
-## 3. Netlify Setup
+## Prerequisites
 
-### 3.1 Link Your Repository
-
-1. Log in to [Netlify](https://app.netlify.com/).
-2. Click **Add new site** > **Import an existing project**.
-3. Connect your GitHub (or GitLab/Bitbucket) account and select the LaunchCue repository.
-
-### 3.2 Configure Build Settings
-
-On the deploy configuration screen, set the following:
-
-| Setting            | Value               |
-|--------------------|---------------------|
-| **Build command**  | `npm run build`     |
-| **Publish directory** | `dist`           |
-| **Functions directory** | `netlify/functions` |
-
-These settings match the project's `netlify.toml`, which Netlify will also read automatically:
-
-```toml
-[build]
-  command = "npm run build"
-  publish = "dist"
-  functions = "netlify/functions"
-```
-
-### 3.3 Set Environment Variables
-
-Navigate to **Site settings** > **Environment variables** (or set them during the initial deploy screen) and add the following:
-
-#### Required Variables
-
-**`MONGODB_URI`**
-- The MongoDB Atlas connection string from step 2.4.
-- Example: `mongodb+srv://launchcue-app:YourSecurePassword@launchcue-prod.xxxxx.mongodb.net/launchcue?retryWrites=true&w=majority`
-
-**`JWT_SECRET`**
-- A cryptographically random string of at least 64 characters, used to sign and verify JWT tokens.
-- Generate one with:
-  ```bash
-  openssl rand -hex 64
-  ```
-- Example: `a3f1b9c8d7e6...` (128 hex characters)
-
-> **Warning:** If `JWT_SECRET` is shorter than 64 characters, the backend will log a warning on every cold start. Always use a full-length secret in production.
-
-**`ANTHROPIC_API_KEY`** (required for AI features)
-- Obtain from [console.anthropic.com](https://console.anthropic.com/) under **API Keys**.
-- Example: `sk-ant-api03-...`
-- If not set, AI features (brain dump processing) will be unavailable, and a warning will be logged.
-
-**`ALLOWED_ORIGINS`** (required in production)
-- A comma-separated list of origins permitted to make cross-origin requests.
-- Must include your production URL. Example:
-  ```
-  https://launchcue.netlify.app
-  ```
-- If you also have a custom domain:
-  ```
-  https://launchcue.netlify.app,https://app.launchcue.com
-  ```
-- In production (`NODE_ENV=production`), the backend **will refuse to start** if this variable is missing. Without it, all CORS requests are denied.
-
-#### Recommended Variables
-
-**`NODE_ENV`**
-- Set to `production` for production deployments.
-- This enables:
-  - Mandatory `ALLOWED_ORIGINS` validation on cold start
-  - Sanitized error responses (stack traces and internal error details are stripped from 500 responses)
-  - Rate limiting fails closed for auth endpoints
-
-### 3.4 Deploy
-
-1. Click **Deploy site**.
-2. Netlify will install dependencies, run `npm run build` (which executes `vite build`), and deploy the static assets plus serverless functions.
-3. Monitor the deploy log for any build errors.
-4. Once complete, your site will be available at `https://<your-site-name>.netlify.app`.
+- DigitalOcean account (or any server with Docker)
+- Domain name (e.g., `launchcue.app`)
+- Anthropic API key from [console.anthropic.com](https://console.anthropic.com)
+- SMTP credentials (Resend, SendGrid, Mailgun, or any SMTP provider)
+- Git with the LaunchCue repo pushed to GitHub
 
 ---
 
-## 4. Custom Domain
+## Generate Secrets
 
-### 4.1 Add a Custom Domain in Netlify
+Run locally and save all outputs securely:
 
-1. Go to **Site settings** > **Domain management**.
-2. Click **Add a domain**.
-3. Enter your custom domain (e.g., `app.launchcue.com`).
-4. Netlify will display DNS configuration instructions.
+```bash
+# JWT secret (shared between all Supabase services)
+openssl rand -hex 32
 
-### 4.2 Configure DNS
+# Postgres password
+openssl rand -hex 24
 
-**Option A: Netlify DNS (recommended)**
-1. Netlify will prompt you to delegate your domain's nameservers to Netlify DNS.
-2. Update your domain registrar's nameservers to the ones Netlify provides.
-3. This gives Netlify full DNS control and enables automatic SSL.
-
-**Option B: External DNS**
-1. Add a CNAME record pointing your subdomain to `<your-site-name>.netlify.app`.
-   - Example: `app` CNAME `launchcue.netlify.app`
-2. For apex domains (e.g., `launchcue.com`), use an ALIAS or ANAME record if your DNS provider supports it, or use Netlify DNS.
-
-### 4.3 SSL Certificate
-
-- Netlify automatically provisions a free SSL certificate via Let's Encrypt once DNS is verified.
-- HTTPS is enforced by default. No manual certificate management is required.
-- The `netlify.toml` already sets the `Strict-Transport-Security` header with `max-age=31536000; includeSubDomains; preload`.
-
-### 4.4 Update ALLOWED_ORIGINS
-
-After adding a custom domain, update the `ALLOWED_ORIGINS` environment variable to include the new domain:
-
-```
-https://launchcue.netlify.app,https://app.launchcue.com
+# Secret key base (for Realtime)
+openssl rand -hex 64
 ```
 
-Redeploy or trigger a functions restart for the change to take effect.
+### Generate Supabase JWT Keys
+
+Supabase needs two JWTs signed with your JWT secret — an **anon key** (limited permissions) and a **service role key** (bypasses RLS).
+
+Reference: [Supabase self-hosting API keys](https://supabase.com/docs/guides/self-hosting#api-keys)
+
+Or generate with Node.js:
+
+```bash
+node -e "
+const crypto = require('crypto');
+const header = Buffer.from(JSON.stringify({alg:'HS256',typ:'JWT'})).toString('base64url');
+const secret = 'YOUR_JWT_SECRET_HERE';  // <-- paste your JWT secret from above
+
+// Anon key
+const anonPayload = Buffer.from(JSON.stringify({
+  role: 'anon',
+  iss: 'supabase',
+  iat: Math.floor(Date.now()/1000),
+  exp: Math.floor(Date.now()/1000) + 10*365*24*60*60
+})).toString('base64url');
+const anonSig = crypto.createHmac('sha256', secret).update(header+'.'+anonPayload).digest('base64url');
+console.log('ANON KEY:', header+'.'+anonPayload+'.'+anonSig);
+
+// Service role key
+const srvPayload = Buffer.from(JSON.stringify({
+  role: 'service_role',
+  iss: 'supabase',
+  iat: Math.floor(Date.now()/1000),
+  exp: Math.floor(Date.now()/1000) + 10*365*24*60*60
+})).toString('base64url');
+const srvSig = crypto.createHmac('sha256', secret).update(header+'.'+srvPayload).digest('base64url');
+console.log('SERVICE ROLE KEY:', header+'.'+srvPayload+'.'+srvSig);
+"
+```
 
 ---
 
-## 5. Post-Deploy Verification Checklist
+## Path A: DigitalOcean App Platform + Droplet
 
-Run through each of these checks after your first production deploy.
+**Architecture**: App Platform hosts the Vue SPA (static site) + Express API (Docker container). A separate Droplet runs self-hosted Supabase (PostgreSQL, GoTrue, PostgREST, Realtime, Kong).
 
-### 5.1 Verify Security Headers
+### A1. Set Up Supabase Droplet
 
-```bash
-curl -I https://your-site.netlify.app
-```
-
-Confirm the response includes:
-
-```
-strict-transport-security: max-age=31536000; includeSubDomains; preload
-x-frame-options: DENY
-x-content-type-options: nosniff
-x-xss-protection: 1; mode=block
-referrer-policy: strict-origin-when-cross-origin
-permissions-policy: camera=(), microphone=(), geolocation=()
-content-security-policy: default-src 'self'; script-src 'self'; ...
-```
-
-These headers are configured in `netlify.toml` and applied to all routes.
-
-### 5.2 Test Registration and Login
-
-1. Open the app in a browser and navigate to the registration page.
-2. Create a new account with a valid email and password.
-3. Log out, then log back in with the same credentials.
-4. Verify the JWT token is returned and subsequent API calls succeed.
-
-### 5.3 Verify CORS
-
-**Allowed origin (should succeed):**
-```bash
-curl -X OPTIONS https://your-site.netlify.app/.netlify/functions/auth-login \
-  -H "Origin: https://your-site.netlify.app" \
-  -H "Access-Control-Request-Method: POST" \
-  -I
-```
-Confirm the response includes `access-control-allow-origin: https://your-site.netlify.app`.
-
-**Disallowed origin (should be blocked):**
-```bash
-curl -X OPTIONS https://your-site.netlify.app/.netlify/functions/auth-login \
-  -H "Origin: https://evil-site.example.com" \
-  -H "Access-Control-Request-Method: POST" \
-  -I
-```
-Confirm `access-control-allow-origin` is empty or absent.
-
-### 5.4 Verify Rate Limiting
-
-The auth endpoints are rate-limited to 5 requests per 15-minute window. Test this:
+Create a **4GB+ RAM** Droplet (Ubuntu 22.04) via the DO console, then SSH in:
 
 ```bash
-for i in {1..6}; do
-  echo "--- Request $i ---"
-  curl -s -o /dev/null -w "HTTP %{http_code}\n" \
-    -X POST https://your-site.netlify.app/.netlify/functions/auth-login \
-    -H "Content-Type: application/json" \
-    -d '{"email":"test@example.com","password":"wrong"}'
-  sleep 0.5
-done
+ssh root@<DROPLET_IP>
+
+# Run the setup script (installs Docker, creates /opt/launchcue)
+# Option 1: from the repo
+git clone https://github.com/<your-repo>/launchcue.git /tmp/launchcue
+bash /tmp/launchcue/infra/droplet-setup.sh
+
+# Option 2: inline
+curl -fsSL https://get.docker.com | sh
+systemctl enable docker && systemctl start docker
+apt-get install -y docker-compose-plugin
+mkdir -p /opt/launchcue
 ```
 
-The first 5 requests should return `401` (invalid credentials). The 6th request should return `429` (Too Many Requests).
-
-### 5.5 Verify Error Sanitization
-
-With `NODE_ENV=production`, 500 errors must not leak stack traces or internal details:
+### A2. Configure Supabase on the Droplet
 
 ```bash
-curl -s https://your-site.netlify.app/.netlify/functions/tasks \
-  -H "Authorization: Bearer invalid-token-value" | python3 -m json.tool
+cd /opt/launchcue
+
+# Copy required files from the repo
+cp /tmp/launchcue/docker-compose.dev.yml ./docker-compose.yml
+cp -r /tmp/launchcue/supabase ./supabase
+
+# Create .env with your generated secrets
+cat > .env << 'EOF'
+POSTGRES_PASSWORD=<your-postgres-password>
+JWT_SECRET=<your-jwt-secret>
+SECRET_KEY_BASE=<your-secret-key-base>
+SUPABASE_ANON_KEY=<your-generated-anon-key>
+SUPABASE_SERVICE_ROLE_KEY=<your-generated-service-role-key>
+EOF
+
+# Start Supabase stack
+docker compose up -d
+
+# Verify all services are running (~15 seconds for startup)
+docker compose ps
 ```
 
-The response should contain a generic error message without file paths, stack traces, or internal variable names.
+### A3. Run SQL Migrations
 
-### 5.6 Verify API Key Creation and Scoped Access
-
-1. Log in to the app and navigate to **Settings** > **API Keys**.
-2. Create a new API key with specific scopes (e.g., `read:tasks`).
-3. Copy the key (it will start with `lc_sk_`).
-4. Test access with the key:
+The migrations mount at `/docker-entrypoint-initdb.d/` and auto-run on first boot. If the database was already initialized, run manually:
 
 ```bash
-# Should succeed (read:tasks scope)
-curl -s https://your-site.netlify.app/.netlify/functions/tasks \
-  -H "Authorization: Bearer lc_sk_your_key_here"
+docker compose exec db psql -U postgres -d postgres
 
-# Should fail with 403 (no write:tasks scope)
-curl -s -X POST https://your-site.netlify.app/.netlify/functions/tasks \
-  -H "Authorization: Bearer lc_sk_your_key_here" \
+# Inside psql:
+\i /docker-entrypoint-initdb.d/001_create_tables.sql
+\i /docker-entrypoint-initdb.d/002_row_level_security.sql
+\i /docker-entrypoint-initdb.d/003_indexes.sql
+\i /docker-entrypoint-initdb.d/004_functions.sql
+\i /docker-entrypoint-initdb.d/005_views.sql
+\q
+```
+
+### A4. Configure Firewall
+
+```bash
+ufw allow 22/tcp    # SSH
+ufw allow 8000/tcp  # Supabase Kong gateway
+ufw enable
+```
+
+For production, restrict port 8000 to your App Platform's VPC CIDR only:
+
+```bash
+ufw delete allow 8000/tcp
+ufw allow from <APP_PLATFORM_VPC_CIDR> to any port 8000
+```
+
+### A5. Optional: TLS for Supabase Endpoint
+
+```bash
+apt install -y nginx certbot python3-certbot-nginx
+
+# Create nginx config to proxy 443 → localhost:8000
+cat > /etc/nginx/sites-available/supabase << 'NGINXEOF'
+server {
+    listen 80;
+    server_name supabase.yourdomain.com;
+    location / {
+        proxy_pass http://localhost:8000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+NGINXEOF
+ln -s /etc/nginx/sites-available/supabase /etc/nginx/sites-enabled/
+nginx -t && systemctl reload nginx
+
+certbot --nginx -d supabase.yourdomain.com
+```
+
+This gives you `https://supabase.yourdomain.com` as your Supabase URL.
+
+### A6. Create DigitalOcean App
+
+1. Push your code to GitHub
+2. Go to DO Console → Apps → Create App
+3. Import from GitHub, select the repo and branch
+4. DO detects `.do/app.yaml` automatically
+
+Set environment variables in the App Platform console:
+
+**Static site (frontend):**
+
+| Variable | Value |
+|---|---|
+| `VITE_SUPABASE_URL` | `https://supabase.yourdomain.com` (or `http://<DROPLET_IP>:8000`) |
+| `VITE_SUPABASE_ANON_KEY` | Your generated anon key |
+| `VITE_API_URL` | `/api` |
+
+**API service (Express):**
+
+| Variable | Value |
+|---|---|
+| `SUPABASE_URL` | `https://supabase.yourdomain.com` (or `http://<DROPLET_IP>:8000`) |
+| `SUPABASE_SERVICE_ROLE_KEY` | Your generated service role key |
+| `ANTHROPIC_API_KEY` | `sk-ant-...` |
+| `ALLOWED_ORIGINS` | `https://yourdomain.com` |
+| `SMTP_HOST` | Your SMTP host (e.g., `smtp.resend.com`) |
+| `SMTP_PORT` | `587` |
+| `SMTP_USER` | Your SMTP user |
+| `SMTP_PASS` | Your SMTP password |
+| `SMTP_FROM` | `noreply@yourdomain.com` |
+
+5. Click Deploy
+
+### A7. Configure Supabase Auth for Production
+
+On the Droplet, update GoTrue to know your production URL:
+
+```bash
+cd /opt/launchcue
+
+# Edit docker-compose.yml GoTrue environment:
+#   GOTRUE_SITE_URL: https://yourdomain.com
+#   API_EXTERNAL_URL: https://supabase.yourdomain.com
+#   GOTRUE_MAILER_AUTOCONFIRM: "false"   # require email verification
+
+docker compose down && docker compose up -d
+```
+
+---
+
+## Path B: Self-hosted Docker Compose
+
+Everything on one server. Uses the root `docker-compose.yml` which runs the Vue SPA (nginx), Express API, and full Supabase stack.
+
+### B1. Set Up the Server
+
+```bash
+ssh root@<SERVER_IP>
+
+# Install Docker
+curl -fsSL https://get.docker.com | sh
+apt-get install -y docker-compose-plugin
+
+# Clone the repo
+git clone https://github.com/<your-repo>/launchcue.git
+cd launchcue
+```
+
+### B2. Configure Environment
+
+```bash
+cat > .env << 'EOF'
+POSTGRES_PASSWORD=<your-postgres-password>
+JWT_SECRET=<your-jwt-secret>
+SECRET_KEY_BASE=<your-secret-key-base>
+SUPABASE_ANON_KEY=<your-generated-anon-key>
+SUPABASE_SERVICE_ROLE_KEY=<your-generated-service-role-key>
+ANTHROPIC_API_KEY=sk-ant-...
+SMTP_HOST=smtp.resend.com
+SMTP_PORT=587
+SMTP_USER=resend
+SMTP_PASS=re_...
+SMTP_FROM=noreply@yourdomain.com
+SITE_URL=https://yourdomain.com
+API_EXTERNAL_URL=http://kong:8000
+EOF
+```
+
+### B3. Start Everything
+
+```bash
+docker compose up -d
+# Starts: frontend (nginx:80), api (express:3001), db, auth, rest, realtime, kong
+```
+
+Migrations auto-run via the `docker-entrypoint-initdb.d` mount on first boot.
+
+### B4. Point Domain + TLS
+
+Point `yourdomain.com` A record to `<SERVER_IP>`, then:
+
+```bash
+apt install -y certbot python3-certbot-nginx
+
+# Configure host nginx to proxy 443 → container port 80
+cat > /etc/nginx/sites-available/launchcue << 'NGINXEOF'
+server {
+    listen 80;
+    server_name yourdomain.com;
+    location / {
+        proxy_pass http://localhost:80;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+NGINXEOF
+ln -s /etc/nginx/sites-available/launchcue /etc/nginx/sites-enabled/
+nginx -t && systemctl reload nginx
+
+certbot --nginx -d yourdomain.com
+```
+
+---
+
+## Post-deploy Verification
+
+```bash
+# 1. Health check
+curl https://yourdomain.com/api/health
+# → {"status":"ok","timestamp":"..."}
+
+# 2. Supabase reachable
+curl https://supabase.yourdomain.com/rest/v1/ \
+  -H "apikey: <ANON_KEY>"
+# → Should return empty array or table list
+
+# 3. Auth works
+curl -X POST https://supabase.yourdomain.com/auth/v1/signup \
+  -H "apikey: <ANON_KEY>" \
   -H "Content-Type: application/json" \
-  -d '{"title":"Test"}'
+  -d '{"email":"test@example.com","password":"TestPassword123!"}'
+# → Should return user object
+
+# 4. Open the app in browser
+# Register → create team → add client → create project
+# Try Cmd+K search, try Brain Dump with AI
 ```
-
----
-
-## 6. Environment Variable Reference
-
-| Variable | Required | Description | Example |
-|---|---|---|---|
-| `MONGODB_URI` | Yes | MongoDB Atlas connection string | `mongodb+srv://user:pass@cluster.xxxxx.mongodb.net/launchcue?retryWrites=true&w=majority` |
-| `JWT_SECRET` | Yes | Secret for signing JWTs. Must be at least 64 characters. | `openssl rand -hex 64` output |
-| `ANTHROPIC_API_KEY` | Yes (for AI) | Anthropic API key for brain dump AI processing | `sk-ant-api03-...` |
-| `ALLOWED_ORIGINS` | Yes (in prod) | Comma-separated list of allowed CORS origins. Mandatory when `NODE_ENV=production`. | `https://your-site.netlify.app,https://app.yourdomain.com` |
-| `NODE_ENV` | Recommended | Set to `production` to enable strict validation, error sanitization, and secure rate-limiting defaults. | `production` |
 
 ---
 
 ## Troubleshooting
 
-### Functions fail with "Missing required environment variables"
+### CORS errors in browser console
+- `ALLOWED_ORIGINS` must match your exact domain (no trailing slash)
+- For Path B, nginx proxies the frontend; Express handles CORS for `/api`
 
-The backend validates `MONGODB_URI` and `JWT_SECRET` on every cold start. If either is missing, the function will throw immediately. Double-check the variables in **Site settings** > **Environment variables** and redeploy.
+### Auth redirect loops
+- `GOTRUE_SITE_URL` must match your frontend URL exactly (including `https://`)
+- Check `API_EXTERNAL_URL` matches the Supabase URL the frontend is configured to use
 
-### CORS errors in the browser console
+### AI not working
+- Verify `ANTHROPIC_API_KEY` is set on the API service
+- Check Express logs: `docker compose logs api`
+- Test directly: `curl -X POST https://yourdomain.com/api/ai/process -H "Authorization: Bearer <jwt>" -H "Content-Type: application/json" -d '{"prompt":"test"}'`
 
-- Ensure `ALLOWED_ORIGINS` includes the exact origin (protocol + domain, no trailing slash).
-- If using a custom domain, include both the Netlify subdomain and the custom domain.
-- After changing environment variables, trigger a redeploy or clear the functions cache (Netlify UI > **Deploys** > **Trigger deploy** > **Clear cache and deploy site**).
+### Realtime not connecting
+- Verify Kong routes `/realtime/v1/` correctly (check `supabase/kong.yml`)
+- Verify `SECRET_KEY_BASE` is set and at least 64 chars
+- Check WebSocket upgrade is allowed through any reverse proxy
 
-### MongoDB connection timeouts
+### Email not sending
+- Auth emails (verification, password reset): Configure SMTP on GoTrue (the `auth` service)
+- App emails (invitations, notifications): Configure SMTP on the Express API service
+- Set `GOTRUE_MAILER_AUTOCONFIRM: "false"` to require email verification
 
-- Verify the Atlas cluster is running and not paused (M0 clusters auto-pause after inactivity).
-- Confirm `0.0.0.0/0` is in the Atlas Network Access list.
-- Check that the database user password in `MONGODB_URI` is URL-encoded if it contains special characters (e.g., `@` becomes `%40`).
+### Database migrations didn't run
+- Check if tables exist: `docker compose exec db psql -U postgres -c '\dt'`
+- If empty, run migrations manually (see step A3)
+- The `docker-entrypoint-initdb.d` mount only auto-runs on **first** database initialization
 
-### AI features return errors
+### Build failures on App Platform
+- Ensure `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` are set as build-time env vars
+- These are needed at build time because Vite inlines them during the build
 
-- Verify `ANTHROPIC_API_KEY` is set and valid.
-- Check your Anthropic account for billing status and rate limits.
-- The AI endpoint is rate-limited to 10 requests per minute per user.
+---
+
+## Environment Variable Reference
+
+### Frontend (build-time, `VITE_` prefix)
+
+| Variable | Required | Description |
+|---|---|---|
+| `VITE_SUPABASE_URL` | Yes | Supabase API URL (Kong gateway) |
+| `VITE_SUPABASE_ANON_KEY` | Yes | Supabase anonymous JWT key |
+| `VITE_API_URL` | Yes | Express API base URL (`/api`) |
+
+### Express API Server (runtime)
+
+| Variable | Required | Description |
+|---|---|---|
+| `SUPABASE_URL` | Yes | Supabase API URL (same as `VITE_SUPABASE_URL`) |
+| `SUPABASE_SERVICE_ROLE_KEY` | Yes | Supabase service role JWT key (bypasses RLS) |
+| `ANTHROPIC_API_KEY` | For AI | Anthropic API key for brain dump processing |
+| `ALLOWED_ORIGINS` | Yes | Comma-separated CORS origins |
+| `SMTP_HOST` | For email | SMTP server hostname |
+| `SMTP_PORT` | For email | SMTP port (usually `587`) |
+| `SMTP_USER` | For email | SMTP username |
+| `SMTP_PASS` | For email | SMTP password |
+| `SMTP_FROM` | For email | Sender email address |
+| `PORT` | No | Express port (default: `3001`) |
+
+### Supabase Stack (Docker)
+
+| Variable | Required | Description |
+|---|---|---|
+| `POSTGRES_PASSWORD` | Yes | PostgreSQL superuser password |
+| `JWT_SECRET` | Yes | JWT signing secret (shared across GoTrue, PostgREST, Realtime) |
+| `SECRET_KEY_BASE` | Yes | Erlang secret for Realtime (min 64 chars) |
+| `SUPABASE_ANON_KEY` | Yes | Generated anon JWT |
+| `SUPABASE_SERVICE_ROLE_KEY` | Yes | Generated service role JWT |
+| `SITE_URL` | Prod | Frontend URL for GoTrue redirects |
+| `API_EXTERNAL_URL` | Prod | Public Supabase URL for GoTrue |

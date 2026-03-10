@@ -153,7 +153,8 @@
 import { ref, computed, onMounted } from 'vue';
 import { useToast } from 'vue-toastification';
 import { useAuthStore } from '@/stores/auth';
-import userService from '@/services/user.service';
+import { getContainer } from '@/core/service-container';
+import { AUTH_ADAPTER } from '@/adapters/repository-keys';
 import PageContainer from '@/components/ui/PageContainer.vue';
 import PageHeader from '@/components/ui/PageHeader.vue';
 import LoadingSpinner from '@/components/LoadingSpinner.vue';
@@ -207,7 +208,8 @@ async function loadProfile() {
   error.value = null;
   
   try {
-    const profileData = await userService.getUserProfile();
+    const auth = getContainer().resolve(AUTH_ADAPTER);
+    const profileData = await auth.getProfile();
     
     profileForm.value = {
       name: profileData.name || '',
@@ -229,7 +231,8 @@ async function saveProfile() {
   error.value = null;
   
   try {
-    const updatedUser = await userService.updateUserProfile(profileForm.value);
+    const auth = getContainer().resolve(AUTH_ADAPTER);
+    const updatedUser = await auth.updateProfile(profileForm.value);
     
     authStore.updateUserState(updatedUser);
     
@@ -248,7 +251,8 @@ async function changePassword() {
   changingPassword.value = true;
   
   try {
-    await userService.updatePassword({
+    const auth = getContainer().resolve(AUTH_ADAPTER);
+    await auth.changePassword({
       currentPassword: passwordForm.value.currentPassword,
       newPassword: passwordForm.value.newPassword
     });

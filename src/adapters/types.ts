@@ -36,6 +36,12 @@ export interface Repository<T, CreateDTO = Partial<T>, UpdateDTO = Partial<T>> {
 
 // ─── Auth Adapter ───
 
+export interface TeamSummary {
+  id: string
+  name: string
+  role?: string
+}
+
 export interface AuthAdapter {
   login(email: string, password: string): Promise<AuthResponse>
   register(data: { name: string; email: string; password: string }): Promise<AuthResponse>
@@ -44,6 +50,10 @@ export interface AuthAdapter {
   changePassword(data: ChangePasswordRequest): Promise<unknown>
   getProfile(): Promise<User>
   updateProfile(data: Partial<User>): Promise<User>
+  getTeams(): Promise<TeamSummary[]>
+  forgotPassword(email: string): Promise<void>
+  resetPassword(token: string, password: string): Promise<void>
+  verifyEmail(token: string): Promise<void>
   setToken(token: string | null): void
   getToken(): string | null
   onUnauthorized(callback: () => void): void
@@ -66,6 +76,7 @@ export interface AiAdapter {
 export interface CommentRepository {
   getComments(resourceType: string, resourceId: string): Promise<import('@/types/models').Comment[]>
   createComment(resourceType: string, resourceId: string, data: { content: string }): Promise<import('@/types/models').Comment>
+  updateComment(id: string, data: { content: string }): Promise<import('@/types/models').Comment>
   deleteComment(id: string): Promise<void>
 }
 
@@ -75,6 +86,7 @@ export interface NotificationRepository {
   getAll(): Promise<import('@/types/models').Notification[]>
   markRead(id: string): Promise<void>
   markAllRead(): Promise<void>
+  delete(id: string): Promise<void>
   /** Subscribe to real-time notifications. Returns an unsubscribe function. */
   subscribe?(callback: (notification: import('@/types/models').Notification) => void): () => void
 }

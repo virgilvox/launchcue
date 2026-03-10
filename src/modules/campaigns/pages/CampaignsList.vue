@@ -93,7 +93,7 @@
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue';
-import campaignService from '@/services/campaign.service';
+import { useCampaignStore } from '@/stores/campaign';
 import { useClientStore } from '@/stores/client';
 import { useProjectStore } from '@/stores/project';
 import { useToast } from 'vue-toastification';
@@ -107,6 +107,7 @@ import EmptyState from '@/components/ui/EmptyState.vue';
 import { MegaphoneIcon } from '@heroicons/vue/24/outline';
 
 import { useAuthStore } from '@/stores/auth';
+const campaignStore = useCampaignStore();
 const clientStore = useClientStore();
 const projectStore = useProjectStore();
 const toast = useToast();
@@ -166,7 +167,7 @@ async function fetchCampaigns() {
         if (filters.value.clientId) queryParams.clientId = filters.value.clientId;
         if (filters.value.projectId) queryParams.projectId = filters.value.projectId;
         if (filters.value.status) queryParams.status = filters.value.status;
-        campaigns.value = await campaignService.getCampaigns(queryParams);
+        campaigns.value = await campaignStore.fetchCampaigns(queryParams);
     } catch (err) {
         error.value = "Failed to load campaigns.";
         toast.error(error.value);

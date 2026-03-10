@@ -1,6 +1,5 @@
 # LaunchCue
 
-[![Netlify Status](https://api.netlify.com/api/v1/badges/placeholder/deploy-status)](https://launchcue.netlify.app/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-E8503A.svg)](LICENSE)
 
 **The command center for freelance & agency DevRel.** LaunchCue is a full-stack platform purpose-built for developer relations practitioners who juggle clients, projects, campaigns, content, and invoices — all in one place.
@@ -25,12 +24,13 @@ Most project management tools are built for generic software teams. DevRel pract
 # 1. Clone and install
 git clone https://github.com/yourusername/launchcue.git
 cd launchcue && npm install
+cd server && npm install && cd ..
 
 # 2. Configure environment
-cp .env.example .env   # Then fill in your MongoDB URI, JWT secret, and Anthropic API key
+cp .env.example .env   # Fill in Supabase URL, keys, Anthropic API key
 
-# 3. Run locally with Netlify Functions
-npm run dev
+# 3. Start local Supabase + dev servers
+npm run dev:full
 ```
 
 **First steps after registering:**
@@ -62,56 +62,27 @@ npm run dev
 - **Dark Mode** — Full dark theme with warm ink/charcoal palette.
 - **Team Collaboration** — RBAC (owner/admin/member/viewer), team invitations, activity feed.
 - **Client Portal** — Read-only portal for clients to view project status and onboarding.
-- **Notifications** — In-app notification system for team activity.
+- **Notifications** — Notification system with polling (60-second interval).
 - **Getting Started Checklist** — Guided onboarding for new users.
-
-## Screenshots
-
-### Dashboard
-![Dashboard](screenshots/dashboard.png)
-
-Command center with stats grid, recent tasks, activity feed, upcoming items, client health, and outstanding invoices.
-
-### Brain Dump — AI-Powered Processing
-![Brain Dump](screenshots/braindump.png)
-
-Paste meeting notes → Claude AI extracts action items, summaries, and structured recaps.
-
-### Tasks
-![Tasks](screenshots/tasks.png)
-
-List and Kanban views with inline status badges, priority indicators, and assignees.
-
-### Clients
-![Clients](screenshots/clients.png)
-
-Client cards with project counts, health indicators, and quick navigation.
-
-### Calendar
-![Calendar](screenshots/calendar.png)
-
-Month/week/day views with project deadlines and recurring events.
-
-### Campaign Management
-![Campaign](screenshots/campaign.png)
-
-Structured campaign planning with status tracking.
 
 ## Tech Stack
 
 | Layer | Technology |
 |-------|-----------|
 | Frontend | Vue 3 (Composition API) + TypeScript |
-| Styling | Tailwind CSS — print-first brutalist design system |
+| Styling | Tailwind CSS — brutalist design system |
 | Build | Vite |
-| State | Pinia |
+| State | Pinia (18 stores, repository pattern via DI) |
 | Routing | Vue Router |
-| Backend | Netlify Functions (serverless) |
-| Database | MongoDB Atlas |
-| Auth | JWT (session-based) + RBAC |
+| Architecture | Plugin-based DI (ServiceContainer + PluginRegistry) |
+| Database | PostgreSQL (via Supabase) |
+| Auth | Supabase Auth (GoTrue) + RBAC |
+| API | Supabase PostgREST (CRUD) + Express (AI, webhooks, email) |
+| Notifications | Polling (60s interval via NOTIFICATION_REPO) |
 | AI | Anthropic Claude API |
 | Rich Text | Tiptap |
 | Charts | Chart.js + vue-chartjs |
+| Deploy | DigitalOcean App Platform + self-hosted Supabase |
 
 ## Design System
 
@@ -131,9 +102,8 @@ LaunchCue uses a **print-first brutalist** design language:
 
 - Node.js 18+
 - npm
-- MongoDB Atlas account
-- Anthropic API key (for Brain Dump)
-- Netlify CLI (`npm i -g netlify-cli`)
+- Docker + Docker Compose (for local Supabase)
+- Anthropic API key (for Brain Dump AI features)
 
 ### Installation
 
@@ -146,78 +116,64 @@ LaunchCue uses a **print-first brutalist** design language:
 2. Install dependencies:
    ```bash
    npm install
+   cd server && npm install && cd ..
    ```
 
-3. Create a `.env` file:
-   ```
-   MONGODB_URI=your_mongodb_connection_string
-   JWT_SECRET=your_jwt_secret_at_least_64_characters
-   ANTHROPIC_API_KEY=your_claude_api_key
-   ALLOWED_ORIGINS=https://your-site.netlify.app
-   ```
-
-4. Run the development server:
+3. Create a `.env` file from the example:
    ```bash
-   npm run dev
+   cp .env.example .env
+   ```
+   Fill in your Supabase URL, anon key, service role key, and Anthropic API key.
+
+4. Start local Supabase:
+   ```bash
+   npm run dev:supabase
    ```
 
-5. Build for production:
+5. Run all dev servers (Vite + Express + Supabase):
+   ```bash
+   npm run dev:full
+   ```
+
+6. Build for production:
    ```bash
    npm run build
    ```
-
-6. Deploy to Netlify:
-   ```bash
-   netlify deploy --prod
-   ```
-
-### Setting up MongoDB
-
-1. Create a MongoDB Atlas cluster
-2. Create a database called `launchcue`
-3. Configure network access and database users
-4. Add your connection string to the `.env` file
 
 ## Project Structure
 
 ```
 launchcue/
-├── netlify/functions/        # Serverless backend (33 endpoints)
-│   ├── utils/                # Shared: db, auth, rateLimit, validation
-│   ├── auth-*.js             # Auth endpoints (login, register, reset, verify)
-│   ├── tasks.js, clients.js  # CRUD endpoints
-│   ├── invoices.js            # Invoice management
-│   ├── scopes.js              # Scope builder
-│   └── ai-process.js          # Claude AI integration
+├── .do/                         # DigitalOcean App Platform config
+├── infra/                       # Infrastructure (droplet-setup.sh)
+├── server/                      # Express API server (AI, webhooks, email)
+│   └── src/routes/              # ai.ts, webhooks.ts, email.ts
 ├── src/
-│   ├── assets/main.css       # Design system (CSS custom properties + Tailwind)
-│   ├── components/
-│   │   ├── ui/               # Primitives (Card, Badge, DataTable, Modal, Form*)
-│   │   ├── dashboard/        # Dashboard widgets (StatsGrid, ActivityFeed, etc.)
-│   │   ├── tasks/            # TaskForm, TaskList, TaskKanban
-│   │   ├── scope/            # Scope builder components
-│   │   └── invoice/          # Invoice builder components
-│   ├── composables/          # useKeyboardShortcuts, useModalState, useTooltips, etc.
-│   ├── layouts/              # DefaultLayout (sidebar + header + shortcuts)
-│   ├── pages/                # Route-level components (33 pages)
-│   ├── services/*.ts         # API service layer
-│   ├── stores/*.ts           # Pinia stores
-│   └── types/                # TypeScript definitions
-├── tailwind.config.js        # Brutalist design tokens
-├── vite.config.ts            # Vite configuration
-└── netlify.toml              # Netlify deployment config
+│   ├── adapters/supabase/       # 25 Supabase adapter files (19 repos + 3 adapters + base + index + client)
+│   ├── core/                    # ServiceContainer, EventBus, PluginRegistry
+│   ├── modules/                 # 15 feature modules
+│   ├── stores/                  # 18 Pinia stores (repository pattern)
+│   ├── components/              # Vue components (ui/, dashboard/, etc.)
+│   ├── composables/             # useKeyboardShortcuts, useModalState, etc.
+│   ├── layouts/                 # DefaultLayout, AuthLayout, ClientLayout
+│   ├── types/                   # TypeScript definitions
+│   └── main.ts                  # App bootstrap + plugin registration
+├── tests/                       # Vitest tests (52 across 4 files)
+├── docker-compose.dev.yml       # Local Supabase stack
+├── tailwind.config.js           # Brutalist design tokens
+└── vite.config.ts               # Vite config + /api proxy
 ```
 
 ## Documentation
 
 See the [docs/](docs/) folder for detailed guides:
 
-- **[Architecture](docs/architecture.md)** — System design, data flow, key decisions
-- **[Deployment](docs/deployment.md)** — Production deployment (Netlify + MongoDB Atlas)
-- **[API Reference](docs/api-reference.md)** — Complete endpoint documentation
-- **[Database](docs/database.md)** — Schema documentation and relationships
-- **[Security](docs/security.md)** — Auth flows, RBAC, rate limiting
-- **[Development](docs/development.md)** — Developer setup and conventions
+- **[Architecture](docs/architecture.md)** — System design, plugin DI, Supabase backend
+- **[Deployment](docs/deployment.md)** — DigitalOcean App Platform + Supabase Droplet
+- **[API Reference](docs/api-reference.md)** — Supabase PostgREST + Express endpoints
+- **[Database](docs/database.md)** — PostgreSQL schema, RLS policies
+- **[Security](docs/security.md)** — Supabase Auth, RBAC, RLS, rate limiting
+- **[Development](docs/development.md)** — Developer setup with Docker
 
 ## License
 
@@ -227,10 +183,10 @@ MIT — see [LICENSE](LICENSE) for details.
 
 - [Vue.js](https://vuejs.org/)
 - [Tailwind CSS](https://tailwindcss.com/)
-- [MongoDB](https://www.mongodb.com/)
-- [Netlify](https://www.netlify.com/)
+- [Supabase](https://supabase.com/)
 - [Anthropic Claude](https://www.anthropic.com/)
 - [Space Grotesk](https://fonts.google.com/specimen/Space+Grotesk)
 - [JetBrains Mono](https://www.jetbrains.com/lp/mono/)
 - [Tiptap](https://tiptap.dev/)
 - [Chart.js](https://www.chartjs.org/)
+- [DigitalOcean](https://www.digitalocean.com/)

@@ -1,4 +1,4 @@
-import type { Team } from '@/types/models'
+import type { Team, TeamMember, TeamInvite } from '@/types/models'
 import type { TeamCreateRequest } from '@/types/api'
 import type { Repository, QueryFilter } from '../types'
 import { getSupabase } from './client'
@@ -59,6 +59,72 @@ export class SupabaseTeamRepository implements Repository<Team, TeamCreateReques
       .update({ deleted_at: new Date().toISOString() })
       .eq('id', id)
     if (error) throw new Error(error.message)
+  }
+
+  // Extended team operations
+
+  async getMembers(teamId: string): Promise<TeamMember[]> {
+    const { data, error } = await getSupabase()
+      .from('team_members')
+      .select('*, users(id, name, email)')
+      .eq('team_id', teamId)
+    if (error) throw new Error(error.message)
+    return (data || []).map((m: Record<string, unknown>) => {
+      const user = m.users as Record<string, unknown>
+      return {
+        userId: m.user_id as string,
+        email: user?.email as string || '',
+        name: user?.name as string || '',
+        role: m.role as string,
+        joinedAt: m.joined_at as string,
+      } as TeamMember
+    })
+  }
+
+  async inviteUser(teamId: string, email: string): Promise<unknown> {
+    const { data, error } = await getSupabase()
+      .from('team_invites')
+      .insert({ team_id: teamId, email, status: 'pending' })
+      .select()
+      .single()
+    if (error) throw new Error(error.message)
+    return data
+  }
+
+  async getPendingInvites(teamId: string): Promise<TeamInvite[]> {
+    const { data, error } = await getSupabase()
+      .from('team_invites')
+      .select('*')
+      .eq('team_id', teamId)
+      .eq('status', 'pending')
+    if (error) throw new Error(error.message)
+    return (data || []).map((inv: Record<string, unknown>) => ({
+      id: inv.id as string,
+      email: inv.email as string,
+      status: inv.status as string,
+      createdAt: inv.created_at as string,
+    } as TeamInvite))
+  }
+
+  async removeMember(teamId: string, memberId: string): Promise<void> {
+    const { error } = await getSupabase()
+      .from('team_members')
+      .delete()
+      .eq('team_id', teamId)
+      .eq('user_id', memberId)
+    if (error) throw new Error(error.message)
+  }
+
+  async updateMemberRole(teamId: string, memberId: string, newRole: string): Promise<unknown> {
+    const { data, error } = await getSupabase()
+      .from('team_members')
+      .update({ role: newRole })
+      .eq('team_id', teamId)
+      .eq('user_id', memberId)
+      .select()
+      .single()
+    if (error) throw new Error(error.message)
+    return data
   }
 
   private mapFromDb(row: Record<string, unknown>): Team {

@@ -12,7 +12,7 @@
 - When deleting code, verify zero references first
 
 ### 2. One Layer at a Time
-- When migrating (e.g., Netlify → Convex), work one layer at a time: backend first, then services, then stores, then components
+- When changing architecture, work one layer at a time: adapters first, then stores, then components
 - NEVER change multiple layers simultaneously for the same feature — creates untestable states
 - After each layer change, verify the app still builds
 
@@ -36,34 +36,22 @@
 
 ## Migration-Specific Rules
 
-### 6. Backend Migration Checklist (per function)
-For each Netlify function being migrated:
-- [ ] Map all HTTP methods and their request/response shapes
-- [ ] Identify all MongoDB queries and their equivalents in target DB
-- [ ] Identify auth requirements (JWT, API key, none)
-- [ ] Identify rate limiting category
-- [ ] Identify cross-function dependencies (audit log, calendar sync, webhook dispatch)
-- [ ] Write the new backend implementation
-- [ ] Update the corresponding frontend service
-- [ ] Verify the store still works
-- [ ] Test the page/component end-to-end
+### 6. Adding a New Repository Adapter
+- [ ] Define the adapter in `src/adapters/supabase/`
+- [ ] Register the symbol key in `repository-keys.ts`
+- [ ] Register in `src/adapters/supabase/index.ts`
+- [ ] Create or update the Pinia store to use the repository
+- [ ] Verify type-check and build pass
 - [ ] Update `.architecture/file-manifest.md`
 
-### 7. Frontend Service Migration Checklist
-For each service being updated:
-- [ ] Map all methods and their API endpoints
-- [ ] Update endpoint URLs/calls to new backend
-- [ ] Preserve response shapes (or update types + all consumers)
-- [ ] Verify error handling still works (401, 403, 429, 500)
-- [ ] Test from the UI
-
-### 8. Store Migration Checklist
-For each store:
-- [ ] Verify all actions still work with updated services
-- [ ] Check computed properties / getters
-- [ ] Test loading states
-- [ ] Test error states
-- [ ] Verify cross-store dependencies (scope → invoice)
+### 7. Adding a New Feature Module
+- [ ] Create module directory in `src/modules/{feature}/`
+- [ ] Define `index.ts` with routes, nav items, search providers
+- [ ] Create page and component files
+- [ ] Create Supabase adapter if needed
+- [ ] Create Pinia store using repository pattern
+- [ ] Register module in `src/main.ts`
+- [ ] Verify the full flow works end-to-end
 
 ## Self-Prompting Guidelines
 
@@ -96,11 +84,10 @@ Verify:
 | Vue component | PascalCase | `TaskList.vue` |
 | Page | PascalCase | `Dashboard.vue` |
 | Store | `use*Store` in camelCase file | `task.ts` → `useTaskStore` |
-| Service | `*.service.ts` | `client.service.ts` |
+| Adapter | `*.repository.ts` | `client.repository.ts` |
 | Composable | `use*.ts` | `useModalState.ts` |
 | Type file | camelCase | `models.ts` |
-| Backend function | kebab-case | `auth-login.js` |
-| Backend util | camelCase | `authHandler.js` |
+| Express route | kebab-case | `ai.ts`, `webhooks.ts` |
 | CSS | kebab-case classes | `.heading-page`, `.btn-primary` |
 
 ## Design System Rules
@@ -116,20 +103,20 @@ Verify:
 ## Error Handling Rules
 
 - Frontend: `toast.error()` for user-facing errors, NEVER `console.error` or `alert()`
-- Backend: `createErrorResponse()` with appropriate status code
+- Backend: Express error middleware with appropriate status code
 - Loading states: ALWAYS show `LoadingSpinner` during async operations
 - Empty states: ALWAYS show `EmptyState` component for zero-data views
-- 401: Auto-logout with debounce (existing pattern in api.service.ts)
+- 401: Supabase auth handles session expiry and auto-refresh
 - 403: Display server message via toast
 - 429: Retry with exponential backoff (existing pattern)
 
 ## Git Rules
 
 - Commit at meaningful checkpoints, not after every file
-- Commit message format: `verb noun: brief description` (e.g., `migrate tasks: convert Netlify function to Convex mutation`)
+- Commit message format: `verb noun: brief description` (e.g., `add task-repo: implement Supabase task repository`)
 - Never commit secrets, .env files, or credentials
 - Never force push to main
-- Branch for large migrations: `migrate/convex-backend`, `migrate/digital-ocean`
+- Branch for large changes: `feature/<name>`, `fix/<name>`
 
 ## Performance Rules
 

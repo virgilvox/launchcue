@@ -40,7 +40,7 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import Modal from '@/components/Modal.vue';
-import noteService from '@/services/note.service'; // Corrected path
+import { useNoteStore } from '@/stores/note';
 import { useToast } from 'vue-toastification';
 
 const props = defineProps({
@@ -53,6 +53,7 @@ const props = defineProps({
 
 const emit = defineEmits(['update:show', 'saved']);
 
+const noteStore = useNoteStore();
 const toast = useToast();
 const isSaving = ref(false);
 const noteForm = ref({
@@ -103,7 +104,7 @@ async function confirmSaveToNotes() {
         // teamId and userId added by backend automatically
     };
     
-    await noteService.createNote(noteData);
+    await noteStore.createNote(noteData);
     toast.success('Note saved successfully!');
     emit('saved'); // Notify parent
     emit('update:show', false); // Close modal

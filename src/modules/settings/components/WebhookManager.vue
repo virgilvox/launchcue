@@ -215,7 +215,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue';
-import webhookService from '@/services/webhook.service';
+import { useWebhookStore } from '@/stores/webhook';
 import { useToast } from 'vue-toastification';
 import { formatDate } from '@/utils/dateFormatter';
 import Modal from '@/components/Modal.vue';
@@ -223,6 +223,7 @@ import LoadingSpinner from '@/components/LoadingSpinner.vue';
 import { TrashIcon, PencilSquareIcon, ClipboardDocumentIcon } from '@heroicons/vue/24/outline';
 
 const toast = useToast();
+const webhookStore = useWebhookStore();
 
 const webhooks = ref([]);
 const loadingWebhooks = ref(false);
@@ -252,7 +253,7 @@ const newWebhook = ref({
 async function loadWebhooks() {
   loadingWebhooks.value = true;
   try {
-    webhooks.value = await webhookService.getWebhooks();
+    webhooks.value = await webhookStore.fetchWebhooks();
   } catch (error) {
     toast.error('Failed to load webhooks.');
   } finally {
@@ -273,7 +274,7 @@ async function createWebhook() {
   isCreating.value = true;
   newlyCreatedSecret.value = null;
   try {
-    const result = await webhookService.createWebhook({
+    const result = await webhookStore.createWebhook({
       url: newWebhook.value.url.trim(),
       events: newWebhook.value.events,
       active: newWebhook.value.active,
@@ -308,7 +309,7 @@ async function updateWebhook() {
 
   isUpdating.value = true;
   try {
-    await webhookService.updateWebhook(editingWebhook.value.id, {
+    await webhookStore.updateWebhook(editingWebhook.value.id, {
       url: editingWebhook.value.url,
       events: editingWebhook.value.events,
       active: editingWebhook.value.active,
@@ -334,7 +335,7 @@ async function deleteWebhook() {
 
   isDeleting.value = true;
   try {
-    await webhookService.deleteWebhook(webhookToDelete.value.id);
+    await webhookStore.deleteWebhook(webhookToDelete.value.id);
     toast.success('Webhook deleted.');
     showDeleteModal.value = false;
     webhookToDelete.value = null;

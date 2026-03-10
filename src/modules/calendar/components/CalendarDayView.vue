@@ -46,7 +46,7 @@
             >
               <div class="font-medium truncate">{{ getEventTitle(event) }}</div>
               <div class="truncate opacity-80">
-                {{ formatEventTime(event.start) }}
+                {{ event.start ? formatEventTime(event.start) : '' }}
                 <span v-if="event.end"> - {{ formatEventTime(event.end) }}</span>
               </div>
             </div>

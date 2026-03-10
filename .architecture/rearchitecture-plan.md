@@ -28,11 +28,11 @@ Rearchitect first (add abstraction layers), then swap backends. The app stays fu
 
 ### 0.2 Repository Interfaces (2 files in `src/adapters/`)
 - `types.ts` — `Repository<T, CreateDTO, UpdateDTO>` interface, `AuthAdapter`, `SearchAdapter`, `AiAdapter`, `CommentRepository`, `NotificationRepository`
-- `repository-keys.ts` — 21 Symbol keys per entity
+- `repository-keys.ts` — 22 Symbol keys per entity
 
 ### 0.3 Netlify Adapters (18 files in `src/adapters/netlify/`)
 - One repo per entity + Auth, Search, AI adapters + Comment/Notification repos
-- `index.ts` factory registering all 21 adapters
+- `index.ts` factory registering all 22 adapters
 
 ### 0.4 Feature Module Manifests (14 files in `src/modules/`)
 - Each declares routes, nav items, and dependencies
@@ -57,10 +57,10 @@ All 10 data stores use `getContainer().resolve(KEY)` instead of direct service i
 
 ---
 
-## Phase 2: Backend Migration (Supabase) 🔄 IN PROGRESS
+## Phase 2: Backend Migration (Supabase) ✅
 
 ### 2.1 PostgreSQL Schema ✅ (~5 migration files in `supabase/migrations/`)
-- `001_create_tables.sql` — 20+ tables (users, teams, team_members join table, clients, projects, tasks, etc.). UUIDs, foreign keys, JSONB for embedded arrays.
+- `001_create_tables.sql` — 26 tables (users, teams, team_members join table, clients, projects, tasks, etc.). UUIDs, foreign keys, JSONB for embedded arrays, 14 enum types.
 - `002_row_level_security.sql` — RLS policies for team isolation + role-based write control.
 - `003_indexes.sql` — Mirror existing MongoDB indexes.
 - `004_functions.sql` — `soft_delete()`, `cascade_soft_delete_team()`, `auto_invoice_number()`, `updated_at_trigger()`, `global_search()`.
@@ -114,9 +114,9 @@ For non-Supabase operations:
 |-----|----------|
 | Dead webhooks | PostgreSQL `webhook_queue` table + trigger + Express cron processor |
 | No email | Supabase Auth handles verification/reset; Express + nodemailer for invitations |
-| Dead notifications | Supabase Realtime subscription replaces 60s polling |
+| Dead notifications | NOTIFICATION_REPO polling (60s interval via setInterval) |
 | No pagination | `findPaginated()` on Repository interface; Supabase `.range()`; `Pagination.vue` |
-| No tests | Repository unit tests, RLS policy tests, Playwright E2E |
+| No tests | 52 tests across 4 files (core infra + auth store). Component/E2E tests still TODO. |
 
 ---
 
@@ -133,7 +133,7 @@ After Phase 2.6 (adapter swap):
 6. Supabase auth works
 7. All entity CRUD persists
 8. RLS team isolation works
-9. Real-time notifications work
+9. Notifications poll correctly
 10. Webhooks fire
 
 After Phase 3.2 (deployment):

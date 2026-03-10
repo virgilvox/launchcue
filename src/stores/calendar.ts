@@ -11,8 +11,8 @@ import { useToast } from 'vue-toastification'
 import type { CalendarEvent, Task, Project } from '../types/models'
 import type { CalendarEventCreateRequest } from '../types/api'
 
-// Keep legacy service for getTaskDeadlines (non-standard endpoint)
-import calendarService from '../services/calendar.service'
+// Task deadlines: uses TASK_REPO to fetch tasks with due dates in range
+import { TASK_REPO } from '@/adapters/repository-keys'
 
 interface ProcessedCalendarEvent extends Omit<CalendarEvent, 'start' | 'end'> {
   start: Date | null
@@ -91,7 +91,7 @@ export const useCalendarStore = defineStore('calendar', () => {
       const data = await getRepo().findAll({ startDate: start, endDate: end })
 
       const processedEvents: ProcessedCalendarEvent[] = data.map(event => {
-        const eventType = (event as ProcessedCalendarEvent).type || determineEventType(event)
+        const eventType = (event as unknown as ProcessedCalendarEvent).type || determineEventType(event)
 
         let title = event.title
         if (eventType === 'project' && event.projectId && (!title || title === 'project')) {
@@ -104,7 +104,8 @@ export const useCalendarStore = defineStore('calendar', () => {
         }
 
         return {
-          ...event,
+          ...(event as unknown as Record<string, unknown>),
+          id: event.id,
           start: event.start ? new Date(event.start) : null,
           end: event.end ? new Date(event.end) : null,
           color: event.color || getDefaultColor(event),
@@ -137,7 +138,7 @@ export const useCalendarStore = defineStore('calendar', () => {
       const data = await getRepo().create({
         ...eventData,
         teamId: authStore.currentTeam.id
-      } as CalendarEventCreateRequest)
+      } as unknown as CalendarEventCreateRequest)
 
       events.value.push({
         ...data,
@@ -277,11 +278,11 @@ export const useCalendarStore = defineStore('calendar', () => {
         id: event.id,
         title: event.title,
         date: event.start,
-        type: event.type || determineEventType(event),
+        type: event.type || determineEventType(event as unknown as Partial<CalendarEvent>),
         description: event.description || 'Calendar event',
         projectId: event.projectId,
         taskId: event.taskId,
-        color: event.color || getDefaultColor(event)
+        color: event.color || getDefaultColor(event as unknown as Partial<CalendarEvent>)
       }))
 
       const allItems = [...upcomingTasks, ...upcomingProjects, ...formattedEvents]
@@ -302,27 +303,28 @@ export const useCalendarStore = defineStore('calendar', () => {
     }
   }
 
-  // getTaskDeadlines uses the legacy calendar service (special endpoint combining tasks + dates)
   async function getTaskDeadlines(startDate: string, endDate: string): Promise<ProcessedTaskDeadline[]> {
     isLoading.value = true
     error.value = null
 
     try {
-      const data: Array<Record<string, unknown>> = await calendarService.getTaskDeadlines(startDate, endDate)
+      const taskRepo = getContainer().resolve<Repository<Task>>(TASK_REPO)
+      const tasks = await taskRepo.findAll({ startDate, endDate, hasDueDate: true })
 
-      if (!data || !Array.isArray(data)) {
+      if (!tasks || !Array.isArray(tasks)) {
         return []
       }
 
-      const processedTasks: ProcessedTaskDeadline[] = data.map(task => {
+      const processedTasks: ProcessedTaskDeadline[] = tasks.map((task: unknown) => {
+        const t = task as Record<string, unknown>
         const processedTask: ProcessedTaskDeadline = {
-          id: (task.id as string) || `task-${Math.random().toString(36).substr(2, 9)}`,
-          title: (task.title as string) || (task.name as string) || 'Task',
-          status: (task.status as string) || 'To Do',
-          dueDate: task.dueDate ? new Date(task.dueDate as string) : null,
-          description: (task.description as string) || '',
-          projectId: (task.projectId as string) || null,
-          projectName: (task.projectName as string) || null,
+          id: (t.id as string) || `task-${Math.random().toString(36).substr(2, 9)}`,
+          title: (t.title as string) || 'Task',
+          status: (t.status as string) || 'To Do',
+          dueDate: t.dueDate ? new Date(t.dueDate as string) : null,
+          description: (t.description as string) || '',
+          projectId: (t.projectId as string) || null,
+          projectName: (t.projectName as string) || null,
           statusColor: ''
         }
 
