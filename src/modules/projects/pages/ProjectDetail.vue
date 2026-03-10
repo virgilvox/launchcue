@@ -83,7 +83,7 @@
             :timelinePercentage="projectTimelinePercentage"
             :currentTimelinePercentage="currentTimelinePercentage"
             :startDate="project.startDate"
-            :endDate="project.endDate"
+            :dueDate="project.dueDate"
           />
         </div>
       </div>
@@ -139,9 +139,10 @@
                 class="input"
               >
                 <option value="">None</option>
-                <option value="Low">Low</option>
-                <option value="Medium">Medium</option>
-                <option value="High">High</option>
+                <option value="low">Low</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
+                <option value="urgent">Urgent</option>
               </select>
             </div>
           </div>
@@ -319,7 +320,7 @@ const deleteDialog = useConfirmDialog()
 
 // Computed properties
 const projectTitle = computed(() => {
-  return project.value?.name || project.value?.title || 'Untitled Project'
+  return project.value?.title || 'Untitled Project'
 })
 
 const backRoute = computed(() => {
@@ -552,10 +553,8 @@ async function saveTeamMember() {
       project.value.teamMembers = []
     }
 
-    const updatedMembers = [...project.value.teamMembers, memberData]
-    // Sub-resource operation: team members are stored as part of the project
-    const result = await projectStore.updateProject(project.value.id, { teamMembers: updatedMembers })
-    project.value = { ...project.value, ...result }
+    // Team members on projects are stored locally (no DB column exists for this)
+    project.value.teamMembers.push(memberData)
     toast.success('Team member added successfully')
 
     teamMemberModal.close()
@@ -569,11 +568,8 @@ async function saveTeamMember() {
 // Remove team member
 async function removeTeamMember(member) {
   try {
-    // Sub-resource operation: team members are stored as part of the project
-    const updatedMembers = project.value.teamMembers.filter(m => m.id !== member.id)
-    const result = await projectStore.updateProject(project.value.id, { teamMembers: updatedMembers })
-    project.value = { ...project.value, ...result }
-
+    // Team members on projects are stored locally (no DB column exists for this)
+    project.value.teamMembers = project.value.teamMembers.filter(m => m.id !== member.id)
     toast.success('Team member removed successfully')
   } catch (err) {
     toast.error('Failed to remove team member')

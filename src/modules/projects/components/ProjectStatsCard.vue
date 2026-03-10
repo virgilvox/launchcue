@@ -36,7 +36,7 @@
           </div>
           <div class="flex justify-between text-xs">
             <span class="text-[var(--text-primary)]">{{ formatShortDate(startDate) || 'Not set' }}</span>
-            <span class="text-[var(--text-primary)]">{{ formatShortDate(endDate) || 'Not set' }}</span>
+            <span class="text-[var(--text-primary)]">{{ formatShortDate(dueDate) || 'Not set' }}</span>
           </div>
         </div>
       </div>
@@ -72,7 +72,7 @@ defineProps({
     type: String,
     default: null,
   },
-  endDate: {
+  dueDate: {
     type: String,
     default: null,
   },

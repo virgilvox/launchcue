@@ -50,15 +50,15 @@ src/
   utils/            # Utility functions + icon resolver
 server/             # Express API server (AI, webhooks, email)
 supabase/
-  migrations/       # PostgreSQL schema (10 migrations, 26 tables, RLS, triggers)
+  migrations/       # PostgreSQL schema (12 migrations, 26 tables, RLS, triggers)
 supabase/           # Kong config, migrations for Docker
 infra/              # Droplet setup script
 .do/                # DigitalOcean App Platform spec
 tests/
   helpers/          # Mock factories, store setup, mock router/toast
   core/             # Service container, event bus, plugin registry tests
-  stores/           # Store tests (auth, task, notification, team, project, client, calendar, campaign, invoice, comment, brain-dump)
-  composables/      # Composable tests (useLoadingCounter, useUnsavedChanges)
+  stores/           # Store tests (auth, task, notification, team, project, client, calendar, campaign, invoice, comment, brain-dump, scope, resource, note, onboarding, webhook, api-key, audit-log)
+  composables/      # Composable tests (useLoadingCounter, useUnsavedChanges, useConfirmDialog, useModalState, useTooltips, useEntityLookup)
 ```
 
 ### Design System
@@ -103,7 +103,7 @@ tests/
 - **Feature Modules**: 15 modules declaring routes, nav items, search providers, dependencies
 - **All 18 Pinia stores**: Fully migrated to repository pattern via DI container
 - **Zero legacy imports**: No `src/services/`, no axios, no Netlify code -all deleted
-- **Supabase Backend**: 10 SQL migrations, 26 tables, RLS policies, active_* views for soft delete, auto_inject triggers
+- **Supabase Backend**: 12 SQL migrations, 26 tables, RLS policies, active_* views for soft delete, auto_inject triggers
 - **Express API Server**: AI processing (Anthropic), webhook delivery (HMAC + retry), email (nodemailer)
 - **Docker**: Full-stack compose (docker-compose.yml) + dev-only Supabase stack (docker-compose.dev.yml)
 - **CI/CD**: ESLint v9 flat config, Prettier, GitHub Actions, DO App Platform deploy-on-push
@@ -144,7 +144,7 @@ tests/
 - ~~**AI adapter missing auth header**~~: Fixed — AI adapter sends Bearer token
 - ~~**getToken() vestigial**~~: Fixed — auth adapter now exposes `getSession()`, auth store uses SDK-managed sessions
 - ~~**Registration race condition**~~: Fixed — uses `register_user` RPC atomically
-- **RBAC on DELETE**: Most resource endpoints allow any authenticated team member to delete. Consider RLS policies to restrict to owner/admin
+- ~~**RBAC on DELETE**~~: Partially mitigated — all store delete methods now have team context guards; RLS policies enforce `can_write()` or `is_admin()` on DELETE
 - ~~**Shared isLoading race condition**~~: Fixed — calendar, team, client, project stores now use `useLoadingCounter()` composable
 - ~~**Comment adapter missing team_id/user_id**~~: Fixed — `comment.repository.ts` createComment() explicitly injects team_id and user_id
 - **Base repository injects team_id**: `base.repository.ts` create() resolves current auth context and injects team_id, with try-catch fallback to auto_inject triggers. created_by/user_id left to per-table DB triggers (tables differ on column name).
@@ -165,12 +165,13 @@ tests/
 - **~100 Vue components still use `<script setup>` without `lang="ts"`**
 
 ### Testing
-- 215 tests across 16 test files
+- 378 tests across 28 test files
 - Core: service-container (8), event-bus (8), plugin-registry (19)
 - Auth store: 20 tests (SDK session recovery, fallback, login/register/logout/switchTeam/createTeam, RBAC computeds)
-- Store tests: task (19), notification (17), team (24), project (17), client (15), calendar (12), campaign (11), invoice (12), comment (9), brain-dump (10)
-- Composable tests: useLoadingCounter (9), useUnsavedChanges (5)
-- Test helpers: mock factories, store setup, mock router/toast
+- Store tests: task, notification, team, project, client, calendar, campaign, invoice, comment, brain-dump, scope, resource, note, onboarding, webhook, api-key, audit-log (18 store test files)
+- Composable tests: useLoadingCounter, useUnsavedChanges, useConfirmDialog, useModalState, useTooltips, useEntityLookup (6 composable test files)
+- Router tests: guards (auth, team context, client role, portal, RBAC)
+- Test helpers: mock factories (7 factories), store setup, mock router/toast
 - No component tests, integration tests, or E2E tests
 
 ### Other
@@ -193,8 +194,8 @@ tests/
 | Pinia stores | 18 (all TS, all using repository pattern) |
 | Supabase adapter files | 25 (20 repository + 1 auth + 1 search + 1 AI + base class + index + client) |
 | Express API endpoints | 3 (AI, webhooks, email) |
-| SQL migrations | 10 (26 tables) |
-| Test files | 16 (215 tests) |
+| SQL migrations | 12 (26 tables) |
+| Test files | 28 (378 tests) |
 | Type definition files | 4 (models, api, enums, index) + core/types.ts |
 
 ---
@@ -211,7 +212,7 @@ npm run dev:full         # Start all three above
 # Or run individual commands
 npm run build            # Production build (Vite)
 npm run type-check       # vue-tsc --noEmit
-npm test                 # Run vitest tests (215 tests)
+npm test                 # Run vitest tests (378 tests)
 npm run lint             # ESLint check
 npm run format           # Prettier format
 
@@ -415,5 +416,26 @@ Fixed two bugs causing missing sidebar navigation items:
 **5 broken INSERT/UPDATE triggers** (tasks, projects, clients, invoices, scopes) and **3 broken DELETE triggers** (comments, notifications, team_invites).
 
 **Fix (migration 011)**: Both functions now use only `auth.app_user_id()` — the JWT user is the correct actor for audit logging. Applied directly to live DB via SSH.
+
+### Deep RLS & Database Access Audit (2026-03-10)
+Comprehensive audit of all RLS policies, DB triggers, store access patterns, and Express server endpoints. Migration 012 + 15 store edits + 43 new tests.
+
+**Migration 012 — RLS soft-delete guards + fixes:**
+- **Soft-delete guards**: Added `AND deleted_at IS NULL` to UPDATE/DELETE policies on all 14 soft-delete tables (clients, projects, tasks, campaigns, notes, calendar_events, resources, scope_templates, scopes, invoices, api_keys, webhooks, client_invitations, onboarding_checklists). Prevents modifying already-soft-deleted records.
+- **client_contacts subquery fix**: All 4 policies (SELECT/INSERT/UPDATE/DELETE) now include `AND deleted_at IS NULL` in the `client_id IN (SELECT id FROM clients WHERE ...)` subquery — prevents accessing contacts of soft-deleted clients.
+- **webhook_queue fix**: Replaced broken `USING(FALSE)` policy (which blocked service_role) with `ALTER TABLE webhook_queue DISABLE ROW LEVEL SECURITY` — table only accessed by service_role.
+- **Cascade fix**: `cascade_soft_delete_team()` now hard-deletes comments and brain_dumps on team soft-delete (previously orphaned).
+
+**Store team context guards (15 stores, ~50 methods):**
+- Every create/update/delete/getById method across all stores now has a team context guard
+- Pattern: `if (!useAuthStore().currentTeam) throw new Error('No team context')` or `return null/[]`
+- `acceptInvitation` intentionally left unguarded (invite acceptance flow, user may not have team yet)
+- `processText` (brain-dump AI) left unguarded (no DB access)
+
+**Express server hardening:**
+- Email `/invite` endpoint: Added team admin authorization check — verifies caller is owner/admin via `team_members` table before sending
+
+**Tests: 335 → 378 (43 new):**
+- Added team guard tests to all 14 store test files covering the newly-guarded methods
 
 *Last updated: 2026-03-10*

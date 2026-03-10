@@ -26,7 +26,7 @@
             class="text-[var(--text-primary)]"
             :class="{ 'text-[var(--danger)]': deadlineNear }"
           >
-            {{ formatDate(project.dueDate || project.endDate) || 'Not set' }}
+            {{ formatDate(project.dueDate) || 'Not set' }}
           </p>
         </div>
       </div>

@@ -158,9 +158,10 @@
                   <label for="editPriority" class="label">Priority</label>
                   <select id="editPriority" v-model="editModal.formData.value.priority" class="input">
                     <option value="">None</option>
-                    <option value="Low">Low</option>
-                    <option value="Medium">Medium</option>
-                    <option value="High">High</option>
+                    <option value="low">Low</option>
+                    <option value="medium">Medium</option>
+                    <option value="high">High</option>
+                    <option value="urgent">Urgent</option>
                   </select>
                 </div>
               </div>

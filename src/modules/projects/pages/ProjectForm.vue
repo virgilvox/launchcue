@@ -100,24 +100,11 @@
                   class="input"
                   required
                 >
-                  <option value="NotStarted">Not Started</option>
-                  <option value="InProgress">In Progress</option>
-                  <option value="OnHold">On Hold</option>
+                  <option value="Planning">Not Started</option>
+                  <option value="In Progress">In Progress</option>
+                  <option value="On Hold">On Hold</option>
                   <option value="Completed">Completed</option>
                   <option value="Cancelled">Cancelled</option>
-                </select>
-              </div>
-              
-              <div class="mb-4">
-                <label for="projectPriority" class="label">Priority</label>
-                <select 
-                  id="projectPriority"
-                  v-model="projectForm.priority"
-                  class="input"
-                >
-                  <option value="High">High</option>
-                  <option value="Medium">Medium</option>
-                  <option value="Low">Low</option>
                 </select>
               </div>
               
@@ -204,8 +191,7 @@ const clients = computed(() => clientStore.clients.filter(client => !client.isCo
 const projectForm = ref({
   title: '',
   description: '',
-  status: 'NotStarted',
-  priority: 'Medium',
+  status: 'Planning',
   startDate: formatDate(new Date()),
   dueDate: '',
   budget: 0,
@@ -255,12 +241,11 @@ async function loadProject() {
       const project = await projectStore.getProject(projectId);
       
       projectForm.value = {
-        title: project.name || project.title || '',  // Handle both name and title properties
+        title: project.title || '',
         description: project.description || '',
-        status: project.status || 'NotStarted',
-        priority: project.priority || 'Medium',
+        status: project.status || 'Planning',
         startDate: project.startDate ? new Date(project.startDate).toISOString().split('T')[0] : '',
-        dueDate: project.endDate ? new Date(project.endDate).toISOString().split('T')[0] : '',
+        dueDate: project.dueDate ? new Date(project.dueDate).toISOString().split('T')[0] : '',
         budget: project.budget || '',
         clientId: project.clientId || '',
         tags: project.tags || []
@@ -309,20 +294,19 @@ async function submitForm() {
       title: projectForm.value.title,
       description: projectForm.value.description,
       status: projectForm.value.status,
-      priority: projectForm.value.priority,
       startDate: projectForm.value.startDate,
-      endDate: projectForm.value.dueDate,
+      dueDate: projectForm.value.dueDate,
       budget: projectForm.value.budget,
       clientId: projectForm.value.clientId,
       tags: projectForm.value.tags
     };
-    
+
     if (projectForm.value.startDate) {
-      projectData.startDate = new Date(projectForm.value.startDate);
+      projectData.startDate = new Date(projectForm.value.startDate).toISOString().split('T')[0];
     }
-    
+
     if (projectForm.value.dueDate) {
-      projectData.endDate = new Date(projectForm.value.dueDate);
+      projectData.dueDate = new Date(projectForm.value.dueDate).toISOString().split('T')[0];
     }
     
     if (projectForm.value.budget && !isNaN(parseFloat(projectForm.value.budget))) {
@@ -384,11 +368,9 @@ onMounted(async () => {
     if (editMode.value && projectId) {
       const project = await projectStore.getProject(projectId);
       if (project) {
-        // Handle both name and title for backward compatibility
-        projectForm.value.title = project.title || project.name || '';
+        projectForm.value.title = project.title || '';
         projectForm.value.description = project.description || '';
-        projectForm.value.status = project.status || 'NotStarted';
-        projectForm.value.priority = project.priority || 'Medium';
+        projectForm.value.status = project.status || 'Planning';
         projectForm.value.clientId = project.clientId || '';
         projectForm.value.tags = project.tags || [];
         
@@ -397,12 +379,8 @@ onMounted(async () => {
           projectForm.value.startDate = formatDate(new Date(project.startDate));
         }
         
-        // Handle both dueDate and endDate fields for backward compatibility
         if (project.dueDate) {
           projectForm.value.dueDate = formatDate(new Date(project.dueDate));
-        } else if (project.endDate) {
-          // Handle legacy endDate field
-          projectForm.value.dueDate = formatDate(new Date(project.endDate));
         }
         
         projectForm.value.budget = project.budget || 0;

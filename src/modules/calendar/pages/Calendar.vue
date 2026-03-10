@@ -253,7 +253,7 @@ const filteredProjects = computed(() => {
 
   const validProjects = projects.value.map(project => ({
     ...project,
-    name: project.name || project.title || 'Untitled Project'
+    name: project.title || 'Untitled Project'
   }));
 
   if (!filterClientId.value) {
@@ -285,7 +285,7 @@ const filteredEvents = computed(() => {
     if (newEvent.type === 'project' && newEvent.projectId && (!newEvent.title || newEvent.title === 'project')) {
       const project = projects.value.find(p => p.id === newEvent.projectId);
       if (project) {
-        newEvent.title = project.name || project.title || 'Project Deadline';
+        newEvent.title = project.title || 'Project Deadline';
       }
     }
 
@@ -783,7 +783,7 @@ function getEventTitle(event) {
   if (event.type === 'project' && event.projectId) {
     const project = projects.value.find(p => p.id === event.projectId);
     if (project) {
-      return project.name || project.title || 'Project Deadline';
+      return project.title || 'Project Deadline';
     }
   }
 

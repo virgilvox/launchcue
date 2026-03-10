@@ -32,9 +32,11 @@
             <label for="statusFilter" class="label">STATUS</label>
             <select id="statusFilter" v-model="filters.status" class="input">
               <option value="">All Statuses</option>
-              <option value="To Do">To Do</option>
+              <option value="Planning">Planning</option>
               <option value="In Progress">In Progress</option>
-              <option value="Done">Done</option>
+              <option value="On Hold">On Hold</option>
+              <option value="Completed">Completed</option>
+              <option value="Cancelled">Cancelled</option>
             </select>
           </div>
           
@@ -69,7 +71,7 @@
           class="card card-interactive"
         >
           <div class="flex justify-between items-start mb-4">
-            <h3 class="heading-card">{{ project.name || project.title }}</h3>
+            <h3 class="heading-card">{{ project.title }}</h3>
             <div class="relative">
               <button @click="toggleProjectMenu(project.id)" class="btn-icon">
                 <EllipsisVerticalIcon class="h-5 w-5" />
@@ -220,9 +222,11 @@
             class="input"
             required
           >
-            <option value="To Do">To Do</option>
+            <option value="Planning">Planning</option>
             <option value="In Progress">In Progress</option>
-            <option value="Done">Done</option>
+            <option value="On Hold">On Hold</option>
+            <option value="Completed">Completed</option>
+            <option value="Cancelled">Cancelled</option>
           </select>
         </div>
         
@@ -302,7 +306,7 @@ const projectForm = ref({
   tags: [],
   startDate: '',
   dueDate: '',
-  status: 'To Do'
+  status: 'Planning'
 });
 
 const projectTagsInput = ref('');
@@ -389,7 +393,7 @@ function openAddProjectModal() {
     tags: [],
     startDate: today,
     dueDate: '',
-    status: 'To Do'
+    status: 'Planning'
   };
   projectTagsInput.value = '';
   validationErrors.title = '';

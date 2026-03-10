@@ -294,7 +294,7 @@ const filteredProjects = computed(() => {
 
   return clientProjects.value.filter(project => {
     const matchesSearch = projectSearch.value === '' ||
-      project.name.toLowerCase().includes(projectSearch.value.toLowerCase()) ||
+      (project.title || '').toLowerCase().includes(projectSearch.value.toLowerCase()) ||
       (project.description && project.description.toLowerCase().includes(projectSearch.value.toLowerCase()))
 
     const matchesStatus = statusFilter.value === '' || project.status === statusFilter.value
@@ -488,34 +488,46 @@ async function saveContact() {
   savingContact.value = true
   try {
     const clientId = client.value.id
-    const clientToUpdate = { ...client.value }
 
     if (editingContact.value) {
-      const contactIndex = clientToUpdate.contacts.findIndex(c => c.id === editingContact.value.id)
-      if (contactIndex !== -1) {
-        clientToUpdate.contacts[contactIndex] = {
-          ...editingContact.value,
-          ...contactForm.value
-        }
+      // Update existing contact in client_contacts table
+      const contactData = {
+        ...editingContact.value,
+        ...contactForm.value
       }
+      const { id: contactId, createdAt, updatedAt, ...updateFields } = contactData
+      const sb = (await import('@/adapters/supabase/client')).getSupabase()
+      const { error: updateErr } = await sb
+        .from('client_contacts')
+        .update({
+          name: updateFields.name,
+          email: updateFields.email,
+          phone: updateFields.phone,
+          role: updateFields.role,
+          is_primary: updateFields.isPrimary || false,
+          notes: updateFields.notes,
+        })
+        .eq('id', contactId)
+      if (updateErr) throw updateErr
     } else {
-      if (!clientToUpdate.contacts) {
-        clientToUpdate.contacts = []
-      }
-
-      const newContact = {
-        ...contactForm.value,
-        id: `contact_${Date.now()}`,
-        createdAt: new Date().toISOString()
-      }
-
-      clientToUpdate.contacts.push(newContact)
+      // Insert new contact into client_contacts table
+      const sb = (await import('@/adapters/supabase/client')).getSupabase()
+      const { error: insertErr } = await sb
+        .from('client_contacts')
+        .insert({
+          client_id: clientId,
+          name: contactForm.value.name,
+          email: contactForm.value.email,
+          phone: contactForm.value.phone,
+          role: contactForm.value.role,
+          is_primary: contactForm.value.isPrimary || false,
+          notes: contactForm.value.notes,
+        })
+      if (insertErr) throw insertErr
     }
 
-    const result = await clientStore.updateClient(clientId, clientToUpdate)
-    if (result.success) {
-      client.value = result.client
-    }
+    // Reload client to get updated contacts
+    await loadClient()
     closeContactModal()
   } catch (err) {
     if (!err.silentError) {
@@ -545,26 +557,19 @@ async function deleteContact() {
   deletingContact.value = true
 
   try {
-    const clientToUpdate = { ...client.value }
-    clientToUpdate.contacts = clientToUpdate.contacts.filter(
-      c => c.id !== contactToDelete.value.id
-    )
+    const sb = (await import('@/adapters/supabase/client')).getSupabase()
+    const { error: deleteErr } = await sb
+      .from('client_contacts')
+      .delete()
+      .eq('id', contactToDelete.value.id)
+    if (deleteErr) throw deleteErr
 
-    const result = await clientStore.updateClient(client.value.id, clientToUpdate)
-    if (result.success) {
-      client.value = result.client
-    }
-
+    // Reload client to get updated contacts
+    await loadClient()
     toast.success('Contact deleted')
     closeDeleteContactModal()
   } catch (err) {
-    if (!err.silentError) {
-      toast.error('Failed to delete contact')
-    } else {
-      toast.success('Contact deleted')
-      closeDeleteContactModal()
-      await loadClient()
-    }
+    toast.error('Failed to delete contact')
   } finally {
     deletingContact.value = false
   }

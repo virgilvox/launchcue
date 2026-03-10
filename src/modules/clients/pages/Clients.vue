@@ -89,7 +89,7 @@
                   :to="`/projects/${project.id}`" 
                   class="text-body-sm font-medium hover:text-[var(--accent-primary)] truncate block"
                 >
-                  {{ project.name || project.title || 'Untitled Project' }}
+                  {{ project.title || 'Untitled Project' }}
                 </router-link>
               </div>
               <span :class="['badge', getStatusColor(project.status || 'Planned')]">

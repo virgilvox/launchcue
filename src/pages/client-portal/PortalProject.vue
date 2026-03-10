@@ -25,7 +25,7 @@
       <div class="card p-6">
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
-            <h1 class="heading-page">{{ project.title || project.name }}</h1>
+            <h1 class="heading-page">{{ project.title }}</h1>
             <p v-if="project.description" class="text-caption mt-2">{{ project.description }}</p>
           </div>
           <span :class="getStatusColor(project.status)" class="self-start text-xs px-3 py-1  font-medium">

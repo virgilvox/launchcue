@@ -63,7 +63,7 @@
           <tr v-for="project in projects" :key="project.id" class="hover:bg-[var(--surface)]">
             <td class="px-6 py-4">
               <router-link :to="`/projects/${project.id}`" class="text-[var(--accent-primary)] hover:underline font-medium">
-                {{ project.name || project.title || 'Untitled Project' }}
+                {{ project.title || 'Untitled Project' }}
               </router-link>
               <p class="text-xs text-[var(--text-secondary)] mt-1">{{ project.description }}</p>
             </td>
