@@ -147,7 +147,7 @@ tests/
 - **RBAC on DELETE**: Most resource endpoints allow any authenticated team member to delete. Consider RLS policies to restrict to owner/admin
 - ~~**Shared isLoading race condition**~~: Fixed — calendar, team, client, project stores now use `useLoadingCounter()` composable
 - ~~**Comment adapter missing team_id/user_id**~~: Fixed — `comment.repository.ts` createComment() explicitly injects team_id and user_id
-- **Base repository injects team_id/created_by**: `base.repository.ts` create() resolves current auth context and injects team_id/created_by, with try-catch fallback to auto_inject triggers
+- **Base repository injects team_id**: `base.repository.ts` create() resolves current auth context and injects team_id, with try-catch fallback to auto_inject triggers. created_by/user_id left to per-table DB triggers (tables differ on column name).
 - ~~**Email endpoint missing protocol validation**~~: Fixed — HTTPS-only in production, allows HTTP in development
 - ~~**AI endpoint needs per-user rate limiting**~~: Fixed — per-user rate limit of 20 req/15min keyed by auth user ID
 - **Unsaved changes guard**: Invoice, Scope, Project, Campaign, Notes forms use `useUnsavedChanges` composable; Task, Client forms use modals (not page navigation)

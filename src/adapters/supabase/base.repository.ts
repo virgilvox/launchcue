@@ -52,12 +52,13 @@ export abstract class SupabaseBaseRepository<T, CreateDTO = Partial<T>, UpdateDT
   async create(dto: CreateDTO): Promise<T> {
     const row = this.mapToDb(dto as Record<string, unknown>)
 
-    // Inject team_id and created_by from auth context if not already set
+    // Inject team_id from auth context if not already set.
+    // Note: created_by/user_id is NOT injected here because tables differ
+    // (some use created_by, others user_id). DB auto_inject triggers handle this per-table.
     try {
-      if (!row.team_id || !row.created_by) {
-        const { userId, teamId } = await this.getCurrentContext()
-        if (!row.team_id && teamId) row.team_id = teamId
-        if (!row.created_by && userId) row.created_by = userId
+      if (!row.team_id) {
+        const { teamId } = await this.getCurrentContext()
+        if (teamId) row.team_id = teamId
       }
     } catch {
       // Fallback to auto_inject triggers if auth context unavailable
