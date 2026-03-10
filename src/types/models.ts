@@ -316,6 +316,7 @@ export interface Comment extends Timestamped {
 // ─── Notification ───
 export interface Notification {
   id: string
+  teamId: string
   userId: string
   type: NotificationType
   title: string

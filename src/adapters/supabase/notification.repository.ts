@@ -69,6 +69,7 @@ export class SupabaseNotificationRepository implements NotificationRepository {
   private mapFromDb(row: Record<string, unknown>): Notification {
     return {
       id: row.id as string,
+      teamId: row.team_id as string,
       userId: row.user_id as string,
       type: row.type as Notification['type'],
       title: row.title as string,

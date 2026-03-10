@@ -108,6 +108,32 @@ export class SupabaseBrainDumpRepository extends SupabaseBaseRepository<BrainDum
     return result
   }
 
+  // Entity-specific field maps for createItems (brain dump's own map is wrong for other entities)
+  private static readonly taskFieldMap: Record<string, string> = {
+    projectId: 'project_id', assigneeId: 'assignee_id', parentTaskId: 'parent_task_id',
+    dueDate: 'due_date', timeEstimate: 'time_estimate', timeSpent: 'time_spent',
+    teamId: 'team_id', createdBy: 'created_by',
+  }
+  private static readonly eventFieldMap: Record<string, string> = {
+    start: 'start_time', end: 'end_time', allDay: 'all_day',
+    clientId: 'client_id', projectId: 'project_id', taskId: 'task_id',
+    teamId: 'team_id', userId: 'user_id',
+  }
+  private static readonly projectFieldMap: Record<string, string> = {
+    clientId: 'client_id', startDate: 'start_date', dueDate: 'due_date',
+    ownerId: 'owner_id', teamId: 'team_id', createdBy: 'created_by',
+  }
+
+  private mapToDbWith(dto: Record<string, unknown>, fieldMap: Record<string, string>): Record<string, unknown> {
+    const result: Record<string, unknown> = {}
+    for (const [key, value] of Object.entries(dto)) {
+      if (value === undefined || key === 'id') continue
+      const column = fieldMap[key] || key.replace(/[A-Z]/g, (l) => `_${l.toLowerCase()}`)
+      result[column] = value
+    }
+    return result
+  }
+
   async createItems(payload: Record<string, unknown>): Promise<unknown> {
     const sb = getSupabase()
     const results: Record<string, number> = { taskCount: 0, eventCount: 0, projectCount: 0 }
@@ -119,7 +145,7 @@ export class SupabaseBrainDumpRepository extends SupabaseBaseRepository<BrainDum
 
     const tasks = payload.tasks as Array<Record<string, unknown>> | undefined
     if (tasks?.length) {
-      const rows = tasks.map(t => ({ ...this.mapToDb(t), team_id: teamId }))
+      const rows = tasks.map(t => ({ ...this.mapToDbWith(t, SupabaseBrainDumpRepository.taskFieldMap), team_id: teamId }))
       const { data, error } = await sb.from('tasks').insert(rows).select()
       if (error) throw new Error(error.message)
       results.taskCount = data?.length || 0
@@ -127,7 +153,7 @@ export class SupabaseBrainDumpRepository extends SupabaseBaseRepository<BrainDum
 
     const events = payload.events as Array<Record<string, unknown>> | undefined
     if (events?.length) {
-      const rows = events.map(e => ({ ...this.mapToDb(e), team_id: teamId }))
+      const rows = events.map(e => ({ ...this.mapToDbWith(e, SupabaseBrainDumpRepository.eventFieldMap), team_id: teamId }))
       const { data, error } = await sb.from('calendar_events').insert(rows).select()
       if (error) throw new Error(error.message)
       results.eventCount = data?.length || 0
@@ -135,7 +161,7 @@ export class SupabaseBrainDumpRepository extends SupabaseBaseRepository<BrainDum
 
     const projects = payload.projects as Array<Record<string, unknown>> | undefined
     if (projects?.length) {
-      const rows = projects.map(p => ({ ...this.mapToDb(p), team_id: teamId }))
+      const rows = projects.map(p => ({ ...this.mapToDbWith(p, SupabaseBrainDumpRepository.projectFieldMap), team_id: teamId }))
       const { data, error } = await sb.from('projects').insert(rows).select()
       if (error) throw new Error(error.message)
       results.projectCount = data?.length || 0

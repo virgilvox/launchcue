@@ -119,9 +119,31 @@ export class SupabaseTeamRepository implements Repository<Team, TeamCreateReques
   }
 
   async inviteUser(teamId: string, email: string): Promise<unknown> {
-    const { data, error } = await getSupabase()
+    const sb = getSupabase()
+
+    // Resolve the current user's app ID for invited_by (NOT NULL)
+    const { data: { session } } = await sb.auth.getSession()
+    if (!session) throw new Error('Not authenticated')
+
+    const { data: appUser, error: userError } = await sb
+      .from('users')
+      .select('id')
+      .eq('auth_id', session.user.id)
+      .single()
+    if (userError) throw new Error(userError.message)
+
+    // expires_at: 7 days from now
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+
+    const { data, error } = await sb
       .from('team_invites')
-      .insert({ team_id: teamId, email, status: 'pending' })
+      .insert({
+        team_id: teamId,
+        email,
+        invited_by: appUser.id,
+        expires_at: expiresAt,
+        status: 'pending',
+      })
       .select()
       .single()
     if (error) throw new Error(error.message)
