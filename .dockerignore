@@ -1,0 +1,10 @@
+node_modules
+dist
+server
+.git
+.env
+.env.*
+!.env.example
+*.md
+.architecture
+.vscode
