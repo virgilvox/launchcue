@@ -80,9 +80,9 @@ All 10 data stores use `getContainer().resolve(KEY)` instead of direct service i
 - `src/adapters/supabase/search.adapter.ts` — PostgreSQL `to_tsvector`/`to_tsquery` via RPC
 - `src/adapters/supabase/index.ts` — Factory registering all repos
 
-### 2.5 Express API Server (`server/`)
+### 2.5 Express API Server ✅ (`server/`)
 For non-Supabase operations:
-- API key auth, rate limiting, webhook dispatching, brain dump AI processing, email sending
+- JWT auth (Supabase token verification), rate limiting, webhook dispatching, brain dump AI processing, email sending
 
 ### 2.6 Adapter Swap — One Line Change
 ```typescript
