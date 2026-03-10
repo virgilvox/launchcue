@@ -55,7 +55,7 @@
               <p class="text-caption">{{ client.industry || 'No industry specified' }}</p>
             </div>
             <div class="relative z-10" @click.stop.prevent> 
-              <button @click.stop.prevent="toggleClientMenu(client.id)" class="btn-icon">
+              <button @click.stop.prevent="toggleClientMenu(client.id)" class="btn-icon" aria-label="Client options">
                 <EllipsisVerticalIcon class="h-5 w-5" />
               </button>
               <div v-if="activeMenu === client.id" class="absolute right-0 mt-1 w-48 bg-[var(--surface-elevated)] border-2 border-[var(--border)] shadow-brutal-sm z-20 py-1" @click.stop>

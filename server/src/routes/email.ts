@@ -37,9 +37,13 @@ emailRouter.post('/invite', async (req, res) => {
     return
   }
 
-  // Validate inviteUrl is a valid URL
+  // Validate inviteUrl is a valid HTTPS URL
   try {
-    new URL(inviteUrl)
+    const parsed = new URL(inviteUrl)
+    if (!['https:', 'http:'].includes(parsed.protocol)) {
+      res.status(400).json({ error: 'Invite URL must use HTTPS' })
+      return
+    }
   } catch {
     res.status(400).json({ error: 'Invalid invite URL' })
     return

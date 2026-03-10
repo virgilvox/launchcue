@@ -2,6 +2,18 @@ import type { Comment } from '@/types/models'
 import type { CommentRepository } from '../types'
 import { getSupabase } from './client'
 
+async function getCurrentUserId(): Promise<{ userId: string; teamId: string }> {
+  const sb = getSupabase()
+  const { data: { user } } = await sb.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+  const teamId = user.user_metadata?.current_team_id
+  if (!teamId) throw new Error('No team selected')
+  // Resolve app user ID from auth_id
+  const { data: appUser, error } = await sb.from('users').select('id').eq('auth_id', user.id).single()
+  if (error || !appUser) throw new Error('User not found')
+  return { userId: appUser.id, teamId }
+}
+
 export class SupabaseCommentRepository implements CommentRepository {
   async getComments(resourceType: string, resourceId: string): Promise<Comment[]> {
     let query = getSupabase()
@@ -24,12 +36,15 @@ export class SupabaseCommentRepository implements CommentRepository {
   }
 
   async createComment(resourceType: string, resourceId: string, data: { content: string }): Promise<Comment> {
+    const { userId, teamId } = await getCurrentUserId()
     const { data: row, error } = await getSupabase()
       .from('comments')
       .insert({
         resource_type: resourceType,
         resource_id: resourceId,
         content: data.content,
+        user_id: userId,
+        team_id: teamId,
       })
       .select('*, users(name)')
       .single()

@@ -146,6 +146,16 @@
         </div>
       </div>
     </div>
+    <!-- Delete confirmation -->
+    <ConfirmDialog
+      v-model="showDeleteConfirm"
+      title="Delete Comment"
+      message="Are you sure you want to delete this comment? This action cannot be undone."
+      confirmLabel="Delete"
+      :destructive="true"
+      @confirm="confirmDeleteComment"
+      @cancel="showDeleteConfirm = false"
+    />
   </div>
 </template>
 
@@ -156,6 +166,7 @@ import { useToast } from 'vue-toastification'
 import { useAuthStore } from '../../stores/auth'
 import { getContainer } from '@/core/service-container'
 import { COMMENT_REPO } from '@/adapters/repository-keys'
+import ConfirmDialog from './ConfirmDialog.vue'
 
 function getCommentRepo() {
   return getContainer().resolve(COMMENT_REPO)
@@ -181,6 +192,8 @@ const isSaving = ref(false)
 const newComment = ref('')
 const editingId = ref(null)
 const editContent = ref('')
+const showDeleteConfirm = ref(false)
+const deletingCommentId = ref(null)
 
 const currentUserInitial = computed(() => {
   const name = authStore.user?.name || ''
@@ -280,14 +293,23 @@ async function saveEdit(id) {
   }
 }
 
-async function deleteComment(id) {
-  if (!confirm('Are you sure you want to delete this comment?')) return
+function deleteComment(id) {
+  deletingCommentId.value = id
+  showDeleteConfirm.value = true
+}
+
+async function confirmDeleteComment() {
+  const id = deletingCommentId.value
+  showDeleteConfirm.value = false
+  if (!id) return
 
   try {
     await getCommentRepo().deleteComment(id)
     comments.value = comments.value.filter(c => c.id !== id)
   } catch (error) {
     toast.error('Failed to delete comment. Please try again.')
+  } finally {
+    deletingCommentId.value = null
   }
 }
 

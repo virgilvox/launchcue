@@ -71,7 +71,7 @@
                   <div class="flex flex-wrap gap-1 mt-2">
                     <span v-for="(tag, i) in formData.tags" :key="i" class="inline-flex items-center bg-[var(--accent-primary-wash)] text-[var(--accent-primary)] text-xs px-2 py-0.5 rounded">
                       {{ tag }}
-                      <button @click="removeTag(i)" class="ml-1 text-[var(--accent-primary)] hover:text-[var(--accent-primary-hover)]">&times;</button>
+                      <button @click="removeTag(i)" class="ml-1 text-[var(--accent-primary)] hover:text-[var(--accent-primary-hover)]" aria-label="Remove tag">&times;</button>
                     </span>
                   </div>
                 </div>
