@@ -386,4 +386,34 @@ Fixed two bugs causing missing sidebar navigation items:
 - Fix: `setCurrentTeam()` now syncs `team.role` to `user.value.role` and persists to sessionStorage
 - This fixes registration, createTeam, switchTeam, and loadUserTeams flows (all funnel through `setCurrentTeam()`)
 
+### Comprehensive Audit & Polish (2026-03-10)
+14 fixes across backend, UI, forms, and architecture:
+
+**Backend Hardening:**
+- Email endpoint: HTTPS-only in production, HTTP allowed only in development
+- AI endpoint: Per-user rate limit (20 req/15min keyed by auth user ID)
+- Base repository: `create()` injects `team_id` from auth context (try-catch fallback to DB triggers)
+
+**UI & Components:**
+- SVG `AppLogo` component replaces `logo-placeholder.png` references in 8 files (Sidebar, Login, Register, AcceptInvite, ClientLayout, Home x2)
+- PNG favicon fallback removed from `index.html` (inline SVG data URI sufficient)
+- TaskDetail: Full card-based rebuild — edit modal, delete confirmation dialog, interactive checklist with progress bar, CommentThread, metadata sidebar with status/priority badges
+- Settings: Left nav with scroll-to-section + IntersectionObserver active tracking, polished billing badge, integrations empty state
+
+**Architecture:**
+- Dashboard registered as FeatureModule (`src/modules/dashboard/index.ts`), hardcoded route removed from router
+- Removed vestigial `"netlify"` from `tsconfig.json` excludes
+
+**Form Consistency:**
+- Campaigns: Wrapped in `<form @submit.prevent>`, added `useUnsavedChanges`
+- Notes: Added `useUnsavedChanges` tracking modal form state
+- All buttons inside forms given explicit `type="button"` where needed
+
+### Audit Trigger Column Fix (2026-03-10)
+**Critical bug**: `create_audit_log()` used `COALESCE(auth.app_user_id(), NEW.created_by, NEW.user_id)` — PL/pgSQL validates ALL `NEW.field` references at plan time, regardless of COALESCE short-circuiting. Tables with only `created_by` (clients, tasks, projects, invoices, scopes) errored on `NEW.user_id`. Same issue in `create_delete_audit_log()` with `OLD.created_by`/`OLD.user_id`.
+
+**5 broken INSERT/UPDATE triggers** (tasks, projects, clients, invoices, scopes) and **3 broken DELETE triggers** (comments, notifications, team_invites).
+
+**Fix (migration 011)**: Both functions now use only `auth.app_user_id()` — the JWT user is the correct actor for audit logging. Applied directly to live DB via SSH.
+
 *Last updated: 2026-03-10*
