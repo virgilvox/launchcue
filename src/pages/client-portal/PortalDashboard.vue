@@ -71,8 +71,8 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useToast } from 'vue-toastification'
 import { useAuthStore } from '@/stores/auth'
-import onboardingService from '@/services/onboarding.service'
-import apiService, { SCOPE_ENDPOINT, PROJECT_ENDPOINT } from '@/services/api.service'
+import { getContainer } from '@/core/service-container'
+import { PROJECT_REPO, SCOPE_REPO, ONBOARDING_REPO } from '@/adapters/repository-keys'
 import LoadingSpinner from '@/components/LoadingSpinner.vue'
 import { getStatusColor } from '@/utils/statusColors'
 import { formatCurrency } from '@/utils/formatters'
@@ -109,12 +109,16 @@ function progressPercent(checklist) {
 async function loadDashboard() {
   loading.value = true
   try {
+    const container = getContainer()
+    const projectRepo = container.resolve(PROJECT_REPO)
+    const scopeRepo = container.resolve(SCOPE_REPO)
+    const onboardingRepo = container.resolve(ONBOARDING_REPO)
     const clientId = authStore.user?.clientId
 
     const [projectsData, checklistsData, scopesData] = await Promise.allSettled([
-      apiService.get(PROJECT_ENDPOINT, clientId ? { clientId } : {}),
-      onboardingService.getChecklists(clientId ? { clientId } : {}),
-      apiService.get(SCOPE_ENDPOINT, { status: 'sent' }),
+      projectRepo.findAll(clientId ? { clientId } : {}),
+      onboardingRepo.findAll(clientId ? { clientId } : {}),
+      scopeRepo.findAll({ status: 'sent' }),
     ])
 
     projects.value = projectsData.status === 'fulfilled' && Array.isArray(projectsData.value)

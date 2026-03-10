@@ -155,7 +155,8 @@
 import { ref, computed, onMounted } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useToast } from 'vue-toastification';
-import apiService from '../../services/api.service';
+import { getContainer } from '@/core/service-container';
+import { AUTH_ADAPTER } from '@/adapters/repository-keys';
 
 const appName = import.meta.env.VITE_APP_NAME || 'LaunchCue';
 const router = useRouter();
@@ -205,7 +206,8 @@ const handleSubmit = async () => {
   isLoading.value = true;
 
   try {
-    await apiService.resetPassword(token.value, password.value);
+    const auth = getContainer().resolve(AUTH_ADAPTER);
+    await auth.resetPassword(token.value, password.value);
     success.value = true;
     toast.success('Password reset successfully!');
 

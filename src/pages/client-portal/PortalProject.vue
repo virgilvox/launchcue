@@ -135,8 +135,8 @@ import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useToast } from 'vue-toastification'
 import { useAuthStore } from '@/stores/auth'
-import apiService, { PROJECT_ENDPOINT, SCOPE_ENDPOINT } from '@/services/api.service'
-import scopeService from '@/services/scope.service'
+import { getContainer } from '@/core/service-container'
+import { PROJECT_REPO, SCOPE_REPO } from '@/adapters/repository-keys'
 import { getStatusColor } from '@/utils/statusColors'
 import { formatCurrency } from '@/utils/formatters'
 import { formatDate } from '@/utils/dateFormatter'
@@ -154,12 +154,20 @@ const project = ref(null)
 const scopes = ref([])
 const scopeActionLoading = ref(false)
 
+function getProjectRepo() {
+  return getContainer().resolve(PROJECT_REPO)
+}
+
+function getScopeRepo() {
+  return getContainer().resolve(SCOPE_REPO)
+}
+
 async function loadProject() {
   loading.value = true
   try {
     const [projectData, scopesData] = await Promise.allSettled([
-      apiService.get(`${PROJECT_ENDPOINT}/${projectId}`),
-      scopeService.getScopes({ projectId }),
+      getProjectRepo().findById(projectId),
+      getScopeRepo().findAll({ projectId }),
     ])
 
     project.value = projectData.status === 'fulfilled' ? projectData.value : null
@@ -176,7 +184,7 @@ async function loadProject() {
 async function approveScope(scope) {
   scopeActionLoading.value = true
   try {
-    await scopeService.updateScope(scope.id, { status: 'approved' })
+    await getScopeRepo().update(scope.id, { status: 'approved' })
     const idx = scopes.value.findIndex(s => s.id === scope.id)
     if (idx !== -1) {
       scopes.value[idx] = { ...scopes.value[idx], status: 'approved', approvedAt: new Date().toISOString() }
@@ -192,7 +200,7 @@ async function approveScope(scope) {
 async function requestScopeChanges(scope) {
   scopeActionLoading.value = true
   try {
-    await scopeService.updateScope(scope.id, { status: 'revised' })
+    await getScopeRepo().update(scope.id, { status: 'revised' })
     const idx = scopes.value.findIndex(s => s.id === scope.id)
     if (idx !== -1) {
       scopes.value[idx] = { ...scopes.value[idx], status: 'revised' }

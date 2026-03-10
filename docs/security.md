@@ -1,94 +1,75 @@
 # LaunchCue Security Model
 
-This document describes the security architecture of LaunchCue, covering authentication, authorization, rate limiting, transport security, and data protection mechanisms.
+This document describes the security architecture of LaunchCue, covering authentication, authorization, row-level security, rate limiting, CORS, and data protection mechanisms.
 
 ---
 
 ## Table of Contents
 
-1. [JWT Authentication Flow](#1-jwt-authentication-flow)
-2. [API Key Authentication Flow](#2-api-key-authentication-flow)
-3. [RBAC Model](#3-rbac-model)
-4. [Rate Limiting](#4-rate-limiting)
-5. [CORS Policy](#5-cors-policy)
-6. [Security Headers](#6-security-headers)
-7. [Password Requirements](#7-password-requirements)
-8. [Token Storage](#8-token-storage)
-9. [Error Sanitization](#9-error-sanitization)
-10. [Audit Logging](#10-audit-logging)
+1. [Authentication](#1-authentication)
+2. [API Key Authentication](#2-api-key-authentication)
+3. [Authorization (RBAC)](#3-authorization-rbac)
+4. [Row-Level Security (RLS)](#4-row-level-security-rls)
+5. [Rate Limiting](#5-rate-limiting)
+6. [CORS Policy](#6-cors-policy)
+7. [Security Headers](#7-security-headers)
+8. [Password Requirements](#8-password-requirements)
+9. [Session Management](#9-session-management)
+10. [Error Sanitization](#10-error-sanitization)
+11. [Audit Logging](#11-audit-logging)
 
 ---
 
-## 1. JWT Authentication Flow
+## 1. Authentication
 
-LaunchCue uses JSON Web Tokens (JWT) as the primary authentication mechanism for browser-based sessions.
+LaunchCue delegates all authentication to **Supabase Auth (GoTrue)**. There is no manual JWT signing, verification, or token blocklist management in the application.
 
-### Token Issuance
+### Supported Methods
 
-Tokens are issued on two occasions:
+| Method           | Description                                              |
+|------------------|----------------------------------------------------------|
+| Email / Password | Standard credential-based login and registration         |
 
-- **Registration** (`auth-register`): After creating the user and their default team, a JWT is signed and returned in the response body.
-- **Login** (`auth-login`): After verifying credentials, a JWT is signed and returned.
+### Token Lifecycle
 
-Each token is signed with the `JWT_SECRET` environment variable using the default HS256 algorithm (via the `jsonwebtoken` library).
+Supabase Auth issues and manages access tokens and refresh tokens automatically:
 
-### Token Payload
+- **Access tokens** are short-lived JWTs signed by GoTrue with the project's JWT secret.
+- **Refresh tokens** are used by the Supabase JS client to obtain new access tokens before expiry.
+- **Auto-refresh** is handled by the `@supabase/supabase-js` client library. The application does not manually decode, verify, or refresh tokens.
 
-Every issued JWT contains the following claims:
+### Custom Claims
 
-| Claim     | Description                                        |
-|-----------|----------------------------------------------------|
-| `userId`  | The authenticated user's database ID               |
-| `teamId`  | The currently active team's database ID            |
-| `email`   | The user's email address                           |
-| `name`    | The user's display name                            |
-| `role`    | The user's role within the current team (optional) |
-| `jti`     | A unique token identifier (32-byte hex string)     |
-| `exp`     | Expiration timestamp (24 hours from issuance)      |
+GoTrue JWTs include custom claims used by RLS policies and the application:
 
-The `jti` (JWT ID) claim is generated via `crypto.randomBytes(16).toString('hex')` and is used for token revocation tracking.
+| Claim / Lookup                                       | Description                                                        |
+|------------------------------------------------------|--------------------------------------------------------------------|
+| `sub`                                                | The authenticated user's Supabase user ID                          |
+| `email`                                              | The user's email address                                           |
+| `user_metadata.current_team_id`                      | The currently active team's database ID (stored in user metadata)  |
+| `auth.current_team_role()` (database function)       | The user's role within the current team, looked up dynamically from the `team_members` table |
 
-### Token Expiry
-
-All JWTs expire after **24 hours** (`TOKEN_EXPIRY = '24h'`). The frontend also performs client-side expiry checking by decoding the `exp` claim from the token payload on initialization (`initAuth`). If the token is expired, the auth state is cleared and the user is redirected to login.
+Team ID is **not** a top-level JWT claim. It is stored in `user_metadata` and read in RLS via `auth.jwt() -> 'user_metadata' ->> 'current_team_id'`. Role is **not** embedded in the JWT at all — it is resolved at query time by the `auth.current_team_role()` database function, which joins `team_members` on the current user and team.
 
 ### Token Verification
 
-On every authenticated request, the `authenticate()` function in `authHandler.js`:
+All verification is handled by Supabase infrastructure:
 
-1. Extracts the `Authorization: Bearer <token>` header.
-2. Verifies the JWT signature and expiration via `jwt.verify()`.
-3. Validates that both `userId` and `teamId` are present in the decoded payload.
-4. If the token contains a `jti` claim, checks the `tokenBlocklist` MongoDB collection to see if the token has been revoked.
+- **PostgREST** verifies the JWT signature on every database request and applies RLS policies using the token claims.
+- **Kong gateway** validates tokens for GoTrue and PostgREST endpoints.
+- **Express API server** verifies tokens via `supabase.auth.getUser()` for server-side endpoints (AI, webhooks, email).
 
-### Token Revocation
-
-Tokens can be revoked before their natural expiry by adding their `jti` to the `tokenBlocklist` collection in MongoDB.
-
-```
-tokenBlocklist document:
-{
-  jti: string,         // The JWT ID being revoked
-  revokedAt: Date,     // When the revocation occurred
-  expiresAt: Date      // When the original token would have expired (for TTL cleanup)
-}
-```
-
-The collection uses a MongoDB TTL index on `expiresAt` with `expireAfterSeconds: 0`, so blocklist entries are automatically cleaned up by MongoDB once the original token would have expired anyway. This prevents the blocklist from growing unboundedly.
-
-### Fail-Closed Blocklist Check
-
-If the database is unreachable during the blocklist check, the system **fails closed** -- the token is treated as potentially revoked and the request is rejected with a 401. This is a deliberate security-first design choice: availability is sacrificed to prevent a revoked token from being accepted during a database outage.
+The application never verifies JWT signatures directly. However, the auth store does manually decode JWT payloads using `atob(jwt.split('.')[1])` to check token expiry on initialization.
 
 ---
 
-## 2. API Key Authentication Flow
+## 2. API Key Authentication
 
 LaunchCue supports API key authentication for programmatic access (scripts, integrations, CI/CD pipelines).
 
 ### Key Format
 
-All API keys are prefixed with `lc_sk_` followed by a cryptographically random string. Example:
+All API keys are prefixed with `lc_sk_` followed by a cryptographically random string:
 
 ```
 lc_sk_a1b2c3d4e5f6g7h8i9j0...
@@ -99,222 +80,206 @@ lc_sk_a1b2c3d4e5f6g7h8i9j0...
 API keys are **never stored in plaintext**. When a key is created:
 
 1. The full key is returned to the user exactly once.
-2. A **bcrypt hash** of the full key is stored in the `apiKeys` collection as `hashedKey`.
-3. A **lookup prefix** is stored as `prefix` -- the first 8 characters after the `lc_sk_` prefix (i.e., `lc_sk_` + 8 chars = 14 characters total).
+2. A **bcrypt hash** of the full key is stored in the `api_keys` table as `key_hash`.
+3. A **lookup prefix** is stored for efficient retrieval without full-table scans.
 
-### Authentication Process
+> **Note:** The `api_keys` schema exists and the application provides basic CRUD on the table, but key generation, scope validation, and authentication-via-API-key logic are **not yet implemented**.
 
-When a request arrives with a Bearer token starting with `lc_sk_`:
+### Scope-Based Access Control
 
-1. The lookup prefix (first 14 characters) is extracted.
-2. The `apiKeys` collection is queried by `{ prefix: lookupPrefix }`.
-3. The full API key is compared against the stored `hashedKey` using `bcrypt.compare()`.
-4. If the key has an `expiresAt` field and that date is in the past, the key is rejected with a 401.
-5. Scope checking is performed (see below).
-6. The `lastUsedAt` field is updated (fire-and-forget, does not block the response).
+API keys have an array of scopes that control what operations they can perform. Scopes follow the pattern `action:resource`:
 
-### Scope Checking
+| Scope Pattern    | Example          | Description                        |
+|------------------|------------------|------------------------------------|
+| `read:<resource>`| `read:tasks`     | Read access to a specific resource |
+| `write:<resource>`| `write:clients` | Write access to a specific resource|
+| `read:*`         | --               | Read access to all resources       |
+| `write:*`        | --               | Write access to all resources      |
 
-API keys have an array of scopes that control what operations they can perform. Scopes follow the pattern `action:resource` (e.g., `read:tasks`, `write:clients`).
+### Expiration
 
-Scope derivation from the request:
-- `GET` requests require `read:<resourceType>`.
-- `POST`, `PUT`, `DELETE`, `PATCH` requests require `write:<resourceType>`.
-
-The resource type is derived from the function path (e.g., `/tasks` maps to `tasks`).
-
-Special scopes:
-- `admin` -- grants access to all resources regardless of specific scope requirements.
-- `*` (wildcard) -- same as `admin`, grants universal access.
-
-Scope checking can be bypassed per-endpoint with `options.skipScopeCheck = true`, or overridden with explicit `options.requiredScopes`.
-
-### Expiration Support
-
-API keys optionally support an `expiresAt` date. If set and the current date exceeds it, the key is rejected with `401 - API Key has expired`. Keys without an `expiresAt` field never expire.
+API keys optionally support an `expires_at` timestamp. If set and the current time exceeds it, the key is rejected. Keys without an `expires_at` value never expire.
 
 ### Last Used Tracking
 
-Every successful API key authentication updates the `lastUsedAt` timestamp on the key document. This is done as a fire-and-forget operation (the response is not blocked by the update).
+Every successful API key authentication updates the `last_used_at` timestamp on the key record for auditing purposes.
 
 ---
 
-## 3. RBAC Model
+## 3. Authorization (RBAC)
 
-LaunchCue implements role-based access control (RBAC) with four hierarchical roles within each team.
+LaunchCue implements role-based access control with five roles within each team.
 
 ### Role Hierarchy
 
 ```
-owner > admin > member > viewer
+owner > admin > member > viewer > client
 ```
 
 ### Permission Matrix
 
-| Capability                  | Owner | Admin | Member | Viewer |
-|-----------------------------|:-----:|:-----:|:------:|:------:|
-| Read all resources          |   Y   |   Y   |   Y    |   Y    |
-| Create resources            |   Y   |   Y   |   Y    |   N    |
-| Update resources            |   Y   |   Y   |   Y    |   N    |
-| Delete resources            |   Y   |   Y   |   Y    |   N    |
-| Invite members              |   Y   |   Y   |   N    |   N    |
-| Remove members              |   Y   |   Y*  |   N    |   N    |
-| Change member roles         |   Y   |   Y*  |   N    |   N    |
-| Manage team settings        |   Y   |   Y   |   N    |   N    |
-| Delete team                 |   Y   |   N   |   N    |   N    |
-| Promote to admin/owner      |   Y   |   N   |   N    |   N    |
+| Capability                  | Owner | Admin | Member | Viewer | Client |
+|-----------------------------|:-----:|:-----:|:------:|:------:|:------:|
+| Read all resources          |   Y   |   Y   |   Y    |   Y    |   N*   |
+| Create resources            |   Y   |   Y   |   Y    |   N    |   N    |
+| Update resources            |   Y   |   Y   |   Y    |   N    |   N    |
+| Delete resources            |   Y   |   Y   |   Y    |   N    |   N    |
+| Invite members              |   Y   |   Y   |   N    |   N    |   N    |
+| Remove members              |   Y   |   Y** |   N    |   N    |   N    |
+| Change member roles         |   Y   |   Y** |   N    |   N    |   N    |
+| Manage team settings        |   Y   |   Y   |   N    |   N    |   N    |
+| Delete team                 |   Y   |   N   |   N    |   N    |   N    |
+| Promote to admin/owner      |   Y   |   N   |   N    |   N    |   N    |
+| View audit logs             |   Y   |   Y   |   N    |   N    |   N    |
 
-*Admins can manage members and viewers but cannot manage other admins or the owner.
+*Clients have scoped read access to their own projects via the client portal.
+**Admins can manage members and viewers but cannot manage other admins or the owner.
 
 ### Backend Enforcement
 
-The `requireRole(authContext, allowedRoles)` function in `authHandler.js` enforces role requirements on the backend. It checks the `role` field from the authenticated JWT payload against the provided list of allowed roles.
+Role enforcement is handled at two levels:
 
-```javascript
-// Example: Only owners and admins can access this endpoint
-requireRole(authContext, ['owner', 'admin']);
-```
-
-If the user's role is not in the `allowedRoles` array, a `403 Forbidden` response is returned with the message: `Insufficient permissions. Required role: owner or admin`.
-
-The user's role is embedded in the JWT at login time and updated when switching teams. It reflects their role within the currently active team.
+1. **RLS policies** check the `role` claim from the JWT to enforce row-level permissions in the database.
+2. **Express API** checks roles via `supabase.auth.getUser()` for server-side endpoints that are not covered by PostgREST.
 
 ### Frontend Enforcement
 
-The auth store (`src/stores/auth.ts`) provides computed properties for role-based UI rendering:
+The auth store (`src/stores/auth.ts`) exposes computed properties for role-based UI rendering:
 
-| Computed Property | Description                                        |
-|-------------------|----------------------------------------------------|
-| `userRole`        | The raw role string (`'owner'`, `'admin'`, etc.)   |
-| `isOwner`         | `true` if `role === 'owner'`                       |
-| `isAdmin`         | `true` if `role === 'admin'`                       |
-| `canManageTeam`   | `true` if role is `'owner'` or `'admin'`           |
+| Computed Property | Description                                         |
+|-------------------|-----------------------------------------------------|
+| `userRole`        | The raw role string (`'owner'`, `'admin'`, etc.)    |
+| `isOwner`         | `true` if `role === 'owner'`                        |
+| `isAdmin`         | `true` if `role === 'admin'`                        |
+| `canManageTeam`   | `true` if role is `'owner'` or `'admin'`            |
 | `canEdit`         | `true` if role is `'owner'`, `'admin'`, or `'member'` |
-| `isViewer`        | `true` if `role === 'viewer'`                      |
+| `isViewer`        | `true` if `role === 'viewer'`                       |
 
-These computed properties are used throughout the frontend to conditionally render UI elements (edit buttons, delete actions, team management sections, etc.). Frontend checks are a UX convenience only; all permissions are enforced on the backend.
-
----
-
-## 4. Rate Limiting
-
-LaunchCue implements MongoDB-backed rate limiting with three tiers, designed for serverless environments (no in-memory state).
-
-### Rate Limit Tiers
-
-| Tier      | Max Requests | Window   | Failure Mode | Use Case                    |
-|-----------|:------------:|----------|:------------:|-----------------------------|
-| `auth`    | 5            | 15 min   | Fail-closed  | Login, registration         |
-| `general` | 100          | 1 min    | Fail-open    | Standard API requests       |
-| `ai`      | 10           | 1 min    | Fail-open    | AI processing (Claude API)  |
-
-### Implementation
-
-Rate limit records are stored in the `rateLimits` MongoDB collection. Each request inserts a document:
-
-```
-{
-  key: string,        // Format: "<category>:<userId-or-IP>"
-  createdAt: Date,    // When the request occurred
-  expiresAt: Date     // For TTL cleanup (createdAt + windowMs)
-}
-```
-
-A MongoDB TTL index on `expiresAt` with `expireAfterSeconds: 0` automatically removes expired records.
-
-### Rate Limit Key
-
-The rate limit key is resolved in the following order of preference:
-1. Authenticated user's `userId` (if provided).
-2. `X-Forwarded-For` header (proxy/load balancer client IP).
-3. `Client-IP` header.
-4. `'unknown'` (fallback).
-
-### Failure Modes
-
-- **Fail-closed (auth tier)**: If the database is unreachable during a rate limit check for authentication endpoints, the request is **denied**. This prevents brute-force attacks from succeeding during database outages.
-- **Fail-open (general and ai tiers)**: If the database is unreachable, the request is **allowed**. Availability is prioritized over strict enforcement for non-security-critical endpoints.
-
-### Response on Rate Limit
-
-When a request is rate limited, the server returns:
-
-```
-HTTP 429 Too Many Requests
-{
-  "error": "Too many requests. Please try again later.",
-  "details": {
-    "retryAfter": <seconds>,
-    "resetAt": "<ISO 8601 timestamp>"
-  }
-}
-```
-
-### Client-Side Retry
-
-The frontend API service (`api.service.ts`) automatically retries on 429 responses up to 3 times with exponential backoff. If a `Retry-After` header is present, it is respected instead of the default backoff calculation.
+These properties are used throughout the frontend to conditionally render UI elements. Frontend checks are a UX convenience only; all permissions are enforced by the database and backend.
 
 ---
 
-## 5. CORS Policy
+## 4. Row-Level Security (RLS)
 
-CORS (Cross-Origin Resource Sharing) is configured in `response.js` and applied to all function responses.
+Every table containing a `team_id` column has PostgreSQL Row-Level Security enabled. RLS is the primary authorization mechanism — it enforces data isolation at the database level.
 
-### Origin Resolution
+### Policy Pattern
 
-The allowed origins are determined by the `ALLOWED_ORIGINS` environment variable:
+All RLS policies follow the same structure:
 
-| Environment                           | Allowed Origins                                      |
-|---------------------------------------|------------------------------------------------------|
-| Production with `ALLOWED_ORIGINS` set | Comma-separated list from the env var                |
-| Production without `ALLOWED_ORIGINS`  | **Empty list -- all cross-origin requests denied**   |
-| Development (NODE_ENV != production)  | `http://localhost:5173`, `http://localhost:8888`      |
+```sql
+-- Read: any team member can SELECT
+CREATE POLICY "team_read" ON <table> FOR SELECT
+  USING (team_id = auth.current_team_id());
 
-### Strict Origin Matching
+-- Write: owner, admin, or member
+CREATE POLICY "team_write" ON <table> FOR INSERT
+  WITH CHECK (team_id = auth.current_team_id() AND auth.can_write());
 
-The CORS handler performs exact-match origin validation. The request's `Origin` header is checked against the allowed list:
+-- Admin-only operations (e.g., team settings, webhooks, invites)
+CREATE POLICY "team_admin" ON <table> FOR UPDATE
+  USING (team_id = auth.current_team_id() AND auth.is_admin());
+```
 
-- If the origin is in the allowed list, it is reflected back in the `Access-Control-Allow-Origin` header.
-- If the origin is **not** in the allowed list, the `Access-Control-Allow-Origin` header is set to an **empty string** (effectively denying the cross-origin request).
-- There is no fallback to the first allowed origin or wildcard `*`.
+`auth.current_team_id()` reads from `auth.jwt() -> 'user_metadata' ->> 'current_team_id'`. `auth.can_write()` checks that the user's role (looked up from `team_members`) is owner, admin, or member. `auth.is_admin()` checks for owner or admin.
+
+This ensures that:
+
+- Users can only read rows belonging to their current team.
+- Write and delete operations additionally require a sufficient role via `auth.can_write()`.
+- Administrative operations require `auth.is_admin()`.
+- **No application-level team filtering is needed.** PostgREST applies policies automatically on every query.
+
+### Soft Delete Views
+
+Tables use soft deletion (`deleted_at` column). Active record views filter out soft-deleted rows:
+
+```sql
+CREATE VIEW active_tasks AS
+  SELECT * FROM tasks WHERE deleted_at IS NULL;
+```
+
+RLS policies apply to the underlying tables, and views inherit the security context.
+
+### Key Guarantees
+
+- A user on Team A can never read or modify data belonging to Team B, regardless of what queries the application issues.
+- Even if a bug in the frontend omits a `team_id` filter, the database rejects unauthorized access.
+- RLS policies are enforced for all access through PostgREST, including Supabase JS client calls.
+
+---
+
+## 5. Rate Limiting
+
+Rate limiting is applied at two layers: the Express API server and the Supabase Kong gateway.
+
+### Express API Rate Limiting
+
+The Express server uses `express-rate-limit` middleware with in-memory storage:
+
+| Tier       | Max Requests | Window  | Applied To                     |
+|------------|:------------:|---------|--------------------------------|
+| General    | 100          | 15 min  | All `/api` routes              |
+
+Rate limit responses return `HTTP 429 Too Many Requests` with a `Retry-After` header.
+
+### Supabase Rate Limiting
+
+The Kong API gateway provides rate limiting for all Supabase services (PostgREST, GoTrue, Realtime). These limits are configured at the infrastructure level and apply per-IP.
+
+---
+
+## 6. CORS Policy
+
+CORS is configured at two layers to control cross-origin access.
+
+### Express API Server
+
+The Express server uses the `cors` middleware:
+
+| Environment | Allowed Origins                                     |
+|-------------|-----------------------------------------------------|
+| Production  | Comma-separated list from `ALLOWED_ORIGINS` env var |
+| Development | `http://localhost:5173` (Vite dev server)           |
+
+If `ALLOWED_ORIGINS` is not set, the server falls back to `['http://localhost:5173']` regardless of `NODE_ENV`.
+
+### Supabase (Kong Gateway)
+
+The Kong API gateway handles CORS for PostgREST and GoTrue endpoints. CORS configuration is managed through Supabase project settings.
 
 ### CORS Headers
 
-All responses include:
-
 ```
-Access-Control-Allow-Origin: <matched origin or empty>
-Access-Control-Allow-Headers: Content-Type, Authorization
-Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS
+Access-Control-Allow-Origin: <matched origin>
+Access-Control-Allow-Headers: Content-Type, Authorization, apikey, x-client-info
+Access-Control-Allow-Methods: GET, POST, PUT, DELETE, PATCH, OPTIONS
 Access-Control-Allow-Credentials: true
 Vary: Origin
 ```
 
-The `Vary: Origin` header ensures that caches (CDN, browser) do not serve a response with the wrong `Access-Control-Allow-Origin` value.
-
 ### Preflight Handling
 
-`OPTIONS` requests are handled by `handleOptionsRequest()`, which returns a `204 No Content` response with the appropriate CORS headers. This allows browsers to complete the CORS preflight before sending the actual request.
+`OPTIONS` requests are handled with a `204 No Content` response containing the appropriate CORS headers, allowing browsers to complete the CORS preflight before sending the actual request.
 
 ---
 
-## 6. Security Headers
+## 7. Security Headers
 
-All responses from the Netlify CDN include the following security headers, configured in `netlify.toml`:
+Security headers are applied by the DigitalOcean App Platform and CDN at the edge.
 
 ### Header Details
 
-| Header                       | Value                                                                                                   | Purpose                                                 |
-|------------------------------|----------------------------------------------------------------------------------------------------------|---------------------------------------------------------|
-| `Strict-Transport-Security`  | `max-age=31536000; includeSubDomains; preload`                                                          | Enforce HTTPS for 1 year, including subdomains          |
-| `X-Frame-Options`            | `DENY`                                                                                                  | Prevent all framing (clickjacking protection)           |
-| `X-Content-Type-Options`     | `nosniff`                                                                                               | Prevent MIME type sniffing                              |
-| `X-XSS-Protection`           | `1; mode=block`                                                                                         | Enable legacy XSS filter in blocking mode               |
-| `Referrer-Policy`            | `strict-origin-when-cross-origin`                                                                       | Send origin only on cross-origin requests, full URL on same-origin |
-| `Permissions-Policy`         | `camera=(), microphone=(), geolocation=()`                                                              | Deny access to camera, microphone, and geolocation APIs |
-| `Content-Security-Policy`    | See breakdown below                                                                                     | Restrict resource loading sources                       |
+| Header                       | Value                                                    | Purpose                                            |
+|------------------------------|----------------------------------------------------------|----------------------------------------------------|
+| `Strict-Transport-Security`  | `max-age=31536000; includeSubDomains; preload`           | Enforce HTTPS for 1 year, including subdomains     |
+| `X-Frame-Options`            | `DENY`                                                   | Prevent all framing (clickjacking protection)      |
+| `X-Content-Type-Options`     | `nosniff`                                                | Prevent MIME type sniffing                         |
+| `X-XSS-Protection`           | `1; mode=block`                                          | Enable legacy XSS filter in blocking mode          |
+| `Referrer-Policy`            | `strict-origin-when-cross-origin`                        | Limit referrer information on cross-origin requests|
+| `Permissions-Policy`         | `camera=(), microphone=(), geolocation=()`               | Deny access to sensitive browser APIs              |
 
-### Content Security Policy Breakdown
+### Content Security Policy
 
 ```
 default-src 'self';
@@ -322,164 +287,143 @@ script-src 'self';
 style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
 font-src 'self' https://fonts.gstatic.com;
 img-src 'self' data: https:;
-connect-src 'self' https://*.netlify.app https://*.mongodb.net;
+connect-src 'self' https://<supabase-project>.supabase.co wss://<supabase-project>.supabase.co;
 ```
 
-| Directive     | Sources                                                | Notes                                          |
-|---------------|--------------------------------------------------------|------------------------------------------------|
-| `default-src` | `'self'`                                               | Baseline: only same-origin                     |
-| `script-src`  | `'self'`                                               | No inline scripts, no eval                     |
-| `style-src`   | `'self'` `'unsafe-inline'` `fonts.googleapis.com`      | Inline styles allowed (required by Tailwind)   |
-| `font-src`    | `'self'` `fonts.gstatic.com`                           | Google Fonts support                           |
-| `img-src`     | `'self'` `data:` `https:`                              | Allows data URIs and any HTTPS image           |
-| `connect-src` | `'self'` `*.netlify.app` `*.mongodb.net`               | API calls to Netlify Functions and MongoDB      |
+| Directive     | Sources                                          | Notes                                            |
+|---------------|--------------------------------------------------|--------------------------------------------------|
+| `default-src` | `'self'`                                         | Baseline: only same-origin                       |
+| `script-src`  | `'self'`                                         | No inline scripts, no eval                       |
+| `style-src`   | `'self'` `'unsafe-inline'` `fonts.googleapis.com`| Inline styles allowed (required by Tailwind)     |
+| `font-src`    | `'self'` `fonts.gstatic.com`                     | Google Fonts support                             |
+| `img-src`     | `'self'` `data:` `https:`                        | Allows data URIs and any HTTPS image             |
+| `connect-src` | `'self'` `<supabase-project>.supabase.co`        | API calls to Supabase (HTTP and WebSocket)       |
 
 ### Cache Control
 
-- `/assets/*` (hashed build artifacts): `public, max-age=31536000, immutable` -- cached for 1 year, browser never revalidates.
+- `/assets/*` (hashed build artifacts): `public, max-age=31536000, immutable` -- cached for 1 year.
 - `/index.html`: `no-cache, no-store, must-revalidate` -- never cached, ensuring SPA updates propagate immediately.
 
 ---
 
-## 7. Password Requirements
+## 8. Password Requirements
 
-Passwords are validated on registration using a Zod schema with the following rules:
+Password policy is configured in Supabase Auth (GoTrue) at the project level.
 
-| Requirement                | Rule                               |
-|----------------------------|------------------------------------|
-| Minimum length             | 10 characters                      |
-| Uppercase letter           | At least one (`/[A-Z]/`)           |
-| Lowercase letter           | At least one (`/[a-z]/`)           |
-| Number                     | At least one (`/[0-9]/`)           |
-| Special character          | At least one (`/[^a-zA-Z0-9]/`)   |
+### Configuration
 
-### Password Hashing
+Password requirements are set via the Supabase dashboard or GoTrue configuration:
 
-Passwords are hashed using **bcrypt** with a cost factor (salt rounds) of **10**. The `bcryptjs` library is used, which is a pure JavaScript implementation compatible with serverless environments.
+| Setting             | Value                          |
+|---------------------|--------------------------------|
+| Minimum length      | Configured in Supabase Auth    |
+| Complexity rules    | Configured in Supabase Auth    |
 
-```javascript
-const salt = await bcrypt.genSalt(10);
-const hashedPassword = await bcrypt.hash(password, salt);
-```
+### Password Handling
 
-Plaintext passwords are never stored, logged, or returned in API responses.
+- Supabase Auth handles all password hashing internally using bcrypt.
+- The application never receives, stores, or processes plaintext passwords.
+- Password reset flows are managed entirely by GoTrue (reset email, token verification, password update).
 
 ---
 
-## 8. Token Storage
+## 9. Session Management
 
-### sessionStorage (Not localStorage)
+### Application-Managed Sessions
 
-JWT tokens and auth state are stored in the browser's `sessionStorage`, not `localStorage`. This is a deliberate security choice:
+Session persistence is managed by the auth store (`src/stores/auth.ts`), not the Supabase JS client's built-in session handling:
 
-- **sessionStorage** is scoped to the browser tab and is cleared when the tab is closed. If a user closes the browser or the tab, their session ends immediately.
-- **localStorage** persists across browser sessions and tabs, which increases the window of exposure if a token is compromised.
+- **Storage**: User data, token, teams, and current team are persisted in `sessionStorage` (not `localStorage`). Sessions do **not** survive browser restarts or persist across tabs.
+- **Token expiry check**: On initialization, the auth store manually decodes the JWT payload via `atob(jwt.split('.')[1])` and checks the `exp` claim against the current time. Expired tokens are discarded and the user must re-authenticate.
+- **No auto-refresh**: The application does not use Supabase's built-in token auto-refresh. If the token expires, the session is cleared.
 
-### Stored Items
+### Auth State Initialization
 
-| Key            | Content                     |
-|----------------|-----------------------------|
-| `token`        | The raw JWT string          |
-| `user`         | JSON-serialized user object |
-| `teams`        | JSON-serialized team list   |
-| `currentTeam`  | JSON-serialized active team |
+On application startup, the auth store reads user and token data from `sessionStorage` (not `supabase.auth.getSession()`). If the token is missing or expired (checked via manual JWT decode), the session is cleared and the user is redirected to login.
 
-### Token Lifecycle in the Frontend
+### Logout
 
-1. On login/register, the token is saved to `sessionStorage` and set in the `ApiService` instance's in-memory `_token` field.
-2. The Axios request interceptor reads `_token` from memory and attaches it as the `Authorization: Bearer <token>` header on every outgoing request.
-3. On `initAuth()` (called on app startup), the token is read from `sessionStorage` back into memory. If the token's `exp` claim is in the past, all auth state is cleared.
-4. On logout, `sessionStorage` is cleared and `_token` is set to `null`.
-5. On 401 responses from auth-related endpoints, the `onUnauthorized` callback triggers automatic logout.
+On logout:
+
+1. `supabase.auth.signOut()` is called via the auth adapter.
+2. All `sessionStorage` keys (`token`, `user`, `teams`, `currentTeam`) are removed.
+3. All non-auth Pinia stores are disposed to clear stale data.
+4. The user is redirected to the landing page.
+
+### Auth State Listener
+
+The auth adapter registers an `onUnauthorized` callback so that 401 responses from the Supabase client trigger a logout. The application does **not** use `onAuthStateChange` for cross-tab sync (since `sessionStorage` is tab-scoped).
 
 ---
 
-## 9. Error Sanitization
+## 10. Error Sanitization
 
 LaunchCue sanitizes error responses to prevent information leakage in production.
 
-### Backend Error Handling
+### Express API Error Handling
 
-In catch blocks, error details are conditionally included based on the environment:
+There is no centralized error-handling middleware in the Express server. Each route handles errors individually with its own try/catch blocks, returning error messages directly in the response. Error sanitization is not consistently applied across routes.
 
-```javascript
-const safeDetails = process.env.NODE_ENV === 'production' ? undefined : error.message;
-return createErrorResponse(500, 'Internal Server Error', safeDetails);
-```
+### Supabase Error Handling
 
-- **Production** (`NODE_ENV === 'production'`): 500 responses contain only the generic message `"Internal Server Error"`. The `error.message` is never sent to the client.
-- **Development**: The actual `error.message` is included in the `details` field for debugging convenience.
-
-### Email Verification Token Exposure
-
-Similarly, email verification tokens are only included in API responses when `NODE_ENV !== 'production'`:
-
-```javascript
-if (process.env.NODE_ENV !== 'production') {
-  responseBody.verificationToken = verificationToken;
-}
-```
+PostgREST error responses are caught by the Supabase client and transformed into user-friendly messages. Database constraint names and internal PostgreSQL error details are not exposed to end users.
 
 ### Logging
 
-Internal errors are always logged server-side via the logger utility regardless of environment, ensuring that production issues can still be diagnosed from server logs without exposing details to clients.
+Internal errors are logged server-side regardless of environment, ensuring production issues can be diagnosed from server logs without exposing details to clients.
 
 ---
 
-## 10. Audit Logging
+## 11. Audit Logging
 
-All mutation operations (create, update, delete) are logged to the `auditLogs` MongoDB collection for accountability and compliance.
+All mutation operations (create, update, delete) are logged to the `audit_logs` PostgreSQL table for accountability and compliance.
 
 ### Audit Log Schema
 
+```sql
+CREATE TABLE audit_logs (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  team_id     UUID NOT NULL REFERENCES teams(id),
+  user_id     UUID NOT NULL REFERENCES auth.users(id),
+  action      TEXT NOT NULL,        -- 'create', 'update', 'delete'
+  resource_type TEXT NOT NULL,      -- 'task', 'project', 'client', etc.
+  resource_id UUID,
+  changes     JSONB,                -- { field: { from: old, to: new } }
+  created_at  TIMESTAMPTZ DEFAULT now()
+);
 ```
-{
-  userId: string,         // Who performed the action
-  teamId: string,         // Which team context the action occurred in
-  action: string,         // 'create', 'update', or 'delete'
-  resourceType: string,   // 'task', 'project', 'client', 'campaign', etc.
-  resourceId: string,     // The ID of the affected resource
-  changes: object | null, // For updates: { field: { from: oldValue, to: newValue } }
-  timestamp: Date         // When the action occurred
-}
-```
+
+### Indexing
+
+- Primary index on `(team_id, created_at DESC)` for efficient team-scoped queries.
+- Additional index on `resource_type` for filtering by entity type.
+
+### Access Control
+
+- **Write**: Audit log entries are created automatically by PostgreSQL triggers (defined in `004_functions.sql`), not by application code. The `create_audit_log()` trigger fires `AFTER INSERT OR UPDATE` on key entity tables (tasks, projects, clients, invoices, scopes). The Supabase adapter's `create()` method throws an error: "Audit logs are system-generated and cannot be created manually."
+- **Read**: Audit logs are accessible via a read-only API restricted to `owner` and `admin` roles (enforced by RLS with `auth.is_admin()`).
+- **RLS**: Audit logs have RLS enabled, scoped by `team_id` and restricted to admin roles.
 
 ### Design Principles
 
-- **Non-blocking**: Audit log creation is wrapped in a try/catch that logs failures but never throws. A failed audit log write does not break the main operation. The application prioritizes the user's action succeeding over the audit record being written.
-- **Change tracking**: For update operations, the `changes` field captures a diff of modified fields with their previous (`from`) and new (`to`) values, enabling full change history review.
-- **Team-scoped**: Every audit entry is tagged with a `teamId`, allowing audit logs to be queried per team.
-- **Backend-only**: The `createAuditLog()` function is called from Netlify function handlers after a successful mutation. It is never exposed as a public API endpoint for writing -- only reading audit logs is exposed to authorized users.
-
-### Usage Pattern
-
-```javascript
-const { createAuditLog } = require('./utils/auditLog');
-
-// After a successful update:
-await createAuditLog(db, {
-  userId: authContext.userId,
-  teamId: authContext.teamId,
-  action: 'update',
-  resourceType: 'task',
-  resourceId: taskId,
-  changes: { status: { from: 'todo', to: 'in_progress' } }
-});
-```
+- **Trigger-based**: Audit logging is handled entirely at the database level via PostgreSQL `AFTER` triggers, ensuring every mutation is captured regardless of which application path performed it.
+- **Team-scoped**: Every entry is tagged with `team_id`, and RLS ensures teams can only view their own audit trail.
+- **Immutable**: Audit log entries are insert-only. The adapter rejects `update()` and `delete()` calls with errors.
 
 ---
 
 ## Summary of Security Layers
 
-| Layer               | Mechanism                                    | Failure Mode   |
-|---------------------|----------------------------------------------|----------------|
-| Transport           | HSTS, HTTPS enforcement                      | --             |
-| Authentication      | JWT (browser), API Key (programmatic)        | Fail-closed    |
-| Authorization       | RBAC with 4 roles, backend `requireRole()`   | Deny by default|
-| Rate Limiting       | MongoDB-backed, 3 tiers                      | Mixed          |
-| Origin Control      | Strict CORS, no wildcard                     | Deny by default|
-| Content Security    | CSP, X-Frame-Options, nosniff                | Block          |
-| Password Security   | Bcrypt (10 rounds), 5-rule validation        | --             |
-| Token Security      | sessionStorage, 24h expiry, revocation       | Fail-closed    |
-| Error Handling      | Production error sanitization                | --             |
-| Audit Trail         | All mutations logged with diffs              | Non-blocking   |
+| Layer               | Mechanism                                          | Enforcement Point        |
+|---------------------|----------------------------------------------------|--------------------------|
+| Transport           | HSTS, HTTPS enforcement                            | CDN / App Platform       |
+| Authentication      | Supabase Auth (GoTrue), API keys                   | GoTrue, Kong, Express    |
+| Authorization       | RBAC with 5 roles                                  | RLS policies, Express    |
+| Data Isolation      | Row-Level Security on all team-scoped tables       | PostgreSQL               |
+| Rate Limiting       | express-rate-limit, Kong gateway                   | Express, Kong            |
+| Origin Control      | Strict CORS, no wildcard                           | Express, Kong            |
+| Content Security    | CSP, X-Frame-Options, nosniff                      | CDN / App Platform       |
+| Password Security   | GoTrue-managed bcrypt hashing and policy           | Supabase Auth            |
+| Session Security    | Supabase-managed tokens, auto-refresh              | Supabase JS client       |
+| Error Handling      | Production error sanitization                      | Express, Supabase client |
+| Audit Trail         | All mutations logged with JSONB diffs              | PostgreSQL               |

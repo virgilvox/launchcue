@@ -1,0 +1,124 @@
+import type { BrainDump } from '@/types/models'
+import type { BrainDumpCreateRequest } from '@/types/api'
+import { SupabaseBaseRepository } from './base.repository'
+import { getSupabase } from './client'
+
+export class SupabaseBrainDumpRepository extends SupabaseBaseRepository<BrainDump, BrainDumpCreateRequest, Partial<BrainDump>> {
+  constructor() {
+    super('brain_dumps', 'brain_dumps', { // No soft delete, no active_ view
+      clientId: 'client_id',
+      projectId: 'project_id',
+      teamId: 'team_id',
+      userId: 'user_id',
+    })
+  }
+
+  async delete(id: string): Promise<void> {
+    // Brain dumps use hard delete (no soft delete columns)
+    const { error } = await getSupabase()
+      .from(this.tableName)
+      .delete()
+      .eq('id', id)
+    if (error) throw new Error(error.message)
+  }
+
+  protected mapFromDb(row: Record<string, unknown>): BrainDump {
+    return {
+      id: row.id as string,
+      title: row.title as string,
+      content: row.content as string | undefined,
+      tags: (row.tags as string[]) || [],
+      clientId: row.client_id as string | null,
+      projectId: row.project_id as string | null,
+      teamId: row.team_id as string,
+      userId: row.user_id as string,
+      createdAt: row.created_at as string,
+      updatedAt: row.updated_at as string,
+    }
+  }
+
+  async getContextData(params: Record<string, unknown>): Promise<unknown> {
+    const sb = getSupabase()
+    const options = typeof params.options === 'string' ? JSON.parse(params.options) : (params.options || {})
+    const clientId = params.clientId as string | undefined
+    const projectId = params.projectId as string | undefined
+
+    const result: Record<string, unknown> = {}
+
+    if (options.includeClients !== false && clientId) {
+      const { data } = await sb.from('active_clients').select('*').eq('id', clientId).single()
+      result.clientInfo = data
+    }
+
+    if (options.includeProjects !== false && projectId) {
+      const { data } = await sb.from('active_projects').select('*').eq('id', projectId).single()
+      result.projectInfo = data
+    }
+
+    if (options.includeTasks !== false) {
+      let query = sb.from('active_tasks').select('title, status, due_date')
+      if (clientId) query = query.eq('client_id', clientId)
+      if (projectId) query = query.eq('project_id', projectId)
+      const { data } = await query.limit(50)
+      result.tasks = data || []
+    }
+
+    if (options.includeNotes !== false) {
+      let query = sb.from('active_notes').select('title, content')
+      if (clientId) query = query.eq('client_id', clientId)
+      if (projectId) query = query.eq('project_id', projectId)
+      const { data } = await query.limit(30)
+      result.notes = data || []
+    }
+
+    if (options.includeCampaigns !== false) {
+      let query = sb.from('active_campaigns').select('title, status, start_date, end_date')
+      if (clientId) query = query.eq('client_id', clientId)
+      if (projectId) query = query.eq('project_id', projectId)
+      const { data } = await query.limit(20)
+      result.campaigns = data || []
+    }
+
+    if (options.includeCalendar !== false) {
+      const now = new Date().toISOString()
+      const thirtyDays = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+      let query = sb.from('active_calendar_events').select('title, start, end, description')
+        .gte('start', now)
+        .lte('start', thirtyDays)
+      if (clientId) query = query.eq('client_id', clientId)
+      if (projectId) query = query.eq('project_id', projectId)
+      const { data } = await query.limit(30)
+      result.calendarEvents = data || []
+    }
+
+    return result
+  }
+
+  async createItems(payload: Record<string, unknown>): Promise<unknown> {
+    const sb = getSupabase()
+    const results: Record<string, number> = { taskCount: 0, eventCount: 0, projectCount: 0 }
+
+    const tasks = payload.tasks as Array<Record<string, unknown>> | undefined
+    if (tasks?.length) {
+      const rows = tasks.map(t => this.mapToDb(t))
+      const { data } = await sb.from('tasks').insert(rows).select()
+      results.taskCount = data?.length || 0
+    }
+
+    const events = payload.events as Array<Record<string, unknown>> | undefined
+    if (events?.length) {
+      const rows = events.map(e => this.mapToDb(e))
+      const { data } = await sb.from('calendar_events').insert(rows).select()
+      results.eventCount = data?.length || 0
+    }
+
+    const projects = payload.projects as Array<Record<string, unknown>> | undefined
+    if (projects?.length) {
+      const rows = projects.map(p => this.mapToDb(p))
+      const { data } = await sb.from('projects').insert(rows).select()
+      results.projectCount = data?.length || 0
+    }
+
+    return { results }
+  }
+}

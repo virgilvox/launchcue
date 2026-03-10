@@ -2,8 +2,8 @@
 
 LaunchCue is a DevRel (Developer Relations) management platform for tracking
 clients, projects, tasks, campaigns, notes, resources, calendar events, and
-brain dumps. It is built as a single-page application backed by serverless
-functions and a managed MongoDB database.
+brain dumps. It is built as a Vue 3 SPA backed by Supabase (PostgreSQL, Auth,
+Realtime) and an Express API server for AI, webhooks, and email.
 
 ---
 
@@ -18,46 +18,66 @@ functions and a managed MongoDB database.
 7. [AI Integration](#7-ai-integration)
 8. [Key Design Decisions](#8-key-design-decisions)
 9. [Environment and Configuration](#9-environment-and-configuration)
-10. [Security Measures](#10-security-measures)
 
 ---
 
 ## 1. System Overview
 
 ```
- +-------------+        +-------------------+        +--------------------+
- |             |  HTTPS  |                   |  HTTPS  |                    |
- |   Browser   +-------->+   Netlify CDN     +-------->+  Netlify Functions |
- |  (Vue SPA)  |<--------+  (Static Assets)  |<--------+   (Node.js 18)     |
- |             |         |                   |         |                    |
- +-------------+         +-------------------+         +---------+----------+
-                                                                 |
-                                                                 | MongoDB
-                                                                 | Driver
-                                                                 v
-                                                       +--------------------+
-                                                       |                    |
-                                                       |  MongoDB Atlas     |
-                                                       |  (Document DB)     |
-                                                       |                    |
-                                                       +--------------------+
-
-                         +-------------------+
-                         |                   |
-                         |  Anthropic API    |  <-- Called from ai-process
-                         |  (Claude)         |      function only
-                         |                   |
-                         +-------------------+
+                              +---------------------+
+                              |                     |
+                              |   Anthropic API     |
+                              |   (Claude)          |
+                              |                     |
+                              +---------^-----------+
+                                        |
+                                        | AI requests only
+                                        |
++-------------+        +---------------+---------------+
+|             |  HTTPS  |                               |
+|   Browser   +-------->+   Express API Server          |
+|  (Vue SPA)  |<--------+   (Node.js, port 3001)       |
+|             |   /api   |   - /api/ai                  |
++------+------+         |   - /api/webhooks             |
+       |                |   - /api/email                |
+       |                +---------------+---------------+
+       |                                |
+       |  Supabase JS Client            | Supabase Service Role
+       |                                |
+       v                                v
++------+--------------------------------+---------------+
+|                                                       |
+|                    Supabase Stack                      |
+|                                                       |
+|  +-------------+  +-----------+  +-----------+        |
+|  |             |  |           |  |           |        |
+|  |  Kong       |  |  GoTrue   |  | Realtime  |        |
+|  |  (Gateway)  |  |  (Auth)   |  | (WS)      |        |
+|  |             |  |           |  |           |        |
+|  +------+------+  +-----+-----+  +-----+-----+        |
+|         |               |              |              |
+|         v               v              v              |
+|  +------+---------------+--------------+------+       |
+|  |                                            |       |
+|  |           PostgreSQL                       |       |
+|  |           (RLS-enforced, 26 tables)       |       |
+|  |                                            |       |
+|  +--------------------------------------------+       |
+|                                                       |
++-------------------------------------------------------+
 ```
 
 ### Request Lifecycle
 
-1. The browser loads the Vue SPA from Netlify's CDN (static `dist/` folder).
-2. The SPA makes API calls to `/.netlify/functions/<name>` endpoints.
-3. Netlify routes those calls to the corresponding serverless function.
-4. Each function authenticates the request, queries MongoDB, and returns JSON.
-5. For AI features, the `ai-process` function proxies requests to the Anthropic
-   Messages API, keeping the API key server-side.
+1. The browser loads the Vue SPA (static `dist/` folder).
+2. For data operations, the SPA uses the Supabase JS client directly --
+   PostgREST translates JS queries to SQL, RLS policies enforce access.
+3. For AI processing, webhooks, and email, the SPA calls the Express API
+   server at `/api/*` (proxied by Vite in dev, reverse-proxied in prod).
+4. The Express server uses a Supabase service role key for privileged
+   operations (bypassing RLS where needed).
+5. Realtime subscriptions push database changes to connected clients via
+   WebSockets.
 
 ---
 
@@ -65,108 +85,106 @@ functions and a managed MongoDB database.
 
 ### Technology Stack
 
-| Layer         | Technology                                      |
-|---------------|-------------------------------------------------|
-| Framework     | Vue 3 (Composition API, `<script setup>`)       |
-| State         | Pinia (typed stores)                             |
+| Layer         | Technology                                       |
+|---------------|--------------------------------------------------|
+| Framework     | Vue 3 (Composition API) + TypeScript (incremental) |
+| State         | Pinia (18 typed stores, repository pattern)      |
 | Routing       | Vue Router 4 (history mode)                      |
-| HTTP Client   | Axios (singleton `ApiService` class)             |
-| Styling       | Tailwind CSS (indigo primary, class-based dark)  |
+| Data access   | Supabase JS client (no Axios)                    |
+| API calls     | Native `fetch` for Express server                |
+| Styling       | Tailwind CSS (brutalist design system)           |
 | Build         | Vite                                             |
+| DI            | ServiceContainer (symbol-keyed)                  |
 | Toasts        | vue-toastification                               |
 | Charts        | Chart.js + vue-chartjs                           |
 | Rich Text     | Tiptap                                           |
-| Types         | TypeScript (incremental, `allowJs: true`)        |
 
 ### Layer Diagram
 
 ```
 +---------------------------------------------------------------------+
 |                         Vue Router                                   |
-|  (route guards check authStore.isAuthenticated before navigation)    |
+|  Route guards check Supabase auth session before navigation          |
+|  14 feature modules declare routes as data, collected on demand      |
 +---------------------------------------------------------------------+
         |
         v
 +---------------------------------------------------------------------+
-|                          Pages                                       |
-|  src/pages/*.vue                                                     |
-|  (Dashboard, Tasks, Projects, Clients, Calendar, Campaigns,         |
-|   Notes, Resources, BrainDump, Settings, Team, auth/*)              |
+|                    Feature Modules (14)                               |
+|  src/modules/{feature}/{pages/, components/, index.ts}               |
+|                                                                     |
+|  tasks, calendar, clients, projects, campaigns, scopes, invoices,   |
+|  notes, brain-dump, resources, team, settings, onboarding,          |
+|  notifications + auth pages (dashboard exists as a directory but    |
+|  is not a registered feature module)                                |
+|                                                                     |
+|  Each module exports: routes, nav items, search providers,          |
+|  dependencies, setup()                                              |
 +---------------------------------------------------------------------+
         |
         v
 +---------------------------------------------------------------------+
-|                        Components                                    |
-|  src/components/ui/         -- Reusable primitives (Badge, Card,     |
-|                                FormInput, DataTable, ConfirmDialog,  |
-|                                SkeletonLoader, EmptyState, etc.)     |
-|  src/components/tasks/      -- TaskList, TaskForm, TaskFilters,      |
-|                                TaskKanban                            |
-|  src/components/dashboard/  -- Dashboard widgets                     |
-|  src/components/brain-dump/ -- BrainDumpForm                         |
-|  src/components/settings/   -- ApiKeyManager, WebhookManager,        |
-|                                AuditLogViewer                        |
-|  src/components/resource/   -- ResourceDialog                        |
-|  src/components/            -- Modal, GlobalSearch, DefaultLayout     |
+|                    Shared Components                                  |
+|  src/components/ui/      -- Badge, Card, FormInput, DataTable,       |
+|                             ConfirmDialog, SkeletonLoader, etc.      |
+|  src/components/tasks/   -- TaskList, TaskForm, TaskKanban           |
+|  src/components/         -- Modal, GlobalSearch, Sidebar,            |
+|                             DefaultLayout, CommentThread             |
 +---------------------------------------------------------------------+
         |
         v
 +---------------------------------------------------------------------+
-|                     Pinia Stores (src/stores/*.ts)                    |
-|  auth.ts    -- user, token, teams, RBAC computed props               |
-|  task.ts    -- task CRUD, filtering                                  |
-|  project.ts -- project CRUD                                         |
-|  client.ts  -- client CRUD                                          |
-|  calendar.ts-- calendar event CRUD                                   |
-|  resource.ts-- resource CRUD                                        |
-|  team.ts    -- team member management                                |
-|  notification.js -- notification polling                             |
+|                 Pinia Stores (src/stores/*.ts)                        |
+|  18 stores, ALL use repository pattern via DI container              |
+|                                                                     |
+|  auth, task, project, client, calendar, team, notification,          |
+|  invoice, scope, onboarding, brain-dump, campaign, comment,          |
+|  note, webhook, api-key, audit-log, resource                        |
+|                                                                     |
+|  Pattern: getContainer().resolve(SYMBOL_KEY) -> Repository<T>       |
 +---------------------------------------------------------------------+
         |
         v
 +---------------------------------------------------------------------+
-|                   Services (src/services/*.ts)                        |
-|  api.service.ts       -- Axios singleton, interceptors, retry logic  |
-|  task.service.ts      -- Task API calls                              |
-|  project.service.ts   -- Project API calls                           |
-|  client.service.ts    -- Client API calls                            |
-|  campaign.service.ts  -- Campaign API calls                          |
-|  calendar.service.ts  -- Calendar API calls                          |
-|  note.service.ts      -- Note API calls                              |
-|  brain-dump.service.ts-- Brain dump + AI processing                  |
-|  resource.service.ts  -- Resource API calls                          |
-|  team.service.ts      -- Team management                             |
-|  user.service.ts      -- Profile management                          |
-|  apiKey.service.ts    -- API key management                          |
-|  settings.service.ts  -- App settings                                |
-|  comment.service.js   -- Comment threads                             |
-|  notification.service.js -- Notification fetching                    |
-|  auditLog.service.js  -- Audit log viewer                            |
-|  webhook.service.js   -- Webhook management                          |
+|                 Core Infrastructure (src/core/)                       |
+|                                                                     |
+|  ServiceContainer  -- Symbol-keyed DI, lazy singleton resolution     |
+|  EventBus          -- Typed pub/sub for cross-module communication   |
+|  PluginRegistry    -- Topological dependency sort, module loading    |
 +---------------------------------------------------------------------+
         |
         v
 +---------------------------------------------------------------------+
-|                     Axios HTTP Layer                                  |
-|  - Request interceptor injects Bearer token from memory              |
-|  - Response interceptor strips to .data                              |
-|  - 401 triggers onUnauthorized callback -> auth store logout         |
-|  - Automatic retry (3x) on 429, 502, 503, 504 with exponential      |
-|    backoff and Retry-After header support                            |
+|              Adapters (src/adapters/supabase/*.ts)                    |
+|                                                                     |
+|  Repository<T, CreateDTO, UpdateDTO> interface                       |
+|  22 symbol keys in src/adapters/repository-keys.ts                   |
+|  Supabase implementations for all repositories                       |
+|                                                                     |
+|  Extended interfaces:                                                |
+|    TeamRepository, BrainDumpRepository,                              |
+|    CommentRepository, NotificationRepository                         |
 +---------------------------------------------------------------------+
         |
-        | HTTP (/.netlify/functions/<name>)
         v
-     [Backend]
++---------------------------------------------------------------------+
+|              Supabase JS Client                                      |
+|  supabase.from('table').select/insert/update/delete                  |
+|  supabase.auth.signIn/signUp/signOut/getSession                     |
+|  Notifications use polling (not Realtime subscriptions)              |
++---------------------------------------------------------------------+
 ```
 
-### Routing and Navigation Guards
+### Routing and Feature Modules
 
 The router (`src/router/index.ts`) uses `createWebHistory` for clean URLs.
-All lazy-loaded page components are wrapped in dynamic `import()` for
-code-splitting. A global `beforeEach` guard checks `meta.requiresAuth` and
-redirects unauthenticated users to `/login`. Authenticated routes are nested
-under `DefaultLayout`, which provides the sidebar and top navigation.
+Feature modules declare their routes, navigation items, and search providers
+as plain data objects. The PluginRegistry resolves module dependencies via
+topological sort and calls `setup()` during `initialize()`. Routes, nav
+items, and search providers are collected on demand via `getRoutes()`,
+`getNavGroups()`, and `getSearchProviders()`. A global `beforeEach`
+guard checks the Supabase auth session and redirects unauthenticated users
+to `/login`.
 
 ### Type System
 
@@ -178,295 +196,127 @@ TypeScript definitions live in `src/types/`:
   applicable, `SoftDeletable`.
 - `enums.ts` -- Const objects + derived types for TaskStatus, TaskPriority,
   ProjectStatus, CampaignStatus, TeamRole, EventColor, NotificationType,
-  ApiScope, InviteStatus.
-- `api.ts` -- Request/response shapes (AuthResponse, LoginRequest,
-  RegisterRequest, SwitchTeamRequest, SearchResult, etc.).
+  ApiScope, ScopeStatus, DeliverableStatus, InvoiceStatus,
+  OnboardingStepType, OnboardingStatus, InviteStatus.
+- `api.ts` -- Request/response shapes.
 - `index.ts` -- Barrel re-exports.
 
 ---
 
 ## 3. Backend Architecture
 
-### Technology Stack
+### Supabase Stack
 
-| Concern        | Technology                       |
-|----------------|----------------------------------|
-| Runtime        | Node.js 18 (Netlify Functions)   |
-| Module format  | CommonJS (`require`/`module.exports`) |
-| Database       | MongoDB (via `mongodb` driver)   |
-| Auth           | `jsonwebtoken`, `bcryptjs`       |
-| Validation     | Zod                              |
-| AI             | Anthropic Messages API (fetch)   |
+| Component  | Role                                                  |
+|------------|-------------------------------------------------------|
+| PostgreSQL | Primary database, RLS policies, 26 tables             |
+| GoTrue     | Authentication (signup, login, session management)     |
+| PostgREST  | Auto-generated REST API from database schema           |
+| Realtime   | WebSocket-based change notifications                   |
+| Kong       | API gateway, routing, rate limiting                    |
 
-### Function Layout
+Supabase runs either self-hosted (via Docker Compose) or as a managed
+instance. Local development uses `docker-compose.dev.yml` on port 8000.
 
-All 28 function files live flat (not nested) in `netlify/functions/`:
+### Express API Server
 
-```
-netlify/functions/
-  ai-process.js            -- Anthropic Claude proxy
-  api-keys.js              -- CRUD for API keys
-  audit-logs.js            -- Audit log retrieval
-  auth-change-password.js  -- Password change
-  auth-forgot-password.js  -- Forgot password token generation
-  auth-login.js            -- Email/password login -> JWT
-  auth-logout.js           -- Logout / token revocation
-  auth-register.js         -- Registration + default team creation
-  auth-reset-password.js   -- Token-based password reset
-  auth-switch-team.js      -- Switch active team context -> new JWT
-  auth-verify-email.js     -- Email verification token check
-  brain-dump-context.js    -- Fetch context for AI enrichment
-  brain-dump-create-items.js -- Create tasks/events from AI output
-  braindumps.js            -- Brain dump CRUD
-  calendar-events.js       -- Calendar event CRUD
-  campaigns.js             -- Campaign CRUD
-  clients.js               -- Client CRUD
-  comments.js              -- Comment threads on resources
-  notes.js                 -- Note CRUD
-  notifications.js         -- In-app notification CRUD
-  project-detail.js        -- Single project with aggregated data
-  projects.js              -- Project CRUD
-  resources.js             -- Resource link CRUD
-  search.js                -- Global text search across collections
-  tasks.js                 -- Task CRUD with calendar sync
-  teams.js                 -- Team CRUD, member/invite management
-  user-profile.js          -- Profile read/update
-  webhooks.js              -- Webhook CRUD
-```
-
-### Utility Modules
-
-Shared utilities in `netlify/functions/utils/`:
+The Express server (`server/`) handles operations that cannot run client-side
+or through PostgREST:
 
 ```
-utils/
-  authHandler.js      -- authenticate(), authenticateWithJwt(),
-                         authenticateWithApiKey(), revokeToken(),
-                         generateJti(), requireRole()
-  db.js               -- MongoDB connection pooling, index management
-  response.js         -- createResponse(), createErrorResponse(),
-                         handleOptionsRequest(), CORS headers
-  errorHandler.js     -- withErrorHandling() wrapper (CORS, method
-                         check, rate limit, error classification)
-  rateLimit.js        -- MongoDB-backed rate limiting with TTL indexes
-  softDelete.js       -- notDeleted filter, softDelete(), restoreDocument()
-  pagination.js       -- getPaginationParams(), createPaginatedResponse()
-  logger.js           -- Leveled logger (error/warn/info/debug),
-                         production suppresses info/debug
-  validateEnv.js      -- Cold-start env var validation (MONGODB_URI,
-                         JWT_SECRET, production-only ALLOWED_ORIGINS)
-  auditLog.js         -- Audit log recording helper
-  webhookDispatcher.js-- Webhook event dispatching
-  auth.js             -- Legacy auth utilities (deprecated)
+server/src/
+  index.ts               -- Entry point, middleware setup
+  supabase.ts            -- Supabase client (service role)
+  webhook-processor.ts   -- Cron-style webhook queue processor
+  middleware/
+    auth.ts              -- requireAuth middleware (JWT verification)
+  routes/
+    ai.ts                -- POST /api/ai/process (Anthropic proxy)
+    webhooks.ts          -- Webhook CRUD + dispatch
+    email.ts             -- Email sending
 ```
 
-### Standard Function Pattern
+#### Middleware Stack
 
-Every function follows this structure:
-
-```javascript
-const { connectToDb } = require('./utils/db');
-const { authenticate } = require('./utils/authHandler');
-const { createResponse, createErrorResponse, handleOptionsRequest } = require('./utils/response');
-const { z } = require('zod');
-
-exports.handler = async function(event, context) {
-  // 1. CORS preflight
-  const optionsResponse = handleOptionsRequest(event);
-  if (optionsResponse) return optionsResponse;
-
-  // 2. Authentication (JWT or API Key)
-  let authContext;
-  try {
-    authContext = await authenticate(event, {
-      requiredScopes: event.httpMethod === 'GET'
-        ? ['read:<resource>']
-        : ['write:<resource>']
-    });
-  } catch (errorResponse) {
-    if (errorResponse.statusCode) return errorResponse;
-    return createErrorResponse(401, 'Unauthorized');
-  }
-  const { userId, teamId } = authContext;
-
-  // 3. Method routing
-  const { db } = await connectToDb();
-
-  if (event.httpMethod === 'GET') {
-    // ... query with { teamId, ...notDeleted }
-  } else if (event.httpMethod === 'POST') {
-    // ... Zod validation, insert
-  } else if (event.httpMethod === 'PUT') {
-    // ... Zod partial validation, update
-  } else if (event.httpMethod === 'DELETE') {
-    // ... soft delete
-  }
-};
+```
+Request
+  |
+  +-- cors (dynamic origin whitelist)
+  |
+  +-- express.json()
+  |
+  +-- express-rate-limit
+  |      global: 100 req / 15 min (all /api routes)
+  |
+  +-- requireAuth (server/src/middleware/auth.ts, applied per-router)
+  |
+  +-- Route handler
+  |
+  v
+Response
 ```
 
-### Database Connection Management
+#### Webhook Processor
 
-The `db.js` module maintains a singleton `MongoClient` that persists across
-warm invocations of the same Lambda container. On cold start it:
+The webhook system uses a cron-style polling mechanism (every 30 seconds)
+that checks for pending webhook events, matches them against registered
+webhook subscriptions, and dispatches HTTP POST requests to subscriber URLs
+with signed payloads.
 
-1. Validates environment variables via `validateEnv()`.
-2. Creates the `MongoClient` with configured timeouts (5s server selection,
-   10s connect, 45s socket).
-3. Ensures all indexes across every collection (users, teams, clients,
-   projects, tasks, campaigns, notes, braindumps, calendarEvents, resources,
-   apiKeys, teamInvites, comments, notifications, auditLogs -- including
-   text search indexes on title/description/name/content fields).
+### Vite Dev Proxy
+
+During development, Vite proxies `/api` requests to the Express server at
+`localhost:3001`, eliminating CORS issues:
+
+```
+Browser :5173 --/api/--> Vite proxy ---> Express :3001
+Browser :5173 ----------> Supabase :8000 (direct)
+```
 
 ---
 
 ## 4. Authentication and Authorization
 
-LaunchCue supports two authentication methods: JWT tokens (for browser
-sessions) and API Keys (for programmatic access). Both flow through a single
-`authenticate()` function that returns a unified auth context.
+### Supabase Auth (GoTrue)
 
-### 4.1 Registration Flow
-
-```
-Browser                     auth-register.js              MongoDB
-  |                              |                           |
-  |  POST /auth-register         |                           |
-  |  { name, email, password }   |                           |
-  |----------------------------->|                           |
-  |                              |  Zod validate             |
-  |                              |  (min 10 chars, upper,    |
-  |                              |   lower, digit, special)  |
-  |                              |                           |
-  |                              |  Check existing user      |
-  |                              |-------------------------->|
-  |                              |                           |
-  |                              |  bcrypt hash (salt 10)    |
-  |                              |  Insert user              |
-  |                              |-------------------------->|
-  |                              |                           |
-  |                              |  Create default team      |
-  |                              |  (user as 'owner')        |
-  |                              |-------------------------->|
-  |                              |                           |
-  |                              |  Generate email           |
-  |                              |  verification token       |
-  |                              |-------------------------->|
-  |                              |                           |
-  |                              |  Sign JWT                 |
-  |                              |  { userId, teamId, email, |
-  |                              |    name, jti }            |
-  |                              |  expires: 24h             |
-  |                              |                           |
-  |  { token, user,              |                           |
-  |    currentTeamId }           |                           |
-  |<-----------------------------|                           |
-  |                              |                           |
-  |  Store in sessionStorage     |                           |
-  |  (token, user, teams,        |                           |
-  |   currentTeam)               |                           |
-```
-
-### 4.2 Login Flow
+LaunchCue delegates all authentication to Supabase Auth. There is no manual
+JWT creation, bcrypt hashing, or token blocklist management.
 
 ```
-Browser                     auth-login.js                MongoDB
-  |                              |                          |
-  |  POST /auth-login            |                          |
-  |  { email, password }         |                          |
-  |----------------------------->|                          |
-  |                              |  Rate limit check        |
-  |                              |  (5 per 15 min)          |
-  |                              |                          |
-  |                              |  Find user by email      |
-  |                              |------------------------->|
-  |                              |                          |
-  |                              |  bcrypt.compare          |
-  |                              |                          |
-  |                              |  Find user's teams       |
-  |                              |  Look up role in first   |
-  |                              |  team's members array    |
-  |                              |------------------------->|
-  |                              |                          |
-  |                              |  Sign JWT                |
-  |                              |  { userId, teamId, role, |
-  |                              |    email, name, jti }    |
-  |                              |  expires: 24h            |
-  |                              |                          |
-  |  { token, user,              |                          |
-  |    currentTeamId }           |                          |
-  |<-----------------------------|                          |
-  |                              |                          |
-  |  auth store: setUserData()   |                          |
-  |  auth store: loadUserTeams() |                          |
-  |  sessionStorage.setItem(     |                          |
-  |    'token', 'user',          |                          |
-  |    'teams', 'currentTeam')   |                          |
+Browser                     Supabase GoTrue           PostgreSQL
+  |                              |                        |
+  |  supabase.auth.signUp()     |                        |
+  |  { email, password }        |                        |
+  |---------------------------->|                        |
+  |                              |  Create user           |
+  |                              |----------------------->|
+  |                              |                        |
+  |                              |  Issue JWT pair         |
+  |                              |  (access + refresh)     |
+  |                              |                        |
+  |  { session, user }          |                        |
+  |<----------------------------|                        |
+  |                              |                        |
+  |  Supabase JS client stores  |                        |
+  |  session, handles refresh   |                        |
 ```
 
-### 4.3 JWT Lifecycle
+#### Session Lifecycle
 
-- **Token ID (jti):** Every JWT includes a `jti` claim (16 random bytes, hex
-  encoded) generated by `generateJti()`.
-- **Expiry:** 24 hours (`TOKEN_EXPIRY = '24h'`).
-- **Client-side expiry check:** The auth store decodes the JWT payload on
-  `initAuth()` and compares `exp` against `Date.now()`. Expired tokens are
-  cleared from sessionStorage without a server round-trip.
-- **Revocation via blocklist:** On logout, the `jti` is inserted into the
-  `tokenBlocklist` collection with an `expiresAt` field. A MongoDB TTL index
-  automatically cleans up expired entries. On every authenticated request, if
-  the JWT contains a `jti`, the server checks this collection. If the blocklist
-  check fails (DB unreachable), the system **fails closed** -- treating the
-  token as revoked.
-- **Team switching:** `auth-switch-team` issues a new JWT with the target
-  `teamId` and `role`, effectively replacing the old token. The frontend
-  updates sessionStorage and triggers data reloads across all stores.
+- **Persistence:** The auth store uses `sessionStorage` to persist user,
+  token, teams, and currentTeam across page reloads.
+- **Manual JWT decoding:** The store decodes JWTs via `atob()` to check
+  token expiry (`isTokenExpired`). It does not rely on Supabase's built-in
+  session management or auto-refresh.
+- **Token sync:** On `initAuth()`, the stored token is validated for expiry
+  and synced to the auth adapter via `setToken()`.
+- **Team switching:** Updates the active team context, gets a new token
+  from the backend, and reloads data across all stores.
 
-### 4.4 API Key Flow
+### RBAC (Role-Based Access Control)
 
-```
-                    API Key Authentication
-                    ======================
-
-1. Key Generation (POST /api-keys):
-   - Generate 32 random bytes -> base64url encode
-   - Prepend prefix: "lc_sk_" + base64url = full key
-   - Store first 14 chars (prefix + 8) as lookup prefix
-   - bcrypt hash the full key -> store as hashedKey
-   - Return full key to user ONCE (never stored in plaintext)
-
-2. Key Usage (any authenticated endpoint):
-
-   Authorization: Bearer lc_sk_aBcDeFgH...
-
-   authenticate()
-     |
-     +-- Detects "lc_sk_" prefix
-     |
-     +-- Extract lookup prefix (first 14 chars)
-     |
-     +-- Query apiKeys collection by { prefix }
-     |
-     +-- bcrypt.compare(fullKey, document.hashedKey)
-     |
-     +-- Check expiration (expiresAt field)
-     |
-     +-- Derive required scopes from HTTP method + resource:
-     |     GET    -> read:<resource>
-     |     POST   -> write:<resource>
-     |     PUT    -> write:<resource>
-     |     DELETE -> write:<resource>
-     |
-     +-- checkScopes(): every required scope must be present
-     |   in the key's scopes array (or key has 'admin' or '*')
-     |
-     +-- Fire-and-forget: update lastUsedAt timestamp
-     |
-     +-- Return { userId, teamId, scopes, keyPrefix, authType: 'apiKey' }
-```
-
-### 4.5 RBAC (Role-Based Access Control)
-
-Roles are stored in the `members` array of each team document:
+Roles are stored in the `team_members` table and checked via JWT custom
+claims:
 
 | Role     | Permissions                                           |
 |----------|-------------------------------------------------------|
@@ -474,10 +324,11 @@ Roles are stored in the `members` array of each team document:
 | `admin`  | Team management, all CRUD operations                  |
 | `member` | Standard CRUD on team resources                       |
 | `viewer` | Read-only access to team resources                    |
+| `client` | Limited access to assigned projects (client portal)   |
 
-**Backend enforcement:** The `requireRole(authContext, allowedRoles)` function
-throws a 403 if the user's role (from the JWT payload) is not in the allowed
-list.
+**Backend enforcement:** PostgreSQL RLS policies check the user's role from
+the JWT claims. Queries that violate policies return empty results or errors
+-- no application-level role checks needed for data access.
 
 **Frontend enforcement:** The auth store exposes computed properties:
 
@@ -490,154 +341,146 @@ const canEdit  = computed(() => ['owner', 'admin', 'member'].includes(userRole.v
 const isViewer = computed(() => userRole.value === 'viewer')
 ```
 
-Components conditionally render UI elements (edit buttons, delete actions,
-settings tabs) based on these computed values.
-
-### 4.6 API Key Scopes
-
-Scopes follow a `read:<resource>` / `write:<resource>` pattern across all
-resources: projects, tasks, clients, campaigns, notes, teams, resources,
-calendar-events, braindumps, api-keys. The special scope `admin` or `*`
-grants access to all resources.
+Components conditionally render UI elements based on these computed values.
 
 ---
 
 ## 5. Data Flow
 
-### Typical User Action (e.g., Creating a Task)
+### Creating a Task (Representative Example)
 
 ```
-User clicks          TaskForm.vue        taskStore         task.service.ts
-"Save Task"              |                   |                   |
-    |                    |                   |                   |
-    +-- @submit -------->|                   |                   |
-                         |                   |                   |
-                         +-- createTask() -->|                   |
-                                             |                   |
-                                             +-- create(data) -->|
-                                                                 |
-                                                          apiService.post(
-                                                            TASK_ENDPOINT,
-                                                            taskData
-                                                          )
-                                                                 |
-                                                                 v
-                                                          Axios interceptor
-                                                          injects Bearer token
-                                                                 |
-                                                                 v
-                                                    POST /.netlify/functions/tasks
-                                                                 |
-                                                                 v
-                                                          tasks.js handler
-                                                                 |
-                                                    +------------+------------+
-                                                    |                         |
-                                              handleOptionsRequest()    authenticate()
-                                              (CORS preflight)         (JWT or API Key)
-                                                                              |
-                                                                              v
-                                                                    Zod validation
-                                                                    (TaskCreateSchema)
-                                                                              |
-                                                                              v
-                                                                    connectToDb()
-                                                                    db.collection('tasks')
-                                                                      .insertOne(newTask)
-                                                                              |
-                                                                              v
-                                                                    syncTaskWithCalendar()
-                                                                    (creates calendar event
-                                                                     if task has dueDate)
-                                                                              |
-                                                                              v
-                                                                    createResponse(201, task)
-                                                                              |
-                                                                 <------------+
-                                                                 |
-                                             <-------------------+
+User clicks          TaskForm.vue        taskStore            Supabase adapter
+"Save Task"              |                   |                      |
+    |                    |                   |                      |
+    +-- @submit -------->|                   |                      |
+                         |                   |                      |
+                         +-- createTask() -->|                      |
+                                             |                      |
+                                             |  const repo =        |
+                                             |  getContainer()      |
+                                             |    .resolve(TASK_REPO)
+                                             |                      |
+                                             +-- repo.create(data)->|
+                                                                    |
+                                                              supabase
+                                                                .from('tasks')
+                                                                .insert(data)
+                                                                .select()
+                                                                    |
+                                                                    v
+                                                              PostgREST
+                                                              validates via
+                                                              RLS policies
+                                                                    |
+                                                                    v
+                                                              PostgreSQL
+                                                              INSERT + RETURN
+                                                                    |
+                                             <----------------------+
+                                             |
+                                             |  Update local state
+                                             |  EventBus.emit('task.created')
                                              |
                          <-------------------+
-                         |  Update local state
-                         |  (push to tasks array)
+                         |
     <--------------------+
-    UI re-renders via
     Vue reactivity
+    updates UI
+```
+
+### Data Flow Summary
+
+```
++----------+     resolve()     +------------+     supabase.from()     +----------+
+|  Vue     | --> store action --> DI         | --> Supabase adapter --> | Supabase |
+|  Component|                  | Container  |                         | (PgREST) |
++----------+     <-- reactive  +------------+     <-- typed result     +----------+
+                  state update                                              |
+                                                                     RLS enforces
+                                                                     team isolation
 ```
 
 ### Data Isolation
 
-Every document includes a `teamId` field. All queries filter by the
-authenticated user's `teamId` (extracted from the JWT or API key document).
-This ensures complete data isolation between teams without a separate
-database per tenant.
+Every table includes a `team_id` column. PostgreSQL Row-Level Security
+policies filter all queries by the authenticated user's team, extracted from
+the JWT. This enforces complete data isolation between teams at the database
+level -- no application code can bypass it.
 
 ---
 
 ## 6. Data Model
 
-### MongoDB Collections
+### PostgreSQL Tables (26)
 
 ```
-users               -- { email, name, password (bcrypt), emailVerified, ... }
-teams               -- { name, owner, members: [{ userId, email, role, ... }] }
-teamInvites         -- { email, teamId, invitedBy, status, role, expiresAt }
-clients             -- { name, industry, contacts[], teamId, deletedAt, ... }
-projects            -- { title, status, clientId, teamId, deletedAt, ... }
-tasks               -- { title, status, priority, assigneeId, projectId,
-                         teamId, checklist[], deletedAt, ... }
-campaigns           -- { title, status, types[], steps[], metrics{}, teamId, ... }
-notes               -- { title, content (HTML), tags[], teamId, deletedAt, ... }
-braindumps          -- { title, content, tags[], teamId, ... }
-calendarEvents      -- { title, start, end, allDay, recurrence{}, reminders[],
-                         taskId, teamId, ... }
-resources           -- { name, type, url, tags[], teamId, ... }
-apiKeys             -- { prefix, hashedKey, scopes[], expiresAt, userId,
-                         teamId, lastUsedAt }
-comments            -- { resourceType, resourceId, userId, content, ... }
-notifications       -- { userId, type, title, message, read, ... }
-auditLogs           -- { userId, teamId, action, resourceType, resourceId,
-                         changes{}, timestamp }
-webhooks            -- { teamId, url, events[], secret, active, ... }
-tokenBlocklist      -- { jti, revokedAt, expiresAt } (TTL auto-cleanup)
-rateLimits          -- { key, createdAt, expiresAt } (TTL auto-cleanup)
-emailVerifications  -- { userId, tokenHash, expiresAt }
+users                -- id, email, name, avatar_url, ...
+teams                -- id, name, owner_id, ...
+team_members         -- team_id, user_id, role, joined_at, ...
+team_invites         -- id, team_id, email, role, status, expires_at, ...
+
+clients              -- id, team_id, name, industry, contact_name, ...
+client_contacts      -- id, client_id, name, email, phone, role, is_primary, ...
+projects             -- id, team_id, client_id, title, status, ...
+tasks                -- id, team_id, project_id, title, status, priority,
+                        assignee_id, due_date, checklist (jsonb), ...
+campaigns            -- id, team_id, title, status, types, steps (jsonb), ...
+notes                -- id, team_id, title, content, tags, ...
+brain_dumps          -- id, team_id, title, content, tags, ...
+calendar_events      -- id, team_id, title, start_time, end_time, all_day,
+                        recurrence (jsonb), task_id, ...
+resources            -- id, team_id, name, type, url, tags, ...
+
+api_keys             -- id, team_id, user_id, prefix, key_hash, scopes, ...
+comments             -- id, resource_type, resource_id, user_id, content, ...
+notifications        -- id, user_id, type, title, message, read, ...
+audit_logs           -- id, team_id, user_id, action, resource_type,
+                        resource_id, changes (jsonb), ...
+webhooks             -- id, team_id, url, events, secret, active, ...
+webhook_queue        -- id, webhook_id, event, payload, attempts, ...
+scopes               -- id, team_id, project_id, sections (jsonb), ...
+scope_templates      -- id, team_id, name, sections (jsonb), ...
+invoices             -- id, team_id, client_id, items (jsonb), status, ...
+client_invitations   -- id, team_id, email, role, status, expires_at, ...
+onboarding_checklists -- id, team_id, client_id, title, steps (jsonb),
+                        status, ...
+password_reset_tokens -- id, user_id, token_prefix, token_hash, expires_at, ...
+email_verification_tokens -- id, user_id, token_hash, expires_at, ...
 ```
 
 ### Soft Delete Pattern
 
-Entities that support soft delete (clients, projects, tasks, campaigns, notes)
-include `deletedAt` and `deletedBy` fields. The `softDelete.js` utility
-provides:
+Entities that support soft delete include `deleted_at` and `deleted_by`
+columns. PostgreSQL views prefixed with `active_` filter out soft-deleted
+rows. RLS policies reference these views so deleted records are invisible
+to normal queries.
 
-- `notDeleted` -- A query filter `{ deletedAt: null }` applied to all list
-  queries to exclude soft-deleted documents.
-- `softDelete(collection, filter, userId)` -- Sets `deletedAt` to the current
-  timestamp and `deletedBy` to the acting user's ID.
-- `restoreDocument(collection, filter)` -- Resets both fields to `null`.
+### Row-Level Security (RLS)
 
-### Indexes
+Every table has RLS enabled. Policies follow a consistent pattern:
 
-Indexes are ensured once per cold start in `db.js`. Key indexes include:
+```sql
+-- Helper function reads team from JWT metadata
+CREATE FUNCTION auth.current_team_id() RETURNS UUID AS $$
+  SELECT (auth.jwt() -> 'user_metadata' ->> 'current_team_id')::uuid;
+$$ LANGUAGE sql STABLE SECURITY DEFINER;
 
-- `users.email` (unique)
-- `teams.members.userId`
-- `tasks.{teamId, projectId, status, dueDate, assigneeId}`
-- `projects.{teamId, clientId, status, dueDate}`
-- `apiKeys.prefix` (unique)
-- `comments.{resourceType, resourceId}`
-- `notifications.{userId + read, userId + createdAt}`
-- `auditLogs.{teamId + timestamp, resourceType + resourceId}`
-- Text search indexes on tasks, projects, clients, notes
-  (title/description/name/content fields)
+-- Example: tasks table
+CREATE POLICY "team_isolation" ON tasks
+  USING (team_id = auth.current_team_id() AND deleted_at IS NULL);
+```
+
+This ensures users can only access data belonging to teams they are members
+of, enforced at the database level regardless of how the query is made.
 
 ---
 
 ## 7. AI Integration
 
-The `ai-process.js` function serves as a secure proxy to the Anthropic
-Messages API. The Anthropic API key is stored exclusively as a server-side
-environment variable (`ANTHROPIC_API_KEY`) and is never exposed to the client.
+The Express server (`/api/ai/process`) proxies requests to the Anthropic
+Messages API. The API key is stored exclusively as a server-side environment
+variable and is never exposed to the client.
 
 ### Processing Types
 
@@ -653,202 +496,146 @@ environment variable (`ANTHROPIC_API_KEY`) and is never exposed to the client.
 
 ### Context Enrichment
 
-When `processingDetails.enriched` is true, the brain dump page fetches
-existing context (clients, projects, tasks, meetings) from the
-`brain-dump-context` endpoint and includes it in the prompt. The AI system
-prompt is adjusted to consider conflicts, patterns, and opportunities relative
-to existing data.
+When enriched mode is enabled, the brain dump page fetches existing context
+(clients, projects, tasks, meetings) from Supabase and includes it in the AI
+prompt. The system prompt is adjusted to consider conflicts, patterns, and
+opportunities relative to existing data.
 
-### Structured Output Parsing
+### Structured Output
 
-The `parseAIResponse()` function extracts JSON from the AI response using
-three strategies in order:
+The AI response parser extracts JSON using three strategies:
 
-1. JSON inside a fenced code block (` ```json ... ``` `).
-2. A bare JSON array pattern (`[ { ... } ]`).
+1. JSON inside a fenced code block.
+2. A bare JSON array pattern.
 3. The entire response as JSON.
 
 Extracted items are normalized (type mapped to `task`, `event`, or `project`)
 and returned alongside the text response.
 
-### Model and Rate Limiting
-
-- Default model: `claude-haiku-4-5-20251001`
-- Default max tokens: 1500
-- Rate limit: 10 requests per minute per user (AI category)
-
 ---
 
 ## 8. Key Design Decisions
 
-### Serverless Architecture
+### Plugin-Based Dependency Injection
 
-All backend logic runs as Netlify Functions (AWS Lambda under the hood). There
-are no long-running servers. The MongoDB driver maintains a connection pool
-within each warm Lambda container via a module-level singleton. This approach
-trades cold-start latency for zero infrastructure management.
+The ServiceContainer uses symbol keys for type-safe dependency resolution.
+Repositories are registered at boot and resolved lazily as singletons.
+This decouples stores from specific backend implementations -- swapping
+Supabase for another backend requires only new adapter implementations
+registered under the same symbol keys.
 
-### Flat Function Files
+```
+registry.register(module)       -- Stores module (no initialization)
 
-Function files are flat in `netlify/functions/` (not nested in subdirectories).
-Netlify deploys each `.js` file as a separate function endpoint. The file name
-becomes the URL path segment: `tasks.js` maps to
-`/.netlify/functions/tasks`. Hyphenated names like `auth-login.js` map to
-`/.netlify/functions/auth-login`. This keeps the mapping between filenames
-and API endpoints unambiguous.
+registry.initialize(container)  -- Called once at boot:
+  |
+  +-- Topological sort on declared dependencies
+  |
+  +-- For each module (in dependency order):
+        +-- Call module.setup(container)  (registers adapters, etc.)
 
-### Zod Validation
+registry.getRoutes()            -- Collected on demand by router
+registry.getNavGroups()         -- Collected on demand by Sidebar
+registry.getSearchProviders()   -- Collected on demand by GlobalSearch
+```
 
-Every mutating endpoint validates request bodies using Zod schemas defined
-alongside the handler. Schemas enforce types, string lengths, enum values,
-and ObjectId format. Validation errors return structured error details via
-`safeParse().error.format()`.
+### Repository Pattern
 
-### Soft Delete Pattern
+All 18 Pinia stores access data through the `Repository<T, CreateDTO,
+UpdateDTO>` interface. No store imports Supabase directly. Extended
+interfaces (TeamRepository, BrainDumpRepository, CommentRepository,
+NotificationRepository) add domain-specific methods beyond basic CRUD.
 
-Destructive deletes are avoided. Instead, `deletedAt` and `deletedBy` fields
-mark documents as deleted. All list queries include `{ deletedAt: null }` to
-filter them out. This allows recovery and audit trails.
+### Supabase Over Serverless Functions
 
-### sessionStorage for Tokens
+Replacing Netlify Functions + MongoDB with Supabase eliminates:
 
-Auth tokens and user data are stored in `sessionStorage` (not
-`localStorage`). This means:
+- Manual JWT management (GoTrue handles it)
+- MongoDB connection pooling in Lambda (PostgreSQL via PostgREST)
+- Custom rate limiting collections (Kong handles it)
+- Manual CORS configuration (Supabase client handles it)
+- 28 serverless function files (PostgREST auto-generates REST endpoints)
 
-- Tokens are scoped to the browser tab/window.
-- Closing the tab clears the session.
-- Tokens are not shared across tabs (each tab has its own session).
-- XSS impact is reduced compared to localStorage (attacker would need to be
-  in the same tab context).
+The Express server handles only what Supabase cannot: AI proxying, webhook
+dispatch, and email sending.
 
-The `ApiService` class also keeps the token in memory (`this._token`) and
-syncs it to sessionStorage. On page reload, the auth store reads from
-sessionStorage and validates the token's `exp` claim client-side before
-accepting it.
+### Soft Delete via Views
+
+Rather than filtering `deleted_at IS NULL` in every query, PostgreSQL views
+(`active_*`) encapsulate the filter. RLS policies reference these views,
+making soft delete invisible to application code.
 
 ### Team-Scoped Multi-Tenancy
 
-Rather than database-per-tenant, every document carries a `teamId` field and
-every query filters by it. When a user switches teams, a new JWT is issued
-with the new `teamId` and `role`, and all frontend stores reload their data.
+Every table carries a `team_id` column. RLS policies enforce isolation at
+the database level. When a user switches teams, all stores reload data for
+the new team context.
 
-### CORS Configuration
+### Brutalist Design System
 
-The `response.js` utility dynamically sets `Access-Control-Allow-Origin`
-based on a whitelist. In development, `localhost:5173` (Vite) and
-`localhost:8888` (Netlify CLI) are allowed. In production, the
-`ALLOWED_ORIGINS` environment variable must be set; without it, all CORS
-requests are denied.
-
-### MongoDB Rate Limiting
-
-Rate limiting is implemented via MongoDB documents with TTL indexes rather
-than in-memory stores. This is necessary in a serverless environment where
-Lambda containers are ephemeral and do not share memory. Three tiers exist:
-
-| Category  | Max Requests | Window     |
-|-----------|-------------|------------|
-| `auth`    | 5           | 15 minutes |
-| `general` | 100         | 1 minute   |
-| `ai`      | 10          | 1 minute   |
-
-Auth endpoints fail closed (block if DB unreachable). Other endpoints fail
-open (allow if DB unreachable) to preserve availability.
+| Token       | Value                                            |
+|-------------|--------------------------------------------------|
+| Primary     | Purple (#7C3AED)                                 |
+| Accent      | Coral (#E8503A)                                  |
+| Background  | Parchment (#FAF8F5)                              |
+| Headings    | Space Grotesk                                    |
+| Body        | Inter                                            |
+| Data/Code   | JetBrains Mono                                   |
+| Borders     | 2px solid, border-radius: 0                      |
+| Shadows     | Hard offset (no blur)                            |
+| Dark mode   | Class-based, CSS custom properties               |
 
 ---
 
 ## 9. Environment and Configuration
 
-### Required Environment Variables
+### Environment Variables
 
-| Variable          | Purpose                          | Required |
-|-------------------|----------------------------------|----------|
-| `MONGODB_URI`     | MongoDB Atlas connection string  | Always   |
-| `JWT_SECRET`      | JWT signing key (min 64 chars)   | Always   |
-| `ALLOWED_ORIGINS` | Comma-separated origin whitelist | Prod     |
-| `ANTHROPIC_API_KEY`| Anthropic API key for Claude    | For AI   |
+#### Frontend (VITE_ prefix, bundled into client)
 
-### Build and Deploy Configuration (`netlify.toml`)
+| Variable                | Purpose                          |
+|-------------------------|----------------------------------|
+| `VITE_SUPABASE_URL`    | Supabase project URL             |
+| `VITE_SUPABASE_ANON_KEY` | Supabase anonymous/public key  |
+| `VITE_API_URL`          | Express API server URL           |
 
-```toml
-[build]
-  command = "npm run build"
-  publish = "dist"
-  functions = "netlify/functions"
+#### Express Server
 
-[functions]
-  external_node_modules = ["jsonwebtoken", "mongodb", "bcryptjs", "zod"]
+| Variable                    | Purpose                          |
+|-----------------------------|----------------------------------|
+| `SUPABASE_URL`             | Supabase project URL             |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase service role key (privileged) |
+| `ANTHROPIC_API_KEY`        | Anthropic API key for Claude     |
+
+#### Supabase (self-hosted)
+
+| Variable                    | Purpose                          |
+|-----------------------------|----------------------------------|
+| `POSTGRES_PASSWORD`        | PostgreSQL superuser password     |
+| `JWT_SECRET`               | JWT signing key for GoTrue       |
+| `SUPABASE_ANON_KEY`       | Anonymous key (limited access)   |
+| `SUPABASE_SERVICE_ROLE_KEY` | Service role key (full access) |
+
+### Development Setup
+
+```
+npm run dev           -- Vite dev server (port 5173)
+npm run dev:server    -- Express API server (port 3001)
+npm run dev:supabase  -- Supabase Docker stack (port 8000)
+npm run dev:full      -- All three concurrently
 ```
 
-External node modules are bundled separately to avoid issues with Netlify's
-default esbuild bundling of native/complex modules.
+### Deployment
 
-### Security Headers
+- **Frontend:** Static SPA deployed to DigitalOcean App Platform (`.do/app.yaml`)
+- **Express server:** Dockerized (`server/Dockerfile`), deployed alongside frontend
+- **Supabase:** Self-hosted on DigitalOcean Droplet (`infra/droplet-setup.sh`)
+  or Supabase Cloud (managed)
 
-All responses include:
+### Build
 
-- `Strict-Transport-Security` (HSTS with preload)
-- `X-Frame-Options: DENY`
-- `X-Content-Type-Options: nosniff`
-- `X-XSS-Protection: 1; mode=block`
-- `Referrer-Policy: strict-origin-when-cross-origin`
-- `Permissions-Policy` (camera, microphone, geolocation disabled)
-- `Content-Security-Policy` (restricts script-src, connect-src, font-src, etc.)
-
-### Caching
-
-- `/assets/*` (Vite hashed output): `Cache-Control: public, max-age=31536000, immutable`
-- `/index.html`: `Cache-Control: no-cache, no-store, must-revalidate`
-- SPA fallback: `/* -> /index.html` with status 200
-
----
-
-## 10. Security Measures
-
-### Password Requirements
-
-Enforced via Zod schema on registration:
-
-- Minimum 10 characters
-- At least one lowercase letter
-- At least one uppercase letter
-- At least one digit
-- At least one special character
-- Hashed with bcrypt (salt rounds: 10)
-
-### Token Security
-
-- JWTs include a unique `jti` for revocation support.
-- Token blocklist uses MongoDB TTL indexes for automatic cleanup.
-- Blocklist checks fail closed (if DB is unreachable, token is treated as
-  revoked).
-- Client-side expiry checking prevents use of expired tokens without a
-  server round-trip.
-
-### API Key Security
-
-- Full key is shown once at creation, then only the prefix is stored.
-- Keys are bcrypt-hashed before storage.
-- Scope-based access control limits key permissions.
-- Optional expiration date with server-side enforcement.
-- `lastUsedAt` tracking for key auditing.
-
-### Input Validation
-
-- All mutating endpoints validate request bodies with Zod schemas.
-- ObjectId format is validated before MongoDB queries.
-- Error details are suppressed in production (`safeErrorDetails()`).
-
-### Error Handling
-
-- Production error responses never leak stack traces or internal details.
-- The `withErrorHandling()` wrapper classifies errors (Zod, BSON, duplicate
-  key, JSON parse) and returns appropriate status codes.
-- Unhandled promise rejections are caught at the Vue app level.
-
-### Audit Trail
-
-The `auditLog.js` utility records user actions (CRUD operations) with
-before/after change diffs, enabling compliance and forensic analysis.
-Audit logs are scoped to teams and indexed by `{teamId, timestamp}` and
-`{resourceType, resourceId}`.
+```
+npm run build         -- Vite production build (outputs dist/)
+npm run type-check    -- vue-tsc type checking
+npm test              -- Vitest (52 tests across 4 files)
+```

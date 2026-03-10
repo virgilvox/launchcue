@@ -210,7 +210,8 @@
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { useToast } from 'vue-toastification'
-import apiService from '../services/api.service'
+import { getContainer } from '@/core/service-container'
+import { SEARCH_ADAPTER } from '@/adapters/repository-keys'
 import {
   MagnifyingGlassIcon,
   ChevronRightIcon,
@@ -393,8 +394,9 @@ watch(searchQuery, (newVal) => {
 async function performSearch(query) {
   try {
     isLoading.value = true
-    const response = await apiService.search(query)
-    results.value = response.results || []
+    const searchAdapter = getContainer().resolve(SEARCH_ADAPTER)
+    const response = await searchAdapter.search(query)
+    results.value = response || []
     hasSearched.value = true
   } catch (error) {
     toast.error('Search failed. Please try again.')
@@ -411,7 +413,7 @@ function navigateTo(result) {
     task: { name: 'task-detail', params: { id: result.id } },
     project: { name: 'project-detail', params: { id: result.id } },
     client: { name: 'client-detail', params: { id: result.id } },
-    note: { name: 'notes' },
+    note: { name: 'notes', query: { highlight: result.id } },
     campaign: { name: 'campaign-detail', params: { id: result.id } },
   }
 

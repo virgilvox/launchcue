@@ -1,20 +1,25 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import calendarService from '../services/calendar.service'
+import { getContainer } from '@/core/service-container'
+import { getEventBus } from '@/core/event-bus'
+import { CALENDAR_EVENT_REPO } from '@/adapters/repository-keys'
+import type { Repository } from '@/adapters/types'
 import { useAuthStore } from './auth'
 import { useProjectStore } from './project'
 import { useTaskStore } from './task'
 import { useToast } from 'vue-toastification'
 import type { CalendarEvent, Task, Project } from '../types/models'
+import type { CalendarEventCreateRequest } from '../types/api'
 
-// Processed event with Date objects instead of strings
+// Task deadlines: uses TASK_REPO to fetch tasks with due dates in range
+import { TASK_REPO } from '@/adapters/repository-keys'
+
 interface ProcessedCalendarEvent extends Omit<CalendarEvent, 'start' | 'end'> {
   start: Date | null
   end: Date | null
   type: string
 }
 
-// Upcoming item shape (unified across events, tasks, projects)
 interface UpcomingItem {
   id: string
   title: string
@@ -26,7 +31,6 @@ interface UpcomingItem {
   color: string
 }
 
-// Processed task deadline shape
 interface ProcessedTaskDeadline {
   id: string
   title: string
@@ -38,7 +42,6 @@ interface ProcessedTaskDeadline {
   statusColor: string
 }
 
-// Store result type
 interface CalendarStoreResult<T = undefined> {
   success: boolean
   error?: string
@@ -57,7 +60,22 @@ export const useCalendarStore = defineStore('calendar', () => {
   const isLoading = ref<boolean>(false)
   const error = ref<string | null>(null)
 
-  // Fetch calendar events for a date range
+  function getRepo() {
+    return getContainer().resolve<Repository<CalendarEvent, CalendarEventCreateRequest, Partial<CalendarEventCreateRequest>>>(CALENDAR_EVENT_REPO)
+  }
+
+  function determineEventType(event: Partial<CalendarEvent & { type?: string }>): string {
+    if (event.taskId) return 'task'
+    if (event.projectId && !event.taskId) return 'project'
+    return 'event'
+  }
+
+  function getDefaultColor(event: Partial<CalendarEvent>): string {
+    if (event.taskId) return 'blue'
+    if (event.projectId && !event.taskId) return 'orange'
+    return 'green'
+  }
+
   async function fetchEvents(startDate: Date | string, endDate: Date | string): Promise<CalendarStoreResult> {
     if (!authStore.currentTeam) {
       return { success: false, error: 'No team selected' }
@@ -67,38 +85,31 @@ export const useCalendarStore = defineStore('calendar', () => {
     error.value = null
 
     try {
-      // Convert dates to ISO strings if they are Date objects
       const start = startDate instanceof Date ? startDate.toISOString() : startDate
       const end = endDate instanceof Date ? endDate.toISOString() : endDate
 
-      const data: CalendarEvent[] = await calendarService.getEvents(start, end)
+      const data = await getRepo().findAll({ startDate: start, endDate: end })
 
-      // Process calendar events to ensure they have the correct format
       const processedEvents: ProcessedCalendarEvent[] = data.map(event => {
-        // Determine the event type first
-        const eventType = (event as ProcessedCalendarEvent).type || determineEventType(event)
+        const eventType = (event as unknown as ProcessedCalendarEvent).type || determineEventType(event)
 
-        // For project events, ensure they have proper titles
         let title = event.title
         if (eventType === 'project' && event.projectId && (!title || title === 'project')) {
-          // Try to find the project to get its name
           const project = projectStore.projects.find(p => p.id === event.projectId)
           if (project) {
             title = project.title || 'Project Deadline'
           } else {
-            title = 'Project Deadline' // Default if project not found
+            title = 'Project Deadline'
           }
         }
 
         return {
-          ...event,
+          ...(event as unknown as Record<string, unknown>),
+          id: event.id,
           start: event.start ? new Date(event.start) : null,
           end: event.end ? new Date(event.end) : null,
-          // Ensure color is set
           color: event.color || getDefaultColor(event),
-          // Ensure each event has a type
           type: eventType,
-          // Use the updated title if available
           title: title || event.title || 'Event'
         } as ProcessedCalendarEvent
       })
@@ -115,21 +126,6 @@ export const useCalendarStore = defineStore('calendar', () => {
     }
   }
 
-  // Helper function to determine event type based on event properties
-  function determineEventType(event: Partial<CalendarEvent & { type?: string }>): string {
-    if (event.taskId) return 'task'
-    if (event.projectId && !event.taskId) return 'project'
-    return 'event'
-  }
-
-  // Helper function to get default color based on event type
-  function getDefaultColor(event: Partial<CalendarEvent>): string {
-    if (event.taskId) return 'blue'
-    if (event.projectId && !event.taskId) return 'orange'
-    return 'green'
-  }
-
-  // Create a new calendar event
   async function createEvent(eventData: Record<string, unknown>): Promise<CalendarStoreResult> {
     if (!authStore.currentTeam) {
       return { success: false, error: 'No team selected' }
@@ -139,12 +135,11 @@ export const useCalendarStore = defineStore('calendar', () => {
     error.value = null
 
     try {
-      const data: CalendarEvent = await calendarService.createEvent({
+      const data = await getRepo().create({
         ...eventData,
         teamId: authStore.currentTeam.id
-      })
+      } as unknown as CalendarEventCreateRequest)
 
-      // Add the new event to the store
       events.value.push({
         ...data,
         start: data.start ? new Date(data.start) : null,
@@ -152,6 +147,7 @@ export const useCalendarStore = defineStore('calendar', () => {
         type: determineEventType(data)
       } as ProcessedCalendarEvent)
 
+      getEventBus().emit('calendar-event.created', { event: data })
       toast.success('Event created successfully')
       return { success: true, event: data }
     } catch (err: unknown) {
@@ -164,7 +160,6 @@ export const useCalendarStore = defineStore('calendar', () => {
     }
   }
 
-  // Update an existing calendar event
   async function updateEvent(id: string, eventData: Record<string, unknown>): Promise<CalendarStoreResult> {
     if (!authStore.currentTeam) {
       return { success: false, error: 'No team selected' }
@@ -174,9 +169,8 @@ export const useCalendarStore = defineStore('calendar', () => {
     error.value = null
 
     try {
-      const data: CalendarEvent = await calendarService.updateEvent(id, eventData)
+      const data = await getRepo().update(id, eventData as Partial<CalendarEventCreateRequest>)
 
-      // Update the event in the store
       const index = events.value.findIndex(e => e.id === id)
       if (index !== -1) {
         events.value[index] = {
@@ -187,6 +181,7 @@ export const useCalendarStore = defineStore('calendar', () => {
         } as ProcessedCalendarEvent
       }
 
+      getEventBus().emit('calendar-event.updated', { event: data })
       toast.success('Event updated successfully')
       return { success: true, event: data }
     } catch (err: unknown) {
@@ -199,7 +194,6 @@ export const useCalendarStore = defineStore('calendar', () => {
     }
   }
 
-  // Delete a calendar event
   async function deleteEvent(id: string): Promise<CalendarStoreResult> {
     if (!authStore.currentTeam) {
       return { success: false, error: 'No team selected' }
@@ -209,11 +203,10 @@ export const useCalendarStore = defineStore('calendar', () => {
     error.value = null
 
     try {
-      await calendarService.deleteEvent(id)
-
-      // Remove the event from the store
+      await getRepo().delete(id)
       events.value = events.value.filter(e => e.id !== id)
 
+      getEventBus().emit('calendar-event.deleted', { id })
       toast.success('Event deleted successfully')
       return { success: true }
     } catch (err: unknown) {
@@ -226,7 +219,6 @@ export const useCalendarStore = defineStore('calendar', () => {
     }
   }
 
-  // Get upcoming items combining events, tasks with due dates, and projects with deadlines
   async function getUpcomingItems(daysAhead: number = 7): Promise<CalendarStoreResult> {
     if (!authStore.currentTeam) {
       return { success: false, error: 'No team selected' }
@@ -236,15 +228,12 @@ export const useCalendarStore = defineStore('calendar', () => {
     error.value = null
 
     try {
-      // Create date range
       const startDate = new Date()
       const endDate = new Date()
       endDate.setDate(endDate.getDate() + daysAhead)
 
-      // Fetch events for the date range
       await fetchEvents(startDate, endDate)
 
-      // Process tasks with due dates
       let upcomingTasks: UpcomingItem[] = []
       if (taskStore.tasks.length > 0) {
         upcomingTasks = taskStore.tasks
@@ -265,7 +254,6 @@ export const useCalendarStore = defineStore('calendar', () => {
           }))
       }
 
-      // Process projects with deadlines
       let upcomingProjects: UpcomingItem[] = []
       if (projectStore.projects.length > 0) {
         upcomingProjects = projectStore.projects
@@ -286,19 +274,17 @@ export const useCalendarStore = defineStore('calendar', () => {
           }))
       }
 
-      // Map calendar events to the same format
       const formattedEvents: UpcomingItem[] = events.value.map(event => ({
         id: event.id,
         title: event.title,
         date: event.start,
-        type: event.type || determineEventType(event),
+        type: event.type || determineEventType(event as unknown as Partial<CalendarEvent>),
         description: event.description || 'Calendar event',
         projectId: event.projectId,
         taskId: event.taskId,
-        color: event.color || getDefaultColor(event)
+        color: event.color || getDefaultColor(event as unknown as Partial<CalendarEvent>)
       }))
 
-      // Combine all items and sort by date
       const allItems = [...upcomingTasks, ...upcomingProjects, ...formattedEvents]
         .sort((a, b) => {
           const dateA = a.date ? a.date.getTime() : 0
@@ -317,35 +303,31 @@ export const useCalendarStore = defineStore('calendar', () => {
     }
   }
 
-  // Method to get tasks with deadlines for a specific date range
   async function getTaskDeadlines(startDate: string, endDate: string): Promise<ProcessedTaskDeadline[]> {
     isLoading.value = true
     error.value = null
 
     try {
-      // Use the calendar service to fetch task deadlines
-      const data: Array<Record<string, unknown>> = await calendarService.getTaskDeadlines(startDate, endDate)
+      const taskRepo = getContainer().resolve<Repository<Task>>(TASK_REPO)
+      const tasks = await taskRepo.findAll({ startDate, endDate, hasDueDate: true })
 
-      // Ensure we have an array
-      if (!data || !Array.isArray(data)) {
+      if (!tasks || !Array.isArray(tasks)) {
         return []
       }
 
-      // Process tasks to ensure they have the correct format
-      const processedTasks: ProcessedTaskDeadline[] = data.map(task => {
-        // Make sure each task has required properties
+      const processedTasks: ProcessedTaskDeadline[] = tasks.map((task: unknown) => {
+        const t = task as Record<string, unknown>
         const processedTask: ProcessedTaskDeadline = {
-          id: (task.id as string) || `task-${Math.random().toString(36).substr(2, 9)}`,
-          title: (task.title as string) || (task.name as string) || 'Task',
-          status: (task.status as string) || 'To Do',
-          dueDate: task.dueDate ? new Date(task.dueDate as string) : null,
-          description: (task.description as string) || '',
-          projectId: (task.projectId as string) || null,
-          projectName: (task.projectName as string) || null,
+          id: (t.id as string) || `task-${Math.random().toString(36).substr(2, 9)}`,
+          title: (t.title as string) || 'Task',
+          status: (t.status as string) || 'To Do',
+          dueDate: t.dueDate ? new Date(t.dueDate as string) : null,
+          description: (t.description as string) || '',
+          projectId: (t.projectId as string) || null,
+          projectName: (t.projectName as string) || null,
           statusColor: ''
         }
 
-        // Add status color
         processedTask.statusColor = getTaskStatusColor(processedTask.status)
 
         return processedTask
@@ -361,7 +343,6 @@ export const useCalendarStore = defineStore('calendar', () => {
     }
   }
 
-  // Helper function to get color based on task status
   function getTaskStatusColor(status: string): string {
     if (!status) return 'gray'
 

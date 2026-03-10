@@ -2,18 +2,20 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { useAuthStore } from './auth'
 import { useToast } from 'vue-toastification'
-import clientService from '../services/client.service'
+import { getContainer } from '@/core/service-container'
+import { getEventBus } from '@/core/event-bus'
+import { CLIENT_REPO, PROJECT_REPO } from '@/adapters/repository-keys'
+import type { Repository } from '@/adapters/types'
 import { getClientColor } from '../constants/clientColors'
-import type { Client, Contact, Project } from '../types/models'
-import type { ClientCreateRequest, ClientUpdateRequest } from '../types/api'
+import type { Client, Project } from '../types/models'
+import type { ClientCreateRequest } from '../types/api'
 
-// Response types for store actions
 interface ClientStoreResult<T = undefined> {
   success: boolean
   error?: string
   client?: Client
   clients?: Client[]
-  contacts?: Contact[]
+  contacts?: import('../types/models').Contact[]
   projects?: Project[]
   result?: T
 }
@@ -25,6 +27,14 @@ export const useClientStore = defineStore('client', () => {
   const authStore = useAuthStore()
   const toast = useToast()
 
+  function getRepo() {
+    return getContainer().resolve<Repository<Client, ClientCreateRequest, Partial<ClientCreateRequest>>>(CLIENT_REPO)
+  }
+
+  function getProjectRepo() {
+    return getContainer().resolve<Repository<Project>>(PROJECT_REPO)
+  }
+
   async function fetchClients(): Promise<Client[] | ClientStoreResult> {
     if (!authStore.currentTeam) return { success: false, error: 'No team selected' }
 
@@ -32,13 +42,9 @@ export const useClientStore = defineStore('client', () => {
     error.value = null
 
     try {
-      // Get clients from service
-      const response: Client[] = await clientService.getClients()
-
-      // Store clients
+      const response = await getRepo().findAll()
       clients.value = response
       loading.value = false
-
       return response
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to fetch clients'
@@ -53,15 +59,12 @@ export const useClientStore = defineStore('client', () => {
     if (!authStore.currentTeam) return { success: false, error: 'No team selected' }
 
     try {
-      // Check if we already have the client in state
       const cachedClient = clients.value.find(c => c.id === id)
-
       if (cachedClient) {
         return { success: true, client: cachedClient }
       }
 
-      // Otherwise fetch from API
-      const response: Client = await clientService.getClient(id)
+      const response = await getRepo().findById(id)
       return { success: true, client: response }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to get client'
@@ -74,13 +77,13 @@ export const useClientStore = defineStore('client', () => {
     if (!authStore.currentTeam) return { success: false, error: 'No team selected' }
 
     try {
-      const response: Client = await clientService.createClient({
+      const response = await getRepo().create({
         ...clientData,
         teamId: authStore.currentTeam.id
-      })
+      } as ClientCreateRequest)
 
-      // Add to local state
       clients.value.push(response)
+      getEventBus().emit('client.created', { client: response })
 
       toast.success('Client created successfully')
       return { success: true, client: response }
@@ -95,15 +98,14 @@ export const useClientStore = defineStore('client', () => {
     if (!authStore.currentTeam) return { success: false, error: 'No team selected' }
 
     try {
-      const response: Client = await clientService.updateClient(id, clientData)
+      const response = await getRepo().update(id, clientData)
 
-      // Update in local state
       const index = clients.value.findIndex(c => c.id === id)
-
       if (index !== -1) {
         clients.value[index] = response
       }
 
+      getEventBus().emit('client.updated', { client: response })
       toast.success('Client updated successfully')
       return { success: true, client: response }
     } catch (err: unknown) {
@@ -117,15 +119,14 @@ export const useClientStore = defineStore('client', () => {
     if (!authStore.currentTeam) return { success: false, error: 'No team selected' }
 
     try {
-      await clientService.deleteClient(id)
+      await getRepo().delete(id)
 
-      // Remove from local state
       const index = clients.value.findIndex(c => c.id === id)
-
       if (index !== -1) {
         clients.value.splice(index, 1)
       }
 
+      getEventBus().emit('client.deleted', { id })
       toast.success('Client deleted successfully')
       return { success: true }
     } catch (err: unknown) {
@@ -137,8 +138,8 @@ export const useClientStore = defineStore('client', () => {
 
   async function getClientContacts(clientId: string): Promise<ClientStoreResult> {
     try {
-      const response: Contact[] = await clientService.getClientContacts(clientId)
-      return { success: true, contacts: response }
+      const client = await getRepo().findById(clientId)
+      return { success: true, contacts: client.contacts || [] }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to fetch client contacts'
       toast.error('Failed to load client contacts')
@@ -148,35 +149,12 @@ export const useClientStore = defineStore('client', () => {
 
   async function getClientProjects(clientId: string): Promise<ClientStoreResult> {
     try {
-      const response: Project[] = await clientService.getClientProjects(clientId)
+      const response = await getProjectRepo().findAll({ clientId })
       return { success: true, projects: response }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to fetch client projects'
       toast.error('Failed to load client projects')
       return { success: false, error: message }
-    }
-  }
-
-  async function runContactMigration(): Promise<ClientStoreResult<unknown>> {
-    try {
-      loading.value = true
-      error.value = null
-
-      const response: unknown = await clientService.runContactMigration()
-
-      toast.success('Contact migration completed successfully')
-
-      // Reload clients to get updated list
-      await fetchClients()
-
-      return { success: true, result: response }
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Failed to run contact migration'
-      error.value = message
-      toast.error('Failed to run contact migration')
-      return { success: false, error: error.value }
-    } finally {
-      loading.value = false
     }
   }
 
@@ -196,7 +174,6 @@ export const useClientStore = defineStore('client', () => {
     deleteClient,
     getClientContacts,
     getClientProjects,
-    runContactMigration,
     getClientColorById
   }
 })

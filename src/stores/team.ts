@@ -1,21 +1,25 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import teamService from '../services/team.service'
 import { useAuthStore } from './auth'
 import { useToast } from 'vue-toastification'
+import { getContainer } from '@/core/service-container'
+import { getEventBus } from '@/core/event-bus'
+import { TEAM_REPO } from '@/adapters/repository-keys'
+import type { Repository } from '@/adapters/types'
 import type { Team, TeamMember, TeamInvite } from '../types/models'
+import type { TeamRole } from '../types/enums'
+import type { TeamCreateRequest } from '../types/api'
 
-// Service response types
-interface TeamServiceResult<T = undefined> {
-  success: boolean
-  error?: string
-  teams?: Team[]
-  team?: Team
-  members?: TeamMember[]
-  invites?: TeamInvite[]
+// Extended repository interface for team-specific operations
+interface TeamRepository extends Repository<Team, TeamCreateRequest, Partial<TeamCreateRequest>> {
+  getMembers(teamId: string): Promise<TeamMember[]>
+  inviteUser(teamId: string, email: string): Promise<unknown>
+  getPendingInvites(teamId: string): Promise<TeamInvite[]>
+  removeMember(teamId: string, memberId: string): Promise<void>
+  updateMemberRole(teamId: string, memberId: string, role: string): Promise<unknown>
+  leaveTeam(teamId: string): Promise<void>
 }
 
-// User-like object for getUserInitials
 interface UserLike {
   displayName?: string
   email?: string
@@ -32,20 +36,21 @@ export const useTeamStore = defineStore('team', () => {
   const pendingInvites = ref<TeamInvite[]>([])
   const isLoadingInvites = ref<boolean>(false)
 
-  // Computed property for current team
+  function getRepo(): TeamRepository {
+    return getContainer().resolve<TeamRepository>(TEAM_REPO)
+  }
+
   const currentTeam = computed(() => {
     return authStore.currentTeam
   })
 
-  // Computed property for valid team members (non-null)
   const validTeamMembers = computed<TeamMember[]>(() => {
     return teamMembers.value.filter(member =>
       member && member.userId && (member.email || member.name)
     )
   })
 
-  // Fetch all teams for the current user
-  async function fetchTeams(): Promise<TeamServiceResult> {
+  async function fetchTeams(): Promise<{ success: boolean; error?: string; teams?: Team[] }> {
     if (!authStore.user) {
       return { success: false, error: 'User not authenticated' }
     }
@@ -54,15 +59,9 @@ export const useTeamStore = defineStore('team', () => {
     error.value = null
 
     try {
-      const result: TeamServiceResult = await teamService.getTeams()
-      if (result.success) {
-        teams.value = result.teams || []
-        return { success: true, teams: result.teams }
-      } else {
-        error.value = result.error || 'Failed to fetch teams'
-        toast.error(error.value)
-        return { success: false, error: error.value }
-      }
+      const result = await getRepo().findAll()
+      teams.value = result || []
+      return { success: true, teams: teams.value }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to fetch teams'
       error.value = message
@@ -73,8 +72,7 @@ export const useTeamStore = defineStore('team', () => {
     }
   }
 
-  // Fetch team members for the current team
-  async function fetchTeamMembers(): Promise<TeamServiceResult> {
+  async function fetchTeamMembers(): Promise<{ success: boolean; error?: string; members?: TeamMember[] }> {
     if (!authStore.currentTeam) {
       return { success: false, error: 'No team selected' }
     }
@@ -83,18 +81,12 @@ export const useTeamStore = defineStore('team', () => {
     error.value = null
 
     try {
-      const result: TeamServiceResult = await teamService.getTeamMembers(authStore.currentTeam.id)
-      if (result.success) {
-        // Filter out any null or invalid members
-        teamMembers.value = (result.members || []).filter(member =>
-          member && member.userId && (member.email || member.name)
-        )
-        return { success: true, members: teamMembers.value }
-      } else {
-        error.value = result.error || 'Failed to fetch team members'
-        toast.error(error.value)
-        return { success: false, error: error.value }
-      }
+      const members = await getRepo().getMembers(authStore.currentTeam.id)
+
+      teamMembers.value = (members || []).filter((member: TeamMember) =>
+        member && member.userId && (member.email || member.name)
+      )
+      return { success: true, members: teamMembers.value }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to fetch team members'
       error.value = message
@@ -105,8 +97,7 @@ export const useTeamStore = defineStore('team', () => {
     }
   }
 
-  // Create a new team
-  async function createTeam(teamData: { name: string }): Promise<TeamServiceResult> {
+  async function createTeam(teamData: { name: string }): Promise<{ success: boolean; error?: string; team?: Team }> {
     if (!authStore.user) {
       return { success: false, error: 'User not authenticated' }
     }
@@ -115,15 +106,15 @@ export const useTeamStore = defineStore('team', () => {
     error.value = null
 
     try {
-      const result: TeamServiceResult = await teamService.createTeam(teamData)
-      if (result.success && result.team) {
-        teams.value.push(result.team)
-        // Optionally switch to the new team
-        await authStore.switchTeam(result.team.id)
+      const createdTeam = await getRepo().create(teamData)
+      if (createdTeam && createdTeam.id) {
+        teams.value.push(createdTeam)
+        await authStore.switchTeam(createdTeam.id)
+        getEventBus().emit('team.created', { team: createdTeam })
         toast.success('Team created successfully')
-        return { success: true, team: result.team }
+        return { success: true, team: createdTeam }
       } else {
-        error.value = result.error || 'Failed to create team'
+        error.value = 'Failed to create team'
         toast.error(error.value)
         return { success: false, error: error.value }
       }
@@ -137,8 +128,7 @@ export const useTeamStore = defineStore('team', () => {
     }
   }
 
-  // Invite a user to the current team
-  async function inviteUser(email: string): Promise<TeamServiceResult> {
+  async function inviteUser(email: string): Promise<{ success: boolean; error?: string }> {
     if (!authStore.currentTeam) {
       return { success: false, error: 'No team selected' }
     }
@@ -147,15 +137,10 @@ export const useTeamStore = defineStore('team', () => {
     error.value = null
 
     try {
-      const result: TeamServiceResult = await teamService.inviteUser(authStore.currentTeam.id, email)
-      if (result.success) {
-        toast.success(`Invitation sent to ${email}`)
-        return { success: true }
-      } else {
-        error.value = result.error || 'Failed to send invitation'
-        toast.error(error.value)
-        return { success: false, error: error.value }
-      }
+      await getRepo().inviteUser(authStore.currentTeam.id, email)
+      getEventBus().emit('team.member-invited', { email })
+      toast.success(`Invitation sent to ${email}`)
+      return { success: true }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to send invitation'
       error.value = message
@@ -166,8 +151,7 @@ export const useTeamStore = defineStore('team', () => {
     }
   }
 
-  // Get pending invites for the current team
-  async function fetchPendingInvites(): Promise<TeamServiceResult> {
+  async function fetchPendingInvites(): Promise<{ success: boolean; error?: string; invites?: TeamInvite[] }> {
     if (!authStore.currentTeam) {
       return { success: false, error: 'No team selected' }
     }
@@ -176,14 +160,9 @@ export const useTeamStore = defineStore('team', () => {
     error.value = null
 
     try {
-      const result: TeamServiceResult = await teamService.getPendingInvites(authStore.currentTeam.id)
-      if (result.success) {
-        pendingInvites.value = result.invites || []
-        return { success: true, invites: result.invites }
-      } else {
-        error.value = result.error || 'Failed to fetch pending invites'
-        return { success: false, error: error.value }
-      }
+      const invites = await getRepo().getPendingInvites(authStore.currentTeam.id)
+      pendingInvites.value = invites || []
+      return { success: true, invites: pendingInvites.value }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to fetch pending invites'
       error.value = message
@@ -193,8 +172,7 @@ export const useTeamStore = defineStore('team', () => {
     }
   }
 
-  // Remove a member from the current team
-  async function removeMember(memberId: string): Promise<TeamServiceResult> {
+  async function removeMember(memberId: string): Promise<{ success: boolean; error?: string }> {
     if (!authStore.currentTeam) {
       return { success: false, error: 'No team selected' }
     }
@@ -203,17 +181,11 @@ export const useTeamStore = defineStore('team', () => {
     error.value = null
 
     try {
-      const result: TeamServiceResult = await teamService.removeMember(authStore.currentTeam.id, memberId)
-      if (result.success) {
-        // Update the local state
-        teamMembers.value = teamMembers.value.filter(member => member.userId !== memberId)
-        toast.success('Team member removed successfully')
-        return { success: true }
-      } else {
-        error.value = result.error || 'Failed to remove team member'
-        toast.error(error.value)
-        return { success: false, error: error.value }
-      }
+      await getRepo().removeMember(authStore.currentTeam.id, memberId)
+      teamMembers.value = teamMembers.value.filter(member => member.userId !== memberId)
+      getEventBus().emit('team.member-removed', { memberId })
+      toast.success('Team member removed successfully')
+      return { success: true }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to remove team member'
       error.value = message
@@ -224,7 +196,51 @@ export const useTeamStore = defineStore('team', () => {
     }
   }
 
-  // Get user initials for display
+  async function updateMemberRole(memberId: string, newRole: string): Promise<{ success: boolean; error?: string }> {
+    if (!authStore.currentTeam) {
+      return { success: false, error: 'No team selected' }
+    }
+
+    isLoading.value = true
+    error.value = null
+
+    try {
+      await getRepo().updateMemberRole(authStore.currentTeam.id, memberId, newRole)
+      const member = teamMembers.value.find(m => m.userId === memberId || (m as any).id === memberId)
+      if (member) {
+        member.role = newRole as TeamRole
+      }
+      getEventBus().emit('team.member-role-changed', { memberId, role: newRole })
+      return { success: true }
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to update member role'
+      error.value = message
+      toast.error(error.value)
+      return { success: false, error: error.value }
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  async function leaveTeam(teamId: string): Promise<{ success: boolean; error?: string }> {
+    isLoading.value = true
+    error.value = null
+
+    try {
+      await getRepo().leaveTeam(teamId)
+      teams.value = teams.value.filter(t => t.id !== teamId)
+      getEventBus().emit('team.left', { teamId })
+      return { success: true }
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to leave team'
+      error.value = message
+      toast.error(error.value)
+      return { success: false, error: error.value }
+    } finally {
+      isLoading.value = false
+    }
+  }
+
   function getUserInitials(user: UserLike | null | undefined): string {
     if (!user) return '?'
 
@@ -258,6 +274,8 @@ export const useTeamStore = defineStore('team', () => {
     inviteUser,
     fetchPendingInvites,
     removeMember,
+    updateMemberRole,
+    leaveTeam,
     getUserInitials
   }
 })

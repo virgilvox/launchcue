@@ -62,7 +62,8 @@
 import { ref, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
 import { useToast } from 'vue-toastification';
-import apiService from '../../services/api.service';
+import { getContainer } from '@/core/service-container';
+import { AUTH_ADAPTER } from '@/adapters/repository-keys';
 
 const appName = import.meta.env.VITE_APP_NAME || 'LaunchCue';
 const route = useRoute();
@@ -79,7 +80,8 @@ onMounted(async () => {
   isLoading.value = true;
 
   try {
-    await apiService.verifyEmail(token);
+    const auth = getContainer().resolve(AUTH_ADAPTER);
+    await auth.verifyEmail(token);
     success.value = true;
     toast.success('Email verified successfully!');
   } catch (err) {

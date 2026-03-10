@@ -1,7 +1,9 @@
 import { ref } from 'vue'
 import { defineStore } from 'pinia'
-import apiService from '../services/api.service'
-import { TASK_ENDPOINT } from '../services/api.service'
+import { getContainer } from '@/core/service-container'
+import { getEventBus } from '@/core/event-bus'
+import { TASK_REPO } from '@/adapters/repository-keys'
+import type { Repository } from '@/adapters/types'
 import type { Task } from '../types/models'
 import type { TaskCreateRequest, TaskUpdateRequest, TaskFilter } from '../types/api'
 
@@ -10,11 +12,15 @@ export const useTaskStore = defineStore('task', () => {
   const isLoading = ref<boolean>(false)
   const error = ref<string | null>(null)
 
+  function getRepo() {
+    return getContainer().resolve<Repository<Task, TaskCreateRequest, TaskUpdateRequest>>(TASK_REPO)
+  }
+
   const fetchTasks = async (filter: TaskFilter = {}): Promise<Task[]> => {
     isLoading.value = true
     error.value = null
     try {
-      const response: Task[] = await apiService.get(TASK_ENDPOINT, filter)
+      const response = await getRepo().findAll(filter as Record<string, unknown>)
       tasks.value = response || []
       return tasks.value
     } catch (err: unknown) {
@@ -38,10 +44,11 @@ export const useTaskStore = defineStore('task', () => {
         formattedData.checklist = []
       }
 
-      const createdTask: Task = await apiService.post(TASK_ENDPOINT, formattedData)
+      const createdTask = await getRepo().create(formattedData)
 
       if (createdTask && createdTask.id) {
         tasks.value.push(createdTask)
+        getEventBus().emit('task.created', { task: createdTask })
       }
       return createdTask
     } catch (err) {
@@ -64,12 +71,13 @@ export const useTaskStore = defineStore('task', () => {
         formattedData.checklist = []
       }
 
-      const updatedTask: Task = await apiService.put(`${TASK_ENDPOINT}/${taskData.id}`, formattedData)
+      const updatedTask = await getRepo().update(taskData.id, formattedData)
 
       const index = tasks.value.findIndex(t => t.id === taskData.id)
       if (index !== -1) {
         tasks.value[index] = updatedTask
       }
+      getEventBus().emit('task.updated', { task: updatedTask })
       return updatedTask
     } catch (err) {
       throw err
@@ -81,8 +89,9 @@ export const useTaskStore = defineStore('task', () => {
       throw new Error('Task ID is required for deletion')
     }
     try {
-      await apiService.delete(`${TASK_ENDPOINT}/${id}`)
+      await getRepo().delete(id)
       tasks.value = tasks.value.filter(t => t.id !== id)
+      getEventBus().emit('task.deleted', { id })
     } catch (err) {
       throw err
     }
@@ -97,7 +106,7 @@ export const useTaskStore = defineStore('task', () => {
     isLoading.value = true
     error.value = null
     try {
-      const task: Task = await apiService.get(`${TASK_ENDPOINT}/${taskId}`)
+      const task = await getRepo().findById(taskId)
       const index = tasks.value.findIndex(t => t.id === taskId)
       if (index !== -1) {
         tasks.value[index] = task

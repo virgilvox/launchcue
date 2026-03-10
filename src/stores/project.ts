@@ -1,24 +1,27 @@
 import { ref } from 'vue'
 import { defineStore } from 'pinia'
-import apiService, { PROJECT_ENDPOINT } from '../services/api.service'
+import { getContainer } from '@/core/service-container'
+import { getEventBus } from '@/core/event-bus'
+import { PROJECT_REPO } from '@/adapters/repository-keys'
+import type { Repository } from '@/adapters/types'
 import type { Project } from '../types/models'
-import type { ProjectCreateRequest, ProjectUpdateRequest } from '../types/api'
+import type { ProjectCreateRequest } from '../types/api'
 
 export const useProjectStore = defineStore('project', () => {
-  // State
   const projects = ref<Project[]>([])
   const isLoading = ref<boolean>(false)
 
-  // Actions
+  function getRepo() {
+    return getContainer().resolve<Repository<Project, ProjectCreateRequest, Partial<ProjectCreateRequest>>>(PROJECT_REPO)
+  }
+
   const fetchProjects = async (): Promise<Project[]> => {
     isLoading.value = true
     try {
-      const response: unknown = await apiService.get(PROJECT_ENDPOINT)
-      // Ensure projects.value is always an array to prevent filter errors
+      const response = await getRepo().findAll()
       projects.value = Array.isArray(response) ? response : []
       return projects.value
     } catch (error) {
-      // Ensure projects.value is reset to an empty array on error
       projects.value = []
       throw error
     } finally {
@@ -32,7 +35,7 @@ export const useProjectStore = defineStore('project', () => {
     }
     isLoading.value = true
     try {
-      const response: unknown = await apiService.get(`${PROJECT_ENDPOINT}?clientId=${clientId}`)
+      const response = await getRepo().findAll({ clientId })
       return Array.isArray(response) ? response : []
     } catch (error) {
       throw error
@@ -43,19 +46,15 @@ export const useProjectStore = defineStore('project', () => {
 
   const getProject = async (id: string): Promise<Project> => {
     if (!id) throw new Error('Project ID is required')
-    try {
-      const response: Project = await apiService.get(`${PROJECT_ENDPOINT}/${id}`)
-      return response
-    } catch (error) {
-      throw error
-    }
+    return getRepo().findById(id)
   }
 
   const createProject = async (projectData: ProjectCreateRequest): Promise<Project> => {
     try {
-      const createdProject: Project = await apiService.post(PROJECT_ENDPOINT, projectData)
+      const createdProject = await getRepo().create(projectData)
       if (createdProject && createdProject.id) {
         projects.value.push(createdProject)
+        getEventBus().emit('project.created', { project: createdProject })
       }
       return createdProject
     } catch (error) {
@@ -69,11 +68,12 @@ export const useProjectStore = defineStore('project', () => {
     }
     isLoading.value = true
     try {
-      const updatedProject: Project = await apiService.put(`${PROJECT_ENDPOINT}/${id}`, projectData)
+      const updatedProject = await getRepo().update(id, projectData)
       const index = projects.value.findIndex(p => p.id === id)
       if (index !== -1) {
         projects.value[index] = updatedProject
       }
+      getEventBus().emit('project.updated', { project: updatedProject })
       return updatedProject
     } catch (error) {
       throw error
@@ -88,8 +88,9 @@ export const useProjectStore = defineStore('project', () => {
     }
     isLoading.value = true
     try {
-      await apiService.delete(`${PROJECT_ENDPOINT}/${id}`)
+      await getRepo().delete(id)
       projects.value = projects.value.filter(p => p.id !== id)
+      getEventBus().emit('project.deleted', { id })
     } catch (error) {
       throw error
     } finally {
@@ -97,27 +98,21 @@ export const useProjectStore = defineStore('project', () => {
     }
   }
 
-  // Add a project directly to the store without an API call
-  // Useful when we've fetched a project from another component
   const addProject = (project: Project): Project | undefined => {
     if (!project || !project.id) {
       return
     }
 
-    // Check if project already exists in store
     const existingIndex = projects.value.findIndex(p => p.id === project.id)
     if (existingIndex !== -1) {
-      // Update existing project
       projects.value[existingIndex] = { ...projects.value[existingIndex], ...project }
       return projects.value[existingIndex]
     } else {
-      // Add new project
       projects.value.push(project)
       return project
     }
   }
 
-  // Return state and actions
   return {
     projects,
     isLoading,

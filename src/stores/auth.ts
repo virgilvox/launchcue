@@ -1,35 +1,19 @@
 import { ref, computed } from 'vue'
 import { defineStore, getActivePinia } from 'pinia'
 import router from '../router'
-import apiService, { TEAM_ENDPOINT } from '../services/api.service'
-import type { User, Team, TeamMember } from '../types/models'
+import { getContainer } from '@/core/service-container'
+import { AUTH_ADAPTER, TEAM_REPO } from '@/adapters/repository-keys'
+import type { AuthAdapter, Repository, TeamSummary } from '@/adapters/types'
+import type { User } from '../types/models'
 import type { TeamRole } from '../types/enums'
 
 // Extended user type that includes role from the current team context
 interface AuthUser extends User {
-  role?: TeamRole
+  role?: TeamRole | 'client'
 }
 
-// Team summary as returned by auth/team endpoints
-interface TeamSummary {
-  id: string
-  name: string
-  role?: string
-}
-
-// Login/register response shape from apiService
-interface AuthResponse {
-  token: string
-  user: AuthUser
-  currentTeamId?: string
-  message?: string
-}
-
-// Switch team response shape
-interface SwitchTeamResponse {
-  token: string
-  currentTeam: TeamSummary & { role?: TeamRole }
-  message?: string
+function getAuth(): AuthAdapter {
+  return getContainer().resolve<AuthAdapter>(AUTH_ADAPTER)
 }
 
 export const useAuthStore = defineStore('auth', () => {
@@ -68,6 +52,8 @@ export const useAuthStore = defineStore('auth', () => {
     userTeams.value = JSON.parse(sessionStorage.getItem('teams') || '[]')
     currentTeam.value = JSON.parse(sessionStorage.getItem('currentTeam') || 'null')
 
+    const auth = getAuth()
+
     // Check token expiry before accepting it
     if (token.value && isTokenExpired(token.value)) {
       user.value = null
@@ -78,15 +64,15 @@ export const useAuthStore = defineStore('auth', () => {
       sessionStorage.removeItem('user')
       sessionStorage.removeItem('teams')
       sessionStorage.removeItem('currentTeam')
-      apiService.setAuthToken(null)
+      auth.setToken(null)
       return false
     }
 
-    // Sync token to apiService (memory + sessionStorage)
-    apiService.setAuthToken(token.value)
+    // Sync token to adapter
+    auth.setToken(token.value)
 
-    // Register 401 handler so apiService can trigger logout without circular imports
-    apiService.onUnauthorized(() => {
+    // Register 401 handler so adapter can trigger logout without circular imports
+    auth.onUnauthorized(() => {
       logout()
     })
 
@@ -97,25 +83,22 @@ export const useAuthStore = defineStore('auth', () => {
   const register = async (email: string, password: string, name: string): Promise<AuthUser> => {
     isLoading.value = true
     try {
-      // Use apiService for registration
-      const response: AuthResponse = await apiService.register({ email, password, name })
+      const response = await getAuth().register({ email, password, name })
 
       if (response && response.token && response.user) {
         // Set user data and token
-        setUserData(response.user, response.token)
+        setUserData(response.user as AuthUser, response.token)
+        // Load teams after registration
+        await loadUserTeams()
         // Set current team from registration response
-        await loadUserTeams() // Fetch teams after registration
-        // The register function on backend now creates a default team
         if (response.currentTeamId) {
           const team = userTeams.value.find(t => t.id === response.currentTeamId)
           if (team) setCurrentTeam(team)
         }
-        return response.user
+        return response.user as AuthUser
       } else {
         throw new Error(response.message || 'Registration failed')
       }
-    } catch (error) {
-      throw error
     } finally {
       isLoading.value = false
     }
@@ -125,14 +108,13 @@ export const useAuthStore = defineStore('auth', () => {
   const login = async (email: string, password: string): Promise<AuthUser> => {
     isLoading.value = true
     try {
-      // Use apiService for login
-      const response: AuthResponse = await apiService.login(email, password)
+      const response = await getAuth().login(email, password)
 
       if (response && response.token && response.user) {
         // Include role from login response in user data
-        const userData: AuthUser = { ...response.user }
+        const userData: AuthUser = { ...response.user } as AuthUser
         if (response.user.role) {
-          userData.role = response.user.role
+          userData.role = response.user.role as TeamRole | 'client'
         }
         // Set user data and token
         setUserData(userData, response.token)
@@ -143,19 +125,15 @@ export const useAuthStore = defineStore('auth', () => {
           if (team) {
             setCurrentTeam(team)
           } else if (userTeams.value.length > 0) {
-            // Fallback if currentTeamId is invalid but teams exist
             setCurrentTeam(userTeams.value[0])
           }
         } else if (userTeams.value.length > 0) {
-          // Fallback if no currentTeamId sent but teams exist
           setCurrentTeam(userTeams.value[0])
         }
         return userData
       } else {
         throw new Error(response.message || 'Login failed')
       }
-    } catch (error) {
-      throw error
     } finally {
       isLoading.value = false
     }
@@ -164,8 +142,7 @@ export const useAuthStore = defineStore('auth', () => {
   // Logout
   const logout = async (): Promise<void> => {
     try {
-      // Call apiService logout (clears token in service/sessionStorage)
-      await apiService.logout()
+      await getAuth().logout()
 
       // Clear local state
       user.value = null
@@ -173,7 +150,7 @@ export const useAuthStore = defineStore('auth', () => {
       userTeams.value = []
       currentTeam.value = null
 
-      // Clear local storage explicitly (redundant with apiService.logout but safe)
+      // Clear session storage
       sessionStorage.removeItem('token')
       sessionStorage.removeItem('user')
       sessionStorage.removeItem('teams')
@@ -182,18 +159,17 @@ export const useAuthStore = defineStore('auth', () => {
       // Reset all other Pinia stores to clear stale data
       const pinia = getActivePinia()
       if (pinia) {
-        pinia._s.forEach((store, id) => {
+        (pinia as any)._s.forEach((store: any, id: string) => {
           if (id !== 'auth') store.$dispose()
         })
-        // Clear the store registry so they reinitialize fresh on next use
-        pinia._s.forEach((_, id) => {
-          if (id !== 'auth') pinia._s.delete(id)
+        ;(pinia as any)._s.forEach((_: any, id: string) => {
+          if (id !== 'auth') (pinia as any)._s.delete(id)
         })
       }
 
       // Redirect to landing page
       router.push('/')
-    } catch (error) {
+    } catch {
       // Logout errors are non-critical; state is already cleared
     }
   }
@@ -202,7 +178,7 @@ export const useAuthStore = defineStore('auth', () => {
   const setUserData = (userData: AuthUser, accessToken: string): void => {
     user.value = userData
     token.value = accessToken
-    apiService.setAuthToken(accessToken) // Update token in axios instance
+    getAuth().setToken(accessToken)
 
     sessionStorage.setItem('user', JSON.stringify(userData))
     sessionStorage.setItem('token', accessToken)
@@ -211,12 +187,11 @@ export const useAuthStore = defineStore('auth', () => {
   // Action to update user info in the store (e.g., after profile save)
   const updateUserState = (updatedUserData: Partial<AuthUser>): void => {
     if (user.value && updatedUserData) {
-      // Merge new data, ensuring ID and email aren't overwritten if not present
       user.value = {
         ...user.value,
         ...updatedUserData,
-        id: user.value.id, // Keep original ID
-        email: user.value.email // Keep original email
+        id: user.value.id,
+        email: user.value.email
       }
       sessionStorage.setItem('user', JSON.stringify(user.value))
     }
@@ -224,12 +199,11 @@ export const useAuthStore = defineStore('auth', () => {
 
   // Load user teams
   const loadUserTeams = async (): Promise<void> => {
-    if (!isAuthenticated.value) return // Need to be authenticated
+    if (!isAuthenticated.value) return
 
     isLoading.value = true
     try {
-      // Use TEAM_ENDPOINT constant
-      const teams: TeamSummary[] = await apiService.get(TEAM_ENDPOINT)
+      const teams = await getAuth().getTeams()
 
       if (teams && Array.isArray(teams)) {
         userTeams.value = teams
@@ -242,50 +216,47 @@ export const useAuthStore = defineStore('auth', () => {
         if (!currentTeamIsValid && teams.length > 0) {
           setCurrentTeam(teams[0])
         } else if (!currentTeamIsValid && teams.length === 0) {
-          currentTeam.value = null // Ensure currentTeam is null if no teams exist
+          currentTeam.value = null
           sessionStorage.removeItem('currentTeam')
         }
-        // If currentTeamIsValid, keep the existing currentTeam
-
       } else {
         userTeams.value = []
         currentTeam.value = null
         sessionStorage.setItem('teams', JSON.stringify([]))
         sessionStorage.removeItem('currentTeam')
       }
-    } catch (error) {
+    } catch {
       userTeams.value = []
       currentTeam.value = null
       sessionStorage.removeItem('teams')
       sessionStorage.removeItem('currentTeam')
-      throw error // Re-throw
     } finally {
       isLoading.value = false
     }
   }
 
-  // Create team
+  // Create team — creates via TEAM_REPO and refreshes teams list
   const createTeam = async (teamName: string): Promise<TeamSummary> => {
     if (!isAuthenticated.value) throw new Error('User not authenticated')
-    try {
-      const newTeamData = { name: teamName }
-      // Use TEAM_ENDPOINT constant from import
-      const createdTeam: TeamSummary = await apiService.post(TEAM_ENDPOINT, newTeamData)
 
-      if (createdTeam && createdTeam.id) {
-        userTeams.value.push(createdTeam)
-        sessionStorage.setItem('teams', JSON.stringify(userTeams.value))
+    const repo = getContainer().resolve<Repository<any>>(TEAM_REPO)
+    const createdTeam = await repo.create({ name: teamName })
 
-        // Set as current team if it's the first one
-        if (userTeams.value.length === 1) {
-          setCurrentTeam(createdTeam)
-        }
-        return createdTeam
-      } else {
-        throw new Error('Failed to create team')
+    if (createdTeam && createdTeam.id) {
+      const teamSummary: TeamSummary = {
+        id: createdTeam.id,
+        name: createdTeam.name,
+        role: 'owner'
       }
-    } catch (error) {
-      throw error
+      userTeams.value.push(teamSummary)
+      sessionStorage.setItem('teams', JSON.stringify(userTeams.value))
+
+      if (userTeams.value.length === 1) {
+        setCurrentTeam(teamSummary)
+      }
+      return teamSummary
+    } else {
+      throw new Error('Failed to create team')
     }
   }
 
@@ -294,39 +265,38 @@ export const useAuthStore = defineStore('auth', () => {
     if (!isAuthenticated.value) throw new Error('User not authenticated')
     if (!targetTeamId) throw new Error('Target team ID is required')
 
-    // Optimistically update local state (optional, improves perceived speed)
     const targetTeam = userTeams.value.find(t => t.id === targetTeamId)
     if (!targetTeam) throw new Error('Target team not found in user\'s list')
-    // Store previous team/token for potential rollback
+
+    // Store previous state for rollback
     const previousTeam = currentTeam.value
     const previousToken = token.value
     setCurrentTeam(targetTeam)
 
     try {
-      // Call the backend endpoint using the apiService.switchTeam method
-      const response: SwitchTeamResponse = await apiService.switchTeam(targetTeamId)
+      const response = await getAuth().switchTeam(targetTeamId)
 
-      if (response && response.token && response.currentTeam) {
-        // Update token and current team info from the response
-        // Include the new role from the team switch response
+      if (response && response.token) {
+        // Update user role from switch response
         const updatedUser: AuthUser = { ...user.value! }
-        if (response.currentTeam.role) {
-          updatedUser.role = response.currentTeam.role
+        const teamInfo = response.teams?.find(t => t.id === targetTeamId)
+        if (teamInfo?.role) {
+          updatedUser.role = teamInfo.role as TeamRole | 'client'
+        } else if (response.user?.role) {
+          updatedUser.role = response.user.role as TeamRole | 'client'
         }
-        // setUserData handles setting token ref, sessionStorage, and apiService headers
-        setUserData(updatedUser, response.token) // Update token and user role
-        setCurrentTeam(response.currentTeam)    // Update team info from response
+        setUserData(updatedUser, response.token)
 
-        // Data reload is handled by DefaultLayout's window.location.reload() after switchTeam resolves
-        return response.currentTeam
+        // Data reload is handled by DefaultLayout's window.location.reload()
+        return targetTeam
       } else {
         throw new Error(response?.message || 'Failed to switch team context on backend')
       }
     } catch (error) {
       // Rollback optimistic update on failure
-      setCurrentTeam(previousTeam) // Restore previous team state
-      setUserData(user.value!, previousToken!) // Restore previous token
-      throw error // Re-throw for component handling
+      setCurrentTeam(previousTeam)
+      setUserData(user.value!, previousToken!)
+      throw error
     }
   }
 
@@ -334,7 +304,6 @@ export const useAuthStore = defineStore('auth', () => {
   const setCurrentTeam = (team: TeamSummary | null): void => {
     currentTeam.value = team
     sessionStorage.setItem('currentTeam', JSON.stringify(team))
-    // No longer need token update here, handled by switchTeam response
   }
 
   // Set session from external auth flow (e.g., client invitation acceptance)
@@ -342,7 +311,6 @@ export const useAuthStore = defineStore('auth', () => {
     setUserData(userData, accessToken)
   }
 
-  // Return store methods and state
   return {
     user,
     token,
