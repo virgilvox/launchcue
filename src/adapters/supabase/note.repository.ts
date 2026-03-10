@@ -12,6 +12,15 @@ export class SupabaseNoteRepository extends SupabaseBaseRepository<Note, NoteCre
     })
   }
 
+  protected override mapToDb(dto: Record<string, unknown>): Record<string, unknown> {
+    const result = super.mapToDb(dto)
+    // notes.content is TEXT NOT NULL DEFAULT '' — preserve empty string
+    if ('content' in dto && dto.content === '') {
+      result.content = ''
+    }
+    return result
+  }
+
   protected mapFromDb(row: Record<string, unknown>): Note {
     return {
       id: row.id as string,

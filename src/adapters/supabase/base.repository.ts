@@ -158,7 +158,8 @@ export abstract class SupabaseBaseRepository<T, CreateDTO = Partial<T>, UpdateDT
     for (const [key, value] of Object.entries(dto)) {
       if (value === undefined) continue
       if (key === 'id') continue // Never include id in inserts/updates
-      result[this.toSnake(key)] = value
+      // Convert empty strings to null — PostgreSQL rejects '' for DATE, UUID, NUMERIC, etc.
+      result[this.toSnake(key)] = value === '' ? null : value
     }
     return result
   }

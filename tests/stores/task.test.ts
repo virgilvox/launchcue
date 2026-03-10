@@ -80,15 +80,15 @@ describe('useTaskStore', () => {
       expect(mockRepo.create).toHaveBeenCalled()
     })
 
-    it('formats dueDate to ISO string when missing time component', async () => {
-      const task = { id: 't4', title: 'Task', dueDate: '2024-06-15T00:00:00.000Z', checklist: [] }
+    it('passes dueDate through as-is (DATE columns accept YYYY-MM-DD)', async () => {
+      const task = { id: 't4', title: 'Task', dueDate: '2024-06-15', checklist: [] }
       ;(mockRepo.create as ReturnType<typeof vi.fn>).mockResolvedValue(task)
 
       const store = useTaskStore()
       await store.createTask({ title: 'Task', dueDate: '2024-06-15', projectId: 'p1' } as any)
 
       const call = (mockRepo.create as ReturnType<typeof vi.fn>).mock.calls[0][0]
-      expect(call.dueDate).toContain('T')
+      expect(call.dueDate).toBe('2024-06-15')
     })
 
     it('initializes empty checklist if not provided', async () => {
@@ -128,7 +128,7 @@ describe('useTaskStore', () => {
       expect(store.tasks[0].title).toBe('Updated')
     })
 
-    it('formats dueDate on update', async () => {
+    it('passes dueDate through as-is on update (DATE columns accept YYYY-MM-DD)', async () => {
       ;(mockRepo.update as ReturnType<typeof vi.fn>).mockResolvedValue({ id: 't1', title: 'Task' })
 
       const store = useTaskStore()
@@ -137,7 +137,7 @@ describe('useTaskStore', () => {
       await store.updateTask({ id: 't1', dueDate: '2024-12-25' } as any)
 
       const call = (mockRepo.update as ReturnType<typeof vi.fn>).mock.calls[0][1]
-      expect(call.dueDate).toContain('T')
+      expect(call.dueDate).toBe('2024-12-25')
     })
   })
 

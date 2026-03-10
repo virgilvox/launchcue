@@ -39,10 +39,6 @@ export const useTaskStore = defineStore('task', () => {
     try {
       const formattedData: TaskCreateRequest = { ...taskData }
 
-      if (formattedData.dueDate && !formattedData.dueDate.includes('T')) {
-        formattedData.dueDate = new Date(formattedData.dueDate).toISOString()
-      }
-
       if (!formattedData.checklist) {
         formattedData.checklist = []
       }
@@ -66,10 +62,6 @@ export const useTaskStore = defineStore('task', () => {
     }
     try {
       const formattedData: TaskUpdateRequest = { ...taskData }
-
-      if (formattedData.dueDate && !formattedData.dueDate.includes('T')) {
-        formattedData.dueDate = new Date(formattedData.dueDate).toISOString()
-      }
 
       if (!formattedData.checklist) {
         formattedData.checklist = []
