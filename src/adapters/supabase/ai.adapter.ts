@@ -1,4 +1,5 @@
 import type { AiAdapter } from '../types'
+import { getSupabase } from './client'
 
 /**
  * Supabase AI adapter — delegates to Express API server for AI processing.
@@ -12,9 +13,15 @@ export class SupabaseAiAdapter implements AiAdapter {
   }
 
   async process(data: { prompt: string; processingDetails: { type: string; context: string; enriched: boolean }; max_tokens: number }): Promise<unknown> {
+    const { data: { session } } = await getSupabase().auth.getSession()
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+    if (session?.access_token) {
+      headers['Authorization'] = `Bearer ${session.access_token}`
+    }
+
     const response = await fetch(`${this.apiUrl}/ai/process`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify(data),
     })
 

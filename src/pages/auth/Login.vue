@@ -52,17 +52,7 @@
             </div>
           </div>
 
-          <div class="flex items-center justify-between">
-            <div class="flex items-center">
-              <input 
-                id="remember-me" 
-                v-model="rememberMe" 
-                type="checkbox" 
-                class="h-4 w-4 text-[var(--accent-primary)] border-[var(--border)]"
-              />
-              <label for="remember-me" class="ml-2 block text-sm text-[var(--text-primary)]">Remember me</label>
-            </div>
-
+          <div class="flex items-center justify-end">
             <div class="text-sm">
               <router-link to="/forgot-password" class="font-medium text-[var(--accent-primary)] hover:text-[var(--accent-primary-hover)]">Forgot password?</router-link>
             </div>
@@ -104,23 +94,16 @@ const toast = useToast();
 
 const email = ref('');
 const password = ref('');
-const rememberMe = ref(false);
 const error = ref('');
 const isLoading = ref(false);
 
 const handleLogin = async () => {
   error.value = '';
   isLoading.value = true;
-  
+
   try {
     await authStore.login(email.value, password.value);
-    
-    if (rememberMe.value) {
-      // In a real app, we'd implement proper "remember me" functionality
-      // For MVP, we'll just save the fact that the user chose to be remembered
-      localStorage.setItem('rememberMe', 'true');
-    }
-    
+
     toast.success('Welcome back!');
     router.push('/dashboard');
   } catch (err) {

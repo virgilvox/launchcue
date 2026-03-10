@@ -8,6 +8,7 @@ declare module 'vue-router' {
   interface RouteMeta {
     requiresAuth?: boolean
     portalOnly?: boolean
+    requiredRole?: 'owner' | 'admin'
     breadcrumbs?: Array<{ label: string; to?: string }>
   }
 }
@@ -153,12 +154,29 @@ export function createAppRouter(registry: PluginRegistry) {
 
     if (requiresAuth && !authStore.isAuthenticated) {
       next('/login')
+    } else if (requiresAuth && authStore.isAuthenticated && !authStore.currentTeam && to.path !== '/dashboard') {
+      // No team context — redirect to dashboard which can handle the empty state
+      next('/dashboard')
     } else if (isClientRole && !isPortalRoute && to.path !== '/login' && to.path !== '/') {
       next('/portal')
     } else if (!isClientRole && isPortalRoute) {
       next('/dashboard')
     } else {
-      next()
+      // Role-based route guard
+      const requiredRole = to.matched.find(record => record.meta.requiredRole)?.meta.requiredRole
+      if (requiredRole) {
+        const userRole = authStore.userRole
+        const allowed = requiredRole === 'admin'
+          ? ['owner', 'admin'].includes(userRole as string)
+          : userRole === 'owner'
+        if (!allowed) {
+          next('/dashboard')
+        } else {
+          next()
+        }
+      } else {
+        next()
+      }
     }
   })
 

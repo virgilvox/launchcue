@@ -10,7 +10,7 @@ export const teamModule: FeatureModule = {
       path: 'team',
       name: 'team',
       component: Team,
-      meta: { requiresAuth: true, breadcrumbs: [{ label: 'Dashboard', to: '/dashboard' }, { label: 'Team' }] }
+      meta: { requiresAuth: true, requiredRole: 'admin', breadcrumbs: [{ label: 'Dashboard', to: '/dashboard' }, { label: 'Team' }] }
     }
   ],
   navItems: [

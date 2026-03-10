@@ -9,6 +9,7 @@ import { getSupabase } from './client'
  */
 export class SupabaseAuthAdapter implements AuthAdapter {
   private unauthorizedCallback: (() => void) | null = null
+  private authListenerCleanup: (() => void) | null = null
 
   async login(email: string, password: string): Promise<AuthResponse> {
     const sb = getSupabase()
@@ -18,10 +19,22 @@ export class SupabaseAuthAdapter implements AuthAdapter {
     const user = await this.getAppUser(data.user.id)
     const teams = await this.getUserTeams(user.id)
 
+    // Read current_team_id from user metadata for team context
+    const currentTeamId = data.user.user_metadata?.current_team_id as string | undefined
+    const currentTeam = currentTeamId
+      ? teams.find(t => t.id === currentTeamId)
+      : teams[0]
+
     return {
       token: data.session.access_token,
-      user: { id: user.id, name: user.name, email: user.email },
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        ...(currentTeam?.role && { role: currentTeam.role }),
+      },
       teams,
+      currentTeamId: currentTeam?.id,
     }
   }
 
@@ -37,43 +50,35 @@ export class SupabaseAuthAdapter implements AuthAdapter {
     if (error) throw new Error(error.message)
     if (!data.session) throw new Error('Registration successful — please verify your email')
 
-    // Create app-level user
-    const { data: appUser, error: userError } = await sb
-      .from('users')
-      .insert({
-        auth_id: data.user!.id,
-        name: regData.name,
-        email: regData.email,
-        email_verified: false,
+    try {
+      // Call the register_user RPC to create app user, team, and membership atomically
+      const { data: result, error: rpcError } = await sb.rpc('register_user', {
+        p_auth_id: data.user!.id,
+        p_name: regData.name,
+        p_email: regData.email,
       })
-      .select()
-      .single()
-    if (userError) throw new Error(userError.message)
+      if (rpcError) throw new Error(rpcError.message)
 
-    // Create default team
-    const { data: team, error: teamError } = await sb
-      .from('teams')
-      .insert({ name: `${regData.name}'s Team`, owner_id: appUser.id })
-      .select()
-      .single()
-    if (teamError) throw new Error(teamError.message)
+      const { user_id, team_id, team_name } = result as { user_id: string; team_id: string; team_name: string }
 
-    // Add user as team owner
-    await sb.from('team_members').insert({
-      team_id: team.id,
-      user_id: appUser.id,
-      role: 'owner',
-    })
+      // Set current team in user metadata
+      await sb.auth.updateUser({
+        data: { current_team_id: team_id },
+      })
 
-    // Set current team in user metadata
-    await sb.auth.updateUser({
-      data: { current_team_id: team.id },
-    })
-
-    return {
-      token: data.session.access_token,
-      user: { id: appUser.id, name: appUser.name, email: appUser.email },
-      teams: [{ id: team.id, name: team.name, role: 'owner' }],
+      return {
+        token: data.session!.access_token,
+        user: { id: user_id, name: regData.name, email: regData.email },
+        teams: [{ id: team_id, name: team_name, role: 'owner' }],
+        currentTeamId: team_id,
+      }
+    } catch (appError) {
+      // App-level setup failed — delete the auth user to allow re-registration
+      await sb.auth.admin.deleteUser(data.user!.id).catch(() => {
+        // Admin delete may fail from client (no service_role key).
+        // The auth user will exist but have no app data — support can clean up.
+      })
+      throw appError
     }
   }
 
@@ -166,23 +171,26 @@ export class SupabaseAuthAdapter implements AuthAdapter {
   }
 
   getToken(): string | null {
-    // Supabase manages tokens internally
-    // Return the access token from the current session if available
-    return null // Session is managed by Supabase client
+    return sessionStorage.getItem('token')
   }
 
   onUnauthorized(callback: () => void): void {
+    // Clean up previous listener to prevent leaks
+    if (this.authListenerCleanup) {
+      this.authListenerCleanup()
+      this.authListenerCleanup = null
+    }
+
     this.unauthorizedCallback = callback
 
     // Listen for auth state changes
-    getSupabase().auth.onAuthStateChange((event) => {
-      if (event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED') {
-        // TOKEN_REFRESHED failure would result in SIGNED_OUT
-      }
+    const { data: { subscription } } = getSupabase().auth.onAuthStateChange((event) => {
       if (event === 'SIGNED_OUT' && this.unauthorizedCallback) {
         this.unauthorizedCallback()
       }
     })
+
+    this.authListenerCleanup = () => subscription.unsubscribe()
   }
 
   async getTeams(): Promise<TeamSummary[]> {

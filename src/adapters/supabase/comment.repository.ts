@@ -4,12 +4,20 @@ import { getSupabase } from './client'
 
 export class SupabaseCommentRepository implements CommentRepository {
   async getComments(resourceType: string, resourceId: string): Promise<Comment[]> {
-    const { data, error } = await getSupabase()
+    let query = getSupabase()
       .from('comments')
       .select('*, users(name)')
-      .eq('resource_type', resourceType)
-      .eq('resource_id', resourceId)
-      .order('created_at', { ascending: true })
+
+    // If resourceType and resourceId are provided, filter by them.
+    // Otherwise return recent comments for the team (RLS handles team scoping).
+    if (resourceType && resourceId) {
+      query = query.eq('resource_type', resourceType).eq('resource_id', resourceId)
+        .order('created_at', { ascending: true })
+    } else {
+      query = query.order('created_at', { ascending: false }).limit(20)
+    }
+
+    const { data, error } = await query
     if (error) throw new Error(error.message)
 
     return (data || []).map((row: Record<string, unknown>) => this.mapFromDb(row))

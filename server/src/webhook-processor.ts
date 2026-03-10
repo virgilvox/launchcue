@@ -11,7 +11,7 @@ export function startWebhookProcessor(): void {
     try {
       await processQueue()
     } catch (err) {
-      // Silently continue — will retry on next tick
+      console.error('Webhook processor error:', err)
     }
   })
 }

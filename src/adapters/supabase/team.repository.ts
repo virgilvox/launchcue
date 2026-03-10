@@ -115,6 +115,22 @@ export class SupabaseTeamRepository implements Repository<Team, TeamCreateReques
     if (error) throw new Error(error.message)
   }
 
+  async leaveTeam(teamId: string): Promise<void> {
+    const sb = getSupabase()
+    const { data: { session } } = await sb.auth.getSession()
+    if (!session) throw new Error('Not authenticated')
+
+    // Look up the app user ID from the auth ID
+    const { data: appUser, error: userError } = await sb
+      .from('users')
+      .select('id')
+      .eq('auth_id', session.user.id)
+      .single()
+    if (userError) throw new Error(userError.message)
+
+    await this.removeMember(teamId, appUser.id)
+  }
+
   async updateMemberRole(teamId: string, memberId: string, newRole: string): Promise<unknown> {
     const { data, error } = await getSupabase()
       .from('team_members')

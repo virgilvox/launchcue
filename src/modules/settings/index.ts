@@ -11,7 +11,7 @@ export const settingsModule: FeatureModule = {
       path: 'settings',
       name: 'settings',
       component: Settings,
-      meta: { requiresAuth: true, breadcrumbs: [{ label: 'Dashboard', to: '/dashboard' }, { label: 'Settings' }] }
+      meta: { requiresAuth: true, requiredRole: 'admin', breadcrumbs: [{ label: 'Dashboard', to: '/dashboard' }, { label: 'Settings' }] }
     },
     {
       path: 'profile',
