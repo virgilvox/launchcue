@@ -438,4 +438,12 @@ Comprehensive audit of all RLS policies, DB triggers, store access patterns, and
 **Tests: 335 → 378 (43 new):**
 - Added team guard tests to all 14 store test files covering the newly-guarded methods
 
+### Empty String → PostgreSQL Type Fix (2026-03-10)
+Forms initialize optional fields to `''` (empty string), but PostgreSQL rejects `''` for DATE, UUID, and NUMERIC columns. Single-point fix in the base repository plus two targeted cleanups:
+
+- **`base.repository.ts` `mapToDb()`**: `value === '' ? null : value` — converts all empty strings to `null` before sending to PostgreSQL. Safe because no TEXT column should intentionally store `''` from a form.
+- **`note.repository.ts`**: Override `mapToDb()` to preserve `content: ''` — the only `TEXT NOT NULL DEFAULT ''` column where empty string is a valid submitted value.
+- **`task.ts` store**: Removed `new Date(dueDate).toISOString()` conversion in both `createTask` and `updateTask` — DATE columns accept `YYYY-MM-DD` directly; ISO TIMESTAMPTZ conversion was unnecessary and incorrect.
+- **Tests**: Updated 2 task store tests to expect date passthrough instead of ISO conversion. All 378 tests pass.
+
 *Last updated: 2026-03-10*
