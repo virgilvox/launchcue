@@ -66,7 +66,7 @@
                   <img v-if="profileForm.avatarUrl" :src="profileForm.avatarUrl" alt="Profile" class="w-full h-full object-cover" />
                   <span v-else>{{ getUserInitials(profileForm.name) }}</span>
                 </div>
-                <button type="button" class="btn btn-secondary">Upload Image</button>
+                <button type="button" class="btn btn-secondary" disabled title="Coming soon">Upload Image</button>
               </div>
             </div>
             

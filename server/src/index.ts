@@ -19,6 +19,18 @@ app.use(cors({
 
 app.use(express.json({ limit: '1mb' }))
 
+// Security headers
+app.use((_req: express.Request, res: express.Response, next: express.NextFunction) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff')
+  res.setHeader('X-Frame-Options', 'DENY')
+  res.setHeader('X-XSS-Protection', '1; mode=block')
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin')
+  if (process.env.NODE_ENV === 'production') {
+    res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains')
+  }
+  next()
+})
+
 // Global rate limit
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes

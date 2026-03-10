@@ -50,7 +50,6 @@ export const useClientStore = defineStore('client', () => {
       const message = err instanceof Error ? err.message : 'Failed to fetch clients'
       error.value = message
       loading.value = false
-      toast.error('Failed to fetch clients')
       return { success: false, error: error.value }
     }
   }
@@ -68,7 +67,6 @@ export const useClientStore = defineStore('client', () => {
       return { success: true, client: response }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to get client'
-      toast.error('Failed to load client details')
       return { success: false, error: message }
     }
   }
@@ -142,7 +140,6 @@ export const useClientStore = defineStore('client', () => {
       return { success: true, contacts: client.contacts || [] }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to fetch client contacts'
-      toast.error('Failed to load client contacts')
       return { success: false, error: message }
     }
   }
@@ -153,7 +150,6 @@ export const useClientStore = defineStore('client', () => {
       return { success: true, projects: response }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to fetch client projects'
-      toast.error('Failed to load client projects')
       return { success: false, error: message }
     }
   }

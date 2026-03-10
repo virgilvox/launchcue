@@ -10,7 +10,9 @@
 
     <!-- Search/Filter Input -->
     <div class="mb-4">
+      <label for="resource-search" class="sr-only">Search resources</label>
       <input
+        id="resource-search"
         v-model="filterText"
         type="text"
         placeholder="Search resources..."
@@ -194,6 +196,17 @@
       :resource="editResource"
       @save="saveResource"
     />
+
+    <!-- Delete Confirmation -->
+    <ConfirmDialog
+      v-model="showDeleteConfirm"
+      title="Delete Resource"
+      :message="`Are you sure you want to delete &quot;${deleteTarget?.name || ''}&quot;? This action cannot be undone.`"
+      confirmLabel="Delete"
+      :destructive="true"
+      :loading="isDeletingResource"
+      @confirm="confirmDeleteResource"
+    />
   </PageContainer>
 </template>
 
@@ -205,6 +218,7 @@ import PageContainer from '@/components/ui/PageContainer.vue';
 import PageHeader from '@/components/ui/PageHeader.vue';
 import LoadingSpinner from '@/components/LoadingSpinner.vue';
 import EmptyState from '@/components/ui/EmptyState.vue';
+import ConfirmDialog from '@/components/ui/ConfirmDialog.vue';
 import { BookOpenIcon } from '@heroicons/vue/24/outline';
 
 // Import ResourceDialog using defineAsyncComponent for better error handling
@@ -418,16 +432,24 @@ async function saveResource(resourceData) {
   }
 }
 
-// Handle deleting a resource
-async function deleteResource(resource) {
-  if (!confirm(`Are you sure you want to delete "${resource.name}"?`)) {
-    return;
-  }
+// Delete confirmation state
+const showDeleteConfirm = ref(false);
+const deleteTarget = ref(null);
+const isDeletingResource = ref(false);
 
+// Handle deleting a resource
+function deleteResource(resource) {
+  deleteTarget.value = resource;
+  showDeleteConfirm.value = true;
+}
+
+async function confirmDeleteResource() {
+  if (!deleteTarget.value) return;
+  isDeletingResource.value = true;
   try {
-    await resourceStore.deleteResource(resource.id);
+    await resourceStore.deleteResource(deleteTarget.value.id);
     // Also remove from favorites if present
-    const favIdx = favorites.value.indexOf(resource.id);
+    const favIdx = favorites.value.indexOf(deleteTarget.value.id);
     if (favIdx >= 0) {
       favorites.value.splice(favIdx, 1);
       saveFavorites();
@@ -435,6 +457,10 @@ async function deleteResource(resource) {
     toast.success('Resource deleted successfully');
   } catch (error) {
     toast.error(`Failed to delete resource: ${error.message}`);
+  } finally {
+    isDeletingResource.value = false;
+    showDeleteConfirm.value = false;
+    deleteTarget.value = null;
   }
 }
 </script>

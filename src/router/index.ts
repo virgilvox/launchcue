@@ -170,7 +170,7 @@ export function createAppRouter(registry: PluginRegistry) {
           ? ['owner', 'admin'].includes(userRole as string)
           : userRole === 'owner'
         if (!allowed) {
-          next('/dashboard')
+          next({ path: '/dashboard', query: { accessDenied: '1' } })
         } else {
           next()
         }

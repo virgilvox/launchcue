@@ -346,11 +346,9 @@ onMounted(async () => {
     projectStore.fetchProjects(),
     clientStore.fetchClients(),
   ]);
-  results.forEach((result, i) => {
-    if (result.status === 'rejected') {
-      toast.error('Failed to load projects data. Please try again.');
-    }
-  });
+  if (results.some(r => r.status === 'rejected')) {
+    toast.error('Failed to load projects data. Please try again.');
+  }
   loading.value = false;
   document.addEventListener('click', handleOutsideClick);
 });

@@ -82,7 +82,7 @@ export class SupabaseBrainDumpRepository extends SupabaseBaseRepository<BrainDum
     if (options.includeCalendar !== false) {
       const now = new Date().toISOString()
       const thirtyDays = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
-      let query = sb.from('active_calendar_events').select('title, start, end, description')
+      let query = sb.from('active_calendar_events').select('title, start_time, end_time, description')
         .gte('start', now)
         .lte('start', thirtyDays)
       if (clientId) query = query.eq('client_id', clientId)
@@ -98,24 +98,32 @@ export class SupabaseBrainDumpRepository extends SupabaseBaseRepository<BrainDum
     const sb = getSupabase()
     const results: Record<string, number> = { taskCount: 0, eventCount: 0, projectCount: 0 }
 
+    // Resolve team_id from the current user's metadata
+    const { data: { user } } = await sb.auth.getUser()
+    const teamId = user?.user_metadata?.current_team_id
+    if (!teamId) throw new Error('No team context available')
+
     const tasks = payload.tasks as Array<Record<string, unknown>> | undefined
     if (tasks?.length) {
-      const rows = tasks.map(t => this.mapToDb(t))
-      const { data } = await sb.from('tasks').insert(rows).select()
+      const rows = tasks.map(t => ({ ...this.mapToDb(t), team_id: teamId }))
+      const { data, error } = await sb.from('tasks').insert(rows).select()
+      if (error) throw new Error(error.message)
       results.taskCount = data?.length || 0
     }
 
     const events = payload.events as Array<Record<string, unknown>> | undefined
     if (events?.length) {
-      const rows = events.map(e => this.mapToDb(e))
-      const { data } = await sb.from('calendar_events').insert(rows).select()
+      const rows = events.map(e => ({ ...this.mapToDb(e), team_id: teamId }))
+      const { data, error } = await sb.from('calendar_events').insert(rows).select()
+      if (error) throw new Error(error.message)
       results.eventCount = data?.length || 0
     }
 
     const projects = payload.projects as Array<Record<string, unknown>> | undefined
     if (projects?.length) {
-      const rows = projects.map(p => this.mapToDb(p))
-      const { data } = await sb.from('projects').insert(rows).select()
+      const rows = projects.map(p => ({ ...this.mapToDb(p), team_id: teamId }))
+      const { data, error } = await sb.from('projects').insert(rows).select()
+      if (error) throw new Error(error.message)
       results.projectCount = data?.length || 0
     }
 

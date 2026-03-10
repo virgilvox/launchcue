@@ -293,11 +293,9 @@ onMounted(async () => {
       clientStore.fetchClients(),
       projectStore.fetchProjects()
     ]);
-    results.forEach((result, i) => {
-      if (result.status === 'rejected') {
-        toast.error('Failed to load scopes data. Please try again.');
-      }
-    });
+    if (results.some(r => r.status === 'rejected')) {
+      toast.error('Failed to load scopes data. Please try again.');
+    }
   } catch (err) {
     toast.error('Failed to load data. Please try again.');
   }

@@ -24,9 +24,13 @@ export class SupabaseInvoiceRepository extends SupabaseBaseRepository<Invoice, I
   async create(dto: InvoiceCreateRequest): Promise<Invoice> {
     const sb = getSupabase()
 
+    // Resolve team_id from current user's metadata
+    const { data: { user } } = await sb.auth.getUser()
+    const teamId = (dto as unknown as Record<string, unknown>).teamId || user?.user_metadata?.current_team_id || null
+
     // Auto-generate invoice number via database function
     const { data: numData, error: numError } = await sb.rpc('generate_invoice_number', {
-      p_team_id: (dto as unknown as Record<string, unknown>).teamId || null,
+      p_team_id: teamId,
     })
     if (numError) throw new Error(numError.message)
 

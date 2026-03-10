@@ -288,11 +288,9 @@ const fetchSupportData = async () => {
       clientStore.fetchClients(),
       teamStore.fetchTeamMembers()
   ]);
-  results.forEach((result, i) => {
-    if (result.status === 'rejected') {
-      toast.error('Failed to load filter data. Please try again.');
-    }
-  });
+  if (results.some(r => r.status === 'rejected')) {
+    toast.error('Failed to load filter data. Please try again.');
+  }
 }
 
 // Modal Open Handlers

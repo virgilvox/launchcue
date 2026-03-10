@@ -1,4 +1,4 @@
-# LaunchCue — Handoff Document
+# LaunchCue -Handoff Document
 
 > DevRel management platform built with Vue 3, Tailwind CSS, Supabase (PostgreSQL), and Express API server.
 
@@ -11,16 +11,16 @@
 - **Backend**: Supabase (PostgreSQL + RLS + GoTrue auth + PostgREST + Realtime)
 - **API Server**: Express (AI processing, webhook delivery, email)
 - **Auth**: Supabase Auth (GoTrue), JWT, RBAC (owner/admin/member/viewer/client)
-- **Design System**: CSS custom properties (brutalist style — 0 border-radius, 2px borders, hard offset shadows)
+- **Design System**: CSS custom properties (brutalist style -0 border-radius, 2px borders, hard offset shadows)
 - **Architecture**: Plugin-based DI container, Repository pattern, feature modules with topological dependency sort
-- **Deployment**: DigitalOcean App Platform (static site + API service) + Droplet (self-hosted Supabase)
+- **Deployment**: DigitalOcean App Platform (static site + API service) + Droplet (self-hosted Supabase) -live at launchcue.app
 
 ### Directory Structure
 ```
 src/
   core/             # DI container, event bus, plugin registry, types
   adapters/         # Repository implementations (supabase/), types, keys
-  modules/          # 15 feature modules — each has {pages/, components/, index.ts}
+  modules/          # 15 feature modules -each has {pages/, components/, index.ts}
     dashboard/      # Dashboard + widgets (StatsGrid, ClientHealth, etc.)
     tasks/          # Tasks (list, kanban, form, filters)
     projects/       # Projects (detail, form, status workflow)
@@ -99,8 +99,8 @@ tests/
 - **Repository Pattern**: `Repository<T, CreateDTO, UpdateDTO>` interface, 20 Supabase repository implementations
 - **Feature Modules**: 15 modules declaring routes, nav items, search providers, dependencies
 - **All 18 Pinia stores**: Fully migrated to repository pattern via DI container
-- **Zero legacy imports**: No `src/services/`, no axios, no Netlify code — all deleted
-- **Supabase Backend**: 5 SQL migrations, 26 tables, RLS policies, active_* views for soft delete
+- **Zero legacy imports**: No `src/services/`, no axios, no Netlify code -all deleted
+- **Supabase Backend**: 6 SQL migrations, 26 tables, RLS policies, active_* views for soft delete
 - **Express API Server**: AI processing (Anthropic), webhook delivery (HMAC + retry), email (nodemailer)
 - **Docker**: Full-stack compose (docker-compose.yml) + dev-only Supabase stack (docker-compose.dev.yml)
 - **CI/CD**: ESLint v9 flat config, Prettier, GitHub Actions, DO App Platform deploy-on-push
@@ -111,9 +111,15 @@ tests/
 - **Unsaved changes warning**: onBeforeRouteLeave guard on InvoiceBuilder, ScopeBuilder, ProjectForm
 - **Loading states**: LoadingSpinner component on all pages (including portal pages)
 - **Empty states**: EmptyState component with icons and action buttons on all list pages
-- **Error handling**: Toast notifications on all API error paths
-- **Accessibility**: aria-labels on icon-only buttons, focus trapping in modals, focus restore on search close
+- **Error handling**: Toast notifications on mutation errors only; stores never toast on fetch failures (pages decide)
+- **Toast discipline**: All Promise.allSettled loops use `results.some()` for a single toast max, not forEach
+- **Delete confirmation**: ConfirmDialog modal component used everywhere (BrainDump, Resources, Tasks, Projects, Notes); `window.confirm()` only in onBeforeRouteLeave navigation guards
+- **Accessibility**: aria-labels on icon-only buttons, focus trapping in modals, focus restore on search close, sr-only labels on search inputs
 - **Print/PDF**: Global print stylesheet, dedicated preview modals for invoices and scopes
+- **Getting Started checklist**: Shows on first login, wired to real store data (team, client, project, task, brain dump)
+- **Team creation**: "+" button in header for creating new teams (both single-team and multi-team users)
+- **Sidebar nav visibility**: ADMIN nav group hidden for non-admin/non-owner users
+- **Role-check feedback**: Router redirects to /dashboard with "insufficient permissions" toast instead of silent redirect
 
 ---
 
@@ -123,16 +129,30 @@ tests/
 - **Authentication**: Supabase Auth (GoTrue) with JWT, automatic token refresh
 - **Team scoping**: RLS policies on all tables enforce team_id from JWT claims
 - **Soft delete**: active_* views filter deleted rows, all writes use soft delete
-- **Zod validation**: API server validates request bodies with Zod schemas
-- **RBAC**: Role-based access control in JWT claims, route guards on frontend
-- **Rate limiting**: Express API server uses express-rate-limit
+- **RBAC**: Role-based access control in JWT claims, route guards on frontend, sidebar filtering
+- **Rate limiting**: Express API server uses express-rate-limit (100 req/15 min global)
+- **Security headers**: X-Content-Type-Options, X-Frame-Options, X-XSS-Protection, Referrer-Policy, HSTS (prod)
+- **Input validation**: AI endpoint enforces 50K char prompt limit and max_tokens clamping; email endpoint validates format and sanitizes HTML
 - **Audit logging**: Create/update/delete operations log to audit trail
 - **Cascade protection**: Client delete blocked if active projects exist
 
 ### Known remaining gaps
-- **RBAC on DELETE**: Most resource endpoints allow any authenticated team member to delete. Consider RLS policies to restrict to owner/admin.
-- **brain-dump createItems**: AI-generated items inserted with minimal validation. Low risk since it's internal AI output.
-- **Home.vue**: Landing page has its own scoped button styles that diverge from the brutalist design system (intentional for marketing).
+- **AI adapter missing auth header**: `ai.adapter.ts` does not send Authorization header; AI feature will 401 in production
+- **getToken() returns null**: `auth.adapter.ts` getToken() hardcodes `return null`; any adapter needing the JWT from auth won't get it
+- **Registration race condition**: `register()` does 4 sequential DB inserts without a transaction; partial failure leaves orphaned records
+- **Notifications INSERT too permissive**: Any authenticated user can insert notifications for any user
+- **RBAC on DELETE**: Most resource endpoints allow any authenticated team member to delete. Consider RLS policies to restrict to owner/admin
+- **No team guard on 13 store fetch methods**: Stores like brain-dump, campaign, comment, invoice, note, onboarding, project, scope, webhook, api-key, audit-log call findAll() without checking currentTeam first; RLS provides server-side protection but app-level guard is missing
+- **Store state not reset on team switch**: Data stores don't clear state when user switches teams; auth store disposes stores on logout but not on team switch (mitigated by window.location.reload() in team switcher)
+- **Shared isLoading race condition**: 10 stores share a single `isLoading` ref across multiple async methods; concurrent calls can conflict (calendar, campaign, invoice, note, onboarding, project, resource, scope, task, team, webhook)
+- **Comment adapter missing team_id/user_id**: `comment.repository.ts` createComment() does not inject team_id or user_id; inserts will fail with RLS/NOT NULL errors
+- **Brain-dump getContextData() filter bug**: Lines 86-87 still filter by `start` instead of `start_time` on calendar events query (range filter, not select)
+- **Base repository doesn't inject team_id/created_by**: `base.repository.ts` create() relies on DTO having these values; no fallback to auth context
+- **Email endpoint missing protocol validation**: inviteUrl accepts non-https protocols (javascript://, data://)
+- **AI endpoint needs per-user rate limiting**: Global 100 req/15min is too lenient for expensive Anthropic API calls
+- **Missing Content-Security-Policy**: Neither nginx.conf nor Express server set CSP headers
+- **Docker compose weak defaults**: Fallback passwords for Postgres, hardcoded DB_ENC_KEY for Realtime
+- **Home.vue**: Landing page has its own scoped button styles that diverge from the brutalist design system (intentional for marketing)
 
 ---
 
@@ -155,7 +175,7 @@ tests/
 - No inline editing on table cells
 - No dashboard widget customization/drag-and-drop
 - No recent items in search
-- App.vue has 2 hardcoded hex values in `<style>` (#111827, #f3f4f6) — should use CSS vars
+- App.vue has 2 hardcoded hex values in `<style>` (#111827, #f3f4f6) -should use CSS vars
 
 ---
 
@@ -169,7 +189,7 @@ tests/
 | Pinia stores | 18 (all TS, all using repository pattern) |
 | Supabase adapter files | 25 (20 repository + 1 auth + 1 search + 1 AI + base class + index + client) |
 | Express API endpoints | 3 (AI, webhooks, email) |
-| SQL migrations | 5 (26 tables) |
+| SQL migrations | 6 (26 tables) |
 | Test files | 4 (52 tests) |
 | Type definition files | 4 (models, api, enums, index) + core/types.ts |
 
@@ -200,15 +220,15 @@ docker compose up -d
 
 ### Environment Variables
 See `.env.example` for all required variables. Key ones:
-- `VITE_SUPABASE_URL` — Supabase endpoint (http://localhost:8000 for local dev)
-- `VITE_SUPABASE_ANON_KEY` — Supabase anonymous key
-- `VITE_API_URL` — API server URL (/api for both local and production)
-- `SUPABASE_SERVICE_ROLE_KEY` — Server-side Supabase key (Express API)
-- `ANTHROPIC_API_KEY` — For AI features
+- `VITE_SUPABASE_URL` -Supabase endpoint (http://localhost:8000 for local dev)
+- `VITE_SUPABASE_ANON_KEY` -Supabase anonymous key
+- `VITE_API_URL` -API server URL (/api for both local and production)
+- `SUPABASE_SERVICE_ROLE_KEY` -Server-side Supabase key (Express API)
+- `ANTHROPIC_API_KEY` -For AI features
 
 ### Key Patterns
 - **Page layout**: Always `<PageContainer>` → `<PageHeader>` → content
-- **DI container**: `getContainer().resolve<T>(SYMBOL_KEY)` — stores use `getRepo()` helper
+- **DI container**: `getContainer().resolve<T>(SYMBOL_KEY)` -stores use `getRepo()` helper
 - **Repository pattern**: `Repository<T, CreateDTO, UpdateDTO>` interface with Supabase implementations
 - **Feature modules**: Each declares `id`, `routes`, `navItems`, `searchProviders`, `dependencies`, `setup()`
 - **API calls**: Store → repository adapter → page component with try/catch + toast.error
@@ -235,4 +255,33 @@ See `.env.example` for all required variables. Key ones:
 - All docs rewritten: zero Netlify/MongoDB references in source or docs
 - `gaps-and-issues.md`: 13 resolved, 8 open, 2 acceptable
 
-*Last updated: 2026-03-09*
+### Production Deployment (2026-03-10)
+- Deployed to DigitalOcean: App Platform (Vue SPA + Express API) + Droplet (self-hosted Supabase)
+- Domain: `launchcue.app` (frontend), `supabase.launchcue.app` (Supabase via Caddy TLS)
+- Fixed RLS policies for registration flow: INSERT RETURNING requires SELECT policy to also pass
+  - `users_select`: added `auth_id = auth.uid()` check (avoids chicken-and-egg with app_user_id)
+  - `teams_select`: added `owner_id = auth.app_user_id()` check (owner can see team before team_members row)
+- Migration 006 added for registration RLS fixes
+- Server Dockerfile: multi-stage build for TypeScript compilation
+- Vite proxy: rewrites `/api` prefix for local dev parity with App Platform routing
+- CORS: Caddy passes through, Kong handles CORS headers (no duplication)
+
+### Full Code Audit (2026-03-10)
+- Removed toast.error() from all store fetch/read methods (calendar, client, team); stores set error.value and return result objects
+- Replaced all 12 Promise.allSettled forEach toast loops with single-toast `results.some()` pattern across 11 pages
+- Replaced browser confirm() with ConfirmDialog modal in BrainDump and Resources pages
+- Fixed brain-dump adapter: `createItems()` now injects team_id from auth context (was missing, causing NOT NULL failures)
+- Fixed brain-dump adapter: `getContextData()` calendar query now uses correct column names (start_time/end_time, not start/end)
+- Fixed invoice adapter: `generate_invoice_number` RPC now resolves teamId from user metadata (was always null)
+- Added security headers middleware to Express server (X-Frame-Options, X-Content-Type-Options, HSTS, etc.)
+- Added input validation to AI endpoint (50K char limit, max_tokens clamped 1-4096)
+- Added email validation, URL validation, and HTML escaping to email endpoint
+- Added ConfirmDialog modal for delete confirmations (BrainDump, Resources)
+- Added sr-only label to Resources search input
+- Disabled Profile upload button with "Coming soon" tooltip
+- Sidebar hides ADMIN nav group for non-admin/non-owner users
+- Router role-check redirect now shows "insufficient permissions" toast instead of silent redirect
+- Dashboard wired hasBrainDump prop to real brainDumpStore.dumps data
+- Added "Create Team" button to header layout (both single-team and multi-team views)
+
+*Last updated: 2026-03-10*

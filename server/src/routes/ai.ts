@@ -23,6 +23,14 @@ aiRouter.post('/process', async (req, res) => {
     return
   }
 
+  // Input validation
+  if (prompt.length > 50000) {
+    res.status(400).json({ error: 'Prompt exceeds maximum length of 50,000 characters' })
+    return
+  }
+
+  const clampedMaxTokens = Math.min(Math.max(Number(max_tokens) || 1024, 1), 4096)
+
   try {
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -33,7 +41,7 @@ aiRouter.post('/process', async (req, res) => {
       },
       body: JSON.stringify({
         model: 'claude-sonnet-4-6',
-        max_tokens: max_tokens || 1024,
+        max_tokens: clampedMaxTokens,
         messages: [
           {
             role: 'user',

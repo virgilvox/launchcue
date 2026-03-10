@@ -704,7 +704,6 @@ async function fetchTasks() {
       tasks.value = [];
     }
   } catch (err) {
-    toast.error('Failed to load tasks');
     tasks.value = [];
   } finally {
     loading.value = false;
@@ -825,16 +824,11 @@ onMounted(async () => {
       await clientStore.fetchClients();
     }
 
-    const results = await Promise.allSettled([
+    await Promise.allSettled([
       taskStore.fetchTasks(),
       loadEventsForCurrentView(),
       fetchTasks()
     ]);
-    results.forEach((result, i) => {
-      if (result.status === 'rejected') {
-        toast.error('Failed to load calendar data. Please try again.');
-      }
-    });
   } catch (err) {
     toast.error('Failed to load calendar');
   } finally {

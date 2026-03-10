@@ -313,11 +313,9 @@ async function loadDependencies() {
             clientStore.fetchClients(),
             projectStore.fetchProjects()
         ]);
-        results.forEach((result, i) => {
-          if (result.status === 'rejected') {
-            toast.error('Failed to load filter options. Please try again.');
-          }
-        });
+        if (results.some(r => r.status === 'rejected')) {
+          toast.error('Failed to load filter options. Please try again.');
+        }
     } catch (err) {
         toast.error("Could not load filter options.");
     } finally {

@@ -218,7 +218,11 @@ const navGroups = computed(() => {
     groups.unshift({ label: 'CORE', items: [dashboardItem] })
   }
 
-  return groups
+  // Hide ADMIN group for non-admin/non-owner users
+  return groups.filter(g => {
+    if (g.label === 'ADMIN') return authStore.canManageTeam
+    return true
+  })
 })
 
 // Resolve icon string → component (modules declare icons as strings)

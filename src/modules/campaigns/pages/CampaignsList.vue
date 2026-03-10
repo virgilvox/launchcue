@@ -147,11 +147,9 @@ async function loadInitialData() {
             projectStore.fetchProjects(),
             fetchCampaigns()
         ]);
-        results.forEach((result, i) => {
-            if (result.status === 'rejected') {
-                toast.error('Failed to load campaign data. Please try again.');
-            }
-        });
+        if (results.some(r => r.status === 'rejected')) {
+            toast.error('Failed to load campaign data. Please try again.');
+        }
     } catch (err) {
         error.value = "Failed to load necessary data.";
         toast.error(error.value);

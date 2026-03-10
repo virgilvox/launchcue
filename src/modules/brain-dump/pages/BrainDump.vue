@@ -205,6 +205,17 @@
         />
       </div>
     </div>
+
+    <!-- Delete Confirmation -->
+    <ConfirmDialog
+      v-model="showDeleteConfirm"
+      title="Delete Brain Dump"
+      message="Are you sure you want to delete this brain dump? This action cannot be undone."
+      confirmLabel="Delete"
+      :destructive="true"
+      :loading="isDeleting"
+      @confirm="confirmDeleteHistoryItem"
+    />
   </PageContainer>
 </template>
 
@@ -224,6 +235,7 @@ import BrainDumpResults from '@/modules/brain-dump/components/BrainDumpResults.v
 import ActionableItems from '@/modules/brain-dump/components/ActionableItems.vue';
 import LoadingSpinner from '@/components/LoadingSpinner.vue';
 import EmptyState from '@/components/ui/EmptyState.vue';
+import ConfirmDialog from '@/components/ui/ConfirmDialog.vue';
 import { LightBulbIcon } from '@heroicons/vue/24/outline';
 
 import { useAuthStore } from '@/stores/auth';
@@ -263,14 +275,28 @@ function toggleExpandItem(id) {
   expandedItems.value = newSet;
 }
 
-async function deleteHistoryItem(id) {
-  if (!confirm('Are you sure you want to delete this brain dump?')) return;
+const showDeleteConfirm = ref(false);
+const deletingItemId = ref(null);
+const isDeleting = ref(false);
+
+function deleteHistoryItem(id) {
+  deletingItemId.value = id;
+  showDeleteConfirm.value = true;
+}
+
+async function confirmDeleteHistoryItem() {
+  if (!deletingItemId.value) return;
+  isDeleting.value = true;
   try {
-    await brainDumpStore.deleteDump(id);
-    historyItems.value = historyItems.value.filter(item => item.id !== id);
+    await brainDumpStore.deleteDump(deletingItemId.value);
+    historyItems.value = historyItems.value.filter(item => item.id !== deletingItemId.value);
     toast.success('Brain dump deleted');
   } catch (err) {
     toast.error('Failed to delete brain dump');
+  } finally {
+    isDeleting.value = false;
+    showDeleteConfirm.value = false;
+    deletingItemId.value = null;
   }
 }
 
@@ -345,11 +371,9 @@ onMounted(async () => {
       clientStore.fetchClients(),
       projectStore.fetchProjects()
     ]);
-    results.forEach((result, i) => {
-      if (result.status === 'rejected') {
-        toast.error('Failed to load client or project data. Please try again.');
-      }
-    });
+    if (results.some(r => r.status === 'rejected')) {
+      toast.error('Failed to load client or project data. Please try again.');
+    }
   } catch(err) {
     toast.error("Failed to load client/project list");
   } finally {

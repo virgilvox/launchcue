@@ -42,7 +42,8 @@
             <!-- Right side: Team Switcher & User Menu -->
             <div class="flex items-center space-x-4">
               <!-- Team Switcher Dropdown -->
-              <div v-if="authStore.userTeams.length > 1" class="relative">
+              <div v-if="authStore.userTeams.length > 1" class="flex items-center gap-2">
+                <div class="relative">
                   <label for="team-switcher" class="sr-only">Current Team</label>
                   <select
                     id="team-switcher"
@@ -63,9 +64,26 @@
                    <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2" style="color: var(--text-secondary);">
                      <svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
                    </div>
+                </div>
+                <button
+                  @click="showCreateTeam = true"
+                  class="p-1 text-[var(--text-secondary)] hover:text-[var(--accent-primary)] hover:bg-[var(--surface)] transition-colors border-2 border-[var(--border-light)]"
+                  title="Create new team"
+                  aria-label="Create new team"
+                >
+                  <PlusIcon class="h-3.5 w-3.5" />
+                </button>
               </div>
-              <div v-else-if="authStore.currentTeam" class="hidden sm:block overline">
-                  {{ authStore.currentTeam.name }}
+              <div v-else-if="authStore.currentTeam" class="hidden sm:flex items-center gap-2">
+                  <span class="overline">{{ authStore.currentTeam.name }}</span>
+                  <button
+                    @click="showCreateTeam = true"
+                    class="p-1 text-[var(--text-secondary)] hover:text-[var(--accent-primary)] hover:bg-[var(--surface)] transition-colors border-2 border-[var(--border-light)]"
+                    title="Create new team"
+                    aria-label="Create new team"
+                  >
+                    <PlusIcon class="h-3.5 w-3.5" />
+                  </button>
               </div>
 
               <!-- Notifications -->
@@ -81,6 +99,43 @@
         </div>
       </main>
     </div>
+
+    <!-- Create Team Dialog -->
+    <Teleport to="body">
+      <Transition name="modal-fade">
+        <div
+          v-if="showCreateTeam"
+          class="fixed inset-0 z-50 flex items-center justify-center"
+          style="background-color: rgba(0, 0, 0, 0.6);"
+          @click="showCreateTeam = false"
+          @keydown.escape="showCreateTeam = false"
+        >
+          <div
+            class="w-full max-w-sm border-2 shadow-brutal-lg p-6"
+            style="background-color: var(--surface-elevated); border-color: var(--border); color: var(--text-primary);"
+            @click.stop
+          >
+            <h3 class="heading-section mb-4">Create New Team</h3>
+            <label for="new-team-name" class="label">Team Name</label>
+            <input
+              id="new-team-name"
+              v-model="newTeamName"
+              type="text"
+              class="input mb-4"
+              placeholder="My awesome team"
+              @keydown.enter="handleCreateTeam"
+              autofocus
+            />
+            <div class="flex justify-end gap-2">
+              <button class="btn btn-secondary" @click="showCreateTeam = false">Cancel</button>
+              <button class="btn btn-primary" @click="handleCreateTeam" :disabled="creatingTeam || !newTeamName.trim()">
+                {{ creatingTeam ? 'Creating...' : 'Create' }}
+              </button>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
 
     <!-- Keyboard Shortcut Help Overlay -->
     <Teleport to="body">
@@ -133,7 +188,7 @@ import NotificationBell from '../components/ui/NotificationBell.vue'
 import { useAuthStore } from '../stores/auth'
 import { useNotificationStore } from '../stores/notification'
 import { useToast } from 'vue-toastification';
-import { MagnifyingGlassIcon, XMarkIcon } from '@heroicons/vue/24/outline'
+import { MagnifyingGlassIcon, XMarkIcon, PlusIcon } from '@heroicons/vue/24/outline'
 import { useKeyboardShortcuts } from '@/composables/useKeyboardShortcuts'
 
 const authStore = useAuthStore()
@@ -145,6 +200,27 @@ const globalSearch = ref(null);
 const isSidebarCollapsed = ref(false);
 const isMobile = ref(false);
 const isMac = computed(() => typeof navigator !== 'undefined' && /Mac|iPod|iPhone|iPad/.test(navigator.platform));
+
+const showCreateTeam = ref(false);
+const newTeamName = ref('');
+const creatingTeam = ref(false);
+
+async function handleCreateTeam() {
+  if (!newTeamName.value.trim()) return;
+  creatingTeam.value = true;
+  try {
+    await authStore.createTeam(newTeamName.value.trim());
+    toast.success('Team created! Switching...');
+    showCreateTeam.value = false;
+    newTeamName.value = '';
+    // Reload to switch context
+    window.location.reload();
+  } catch (error) {
+    toast.error(`Failed to create team: ${error.message || 'Unknown error'}`);
+  } finally {
+    creatingTeam.value = false;
+  }
+}
 
 const { showHelp, shortcuts } = useKeyboardShortcuts()
 

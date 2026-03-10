@@ -301,11 +301,9 @@ async function loadClientsAndProjects() {
       clientStore.fetchClients(),
       projectStore.fetchProjects()
     ]);
-    results.forEach((result, i) => {
-      if (result.status === 'rejected') {
-        toast.error('Failed to load clients or projects. Please try again.');
-      }
-    });
+    if (results.some(r => r.status === 'rejected')) {
+      toast.error('Failed to load clients or projects. Please try again.');
+    }
   } catch (err) {
     toast.error('Failed to load clients or projects. Please try again.');
   } finally {
@@ -434,11 +432,9 @@ onMounted(async () => {
       loadTeamMembers(),
       loadClientsAndProjects()
     ]);
-    initResults.forEach((result, i) => {
-      if (result.status === 'rejected') {
-        toast.error('Failed to initialize campaign data. Please try again.');
-      }
-    });
+    if (initResults.some(r => r.status === 'rejected')) {
+      toast.error('Failed to initialize campaign data. Please try again.');
+    }
 
     if (campaignId) {
       await loadCampaign(campaignId);

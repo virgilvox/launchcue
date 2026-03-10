@@ -65,7 +65,6 @@ export const useTeamStore = defineStore('team', () => {
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to fetch teams'
       error.value = message
-      toast.error(error.value)
       return { success: false, error: error.value }
     } finally {
       isLoading.value = false
@@ -90,7 +89,6 @@ export const useTeamStore = defineStore('team', () => {
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to fetch team members'
       error.value = message
-      toast.error(error.value)
       return { success: false, error: error.value }
     } finally {
       isLoading.value = false

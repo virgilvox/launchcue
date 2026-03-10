@@ -31,7 +31,7 @@
       :hasClient="clientStore.clients.length > 0"
       :hasProject="projectStore.projects.length > 0"
       :hasTask="taskStore.tasks.length > 0"
-      :hasBrainDump="false"
+      :hasBrainDump="brainDumpStore.dumps?.length > 0"
     />
 
     <!-- Stats -->
@@ -193,6 +193,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import { useToast } from 'vue-toastification';
 import PageContainer from '@/components/ui/PageContainer.vue';
 import { useProjectStore } from '@/stores/project';
@@ -200,6 +201,7 @@ import { useTaskStore } from '@/stores/task';
 import { useClientStore } from '@/stores/client';
 import { useCalendarStore } from '@/stores/calendar';
 import { useAuthStore } from '@/stores/auth';
+import { useBrainDumpStore } from '@/stores/brain-dump';
 import { format, isToday, isTomorrow } from 'date-fns';
 import { getStatusColor } from '@/utils/statusColors';
 import { useEntityLookup } from '@/composables/useEntityLookup';
@@ -224,7 +226,10 @@ const projectStore = useProjectStore();
 const taskStore = useTaskStore();
 const clientStore = useClientStore();
 const calendarStore = useCalendarStore();
+const route = useRoute();
+const router = useRouter();
 const authStore = useAuthStore();
+const brainDumpStore = useBrainDumpStore();
 const toast = useToast();
 const { getProjectName } = useEntityLookup();
 
@@ -291,8 +296,8 @@ async function loadUpcomingItems() {
     if (result.success) {
       upcomingItems.value = result.items;
     }
-  } catch (error) {
-    toast.error('Failed to load upcoming items');
+  } catch {
+    // Silently handle — empty upcoming is fine
   } finally {
     isLoadingUpcoming.value = false;
   }
@@ -343,6 +348,12 @@ function getItemLink(item) {
 
 // Initial data fetch
 onMounted(async () => {
+  // Show access denied message if redirected from a role-guarded route
+  if (route.query.accessDenied) {
+    toast.warning('You don\'t have permission to access that page.');
+    router.replace({ path: '/dashboard', query: {} });
+  }
+
   tasksLoading.value = true;
   isLoadingUpcoming.value = true;
 
@@ -360,17 +371,13 @@ onMounted(async () => {
       taskStore.fetchTasks(),
       clientStore.fetchClients(),
       loadUpcomingItems(),
+      brainDumpStore.fetchDumps().catch(() => {}),
     ];
     if (invoiceStoreRef.value?.fetchInvoices) {
       fetches.push(invoiceStoreRef.value.fetchInvoices());
     }
     // Use allSettled so one failing call doesn't block the rest
-    const results = await Promise.allSettled(fetches);
-    results.forEach((result, i) => {
-      if (result.status === 'rejected') {
-        toast.error('Failed to load dashboard data. Please try again.');
-      }
-    });
+    await Promise.allSettled(fetches);
   } catch (error) {
     toast.error('Failed to load dashboard data. Please try again.');
   } finally {
