@@ -26,16 +26,16 @@ const limiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
 })
-app.use('/api', limiter)
+app.use(limiter)
 
 // ─── Routes ───
 
-app.use('/api/ai', aiRouter)
-app.use('/api/webhooks', webhookRouter)
-app.use('/api/email', emailRouter)
+app.use('/ai', aiRouter)
+app.use('/webhooks', webhookRouter)
+app.use('/email', emailRouter)
 
 // Health check
-app.get('/api/health', (_req, res) => {
+app.get('/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() })
 })
 
