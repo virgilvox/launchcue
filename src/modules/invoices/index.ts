@@ -1,7 +1,7 @@
 import type { FeatureModule } from '@/core/types'
 
-const Invoices = () => import('@/pages/Invoices.vue')
-const InvoiceBuilder = () => import('@/pages/InvoiceBuilder.vue')
+const Invoices = () => import('@/modules/invoices/pages/Invoices.vue')
+const InvoiceBuilder = () => import('@/modules/invoices/pages/InvoiceBuilder.vue')
 
 export const invoicesModule: FeatureModule = {
   id: 'invoices',

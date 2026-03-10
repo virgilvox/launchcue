@@ -1,7 +1,7 @@
 import type { FeatureModule } from '@/core/types'
 
-const CampaignsList = () => import('@/pages/CampaignsList.vue')
-const CampaignsBuilder = () => import('@/pages/Campaigns.vue')
+const CampaignsList = () => import('@/modules/campaigns/pages/CampaignsList.vue')
+const CampaignsBuilder = () => import('@/modules/campaigns/pages/Campaigns.vue')
 
 export const campaignsModule: FeatureModule = {
   id: 'campaigns',

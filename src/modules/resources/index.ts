@@ -1,6 +1,6 @@
 import type { FeatureModule } from '@/core/types'
 
-const Resources = () => import('@/pages/Resources.vue')
+const Resources = () => import('@/modules/resources/pages/Resources.vue')
 
 export const resourcesModule: FeatureModule = {
   id: 'resources',

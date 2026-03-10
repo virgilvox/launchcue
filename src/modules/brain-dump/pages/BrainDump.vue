@@ -1,0 +1,537 @@
+<template>
+  <PageContainer>
+    <PageHeader title="Brain Dump" subtitle="Use AI to help brainstorm and organize your thoughts.">
+      <template #actions>
+        <!-- Tab Toggle -->
+        <div class="inline-flex border-2 border-[var(--border)]">
+          <button
+            @click="activeTab = 'new'"
+            :class="[
+              'px-4 py-1.5 text-body-sm font-medium transition-colors font-heading uppercase',
+              activeTab === 'new'
+                ? 'bg-[var(--accent-primary)] text-white'
+                : 'bg-[var(--surface)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+            ]"
+          >
+            New
+          </button>
+          <button
+            @click="activeTab = 'history'; loadHistory()"
+            :class="[
+              'px-4 py-1.5 text-body-sm font-medium transition-colors font-heading uppercase border-l-2 border-[var(--border)]',
+              activeTab === 'history'
+                ? 'bg-[var(--accent-primary)] text-white'
+                : 'bg-[var(--surface)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+            ]"
+          >
+            History
+          </button>
+        </div>
+      </template>
+    </PageHeader>
+
+    <!-- History Tab -->
+    <div v-if="activeTab === 'history'">
+      <div v-if="historyLoading" class="text-center py-10">
+        <LoadingSpinner text="Loading history..." />
+      </div>
+      <EmptyState
+        v-else-if="historyItems.length === 0"
+        :icon="LightBulbIcon"
+        title="No brain dumps yet"
+        description="Start by creating one to brainstorm and organize your thoughts."
+        actionLabel="Create New"
+        @action="activeTab = 'new'"
+      />
+      <div v-else class="space-y-4">
+        <div
+          v-for="item in historyItems"
+          :key="item.id"
+          class="bg-[var(--surface-elevated)] border-2 border-[var(--border-light)] overflow-hidden"
+        >
+          <div class="p-4">
+            <div class="flex justify-between items-start">
+              <div class="flex-1 min-w-0">
+                <h3 class="text-base font-semibold text-[var(--text-primary)] truncate">{{ item.title }}</h3>
+                <p class="text-xs text-[var(--text-secondary)] mt-0.5">
+                  {{ formatHistoryDate(item.createdAt) }}
+                </p>
+              </div>
+              <div class="flex items-center space-x-2 ml-3">
+                <button
+                  @click="toggleExpandItem(item.id)"
+                  class="text-[var(--text-secondary)] hover:text-[var(--accent-primary)] text-sm"
+                >
+                  {{ expandedItems.has(item.id) ? 'Collapse' : 'View' }}
+                </button>
+                <button
+                  v-if="authStore.canEdit"
+                  @click="deleteHistoryItem(item.id)"
+                  class="text-[var(--text-secondary)] hover:text-[var(--danger)] transition-colors"
+                  title="Delete"
+                >
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+            <!-- Tags -->
+            <div v-if="item.tags && item.tags.length > 0" class="mt-2 flex flex-wrap gap-1">
+              <span
+                v-for="tag in item.tags"
+                :key="tag"
+                class="inline-block bg-[var(--surface)] text-[var(--text-secondary)] px-2 py-0.5 text-xs border-2 border-[var(--border-light)]"
+              >
+                {{ tag }}
+              </span>
+            </div>
+            <!-- Truncated Content -->
+            <p v-if="!expandedItems.has(item.id)" class="text-sm text-[var(--text-secondary)] mt-2 line-clamp-2">
+              {{ item.content }}
+            </p>
+          </div>
+          <!-- Expanded Full Content -->
+          <div v-if="expandedItems.has(item.id)" class="px-4 pb-4">
+            <div class="bg-[var(--surface)] p-4 mt-1">
+              <pre class="whitespace-pre-wrap text-sm text-[var(--text-primary)] font-sans">{{ item.content }}</pre>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- New Brain Dump Tab -->
+    <div v-if="activeTab === 'new'" class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      
+      <!-- Left Column: Input, Links, Context -->
+      <div> 
+          <!-- Link To Section -->
+          <div class="mb-4 bg-[var(--surface-elevated)] p-4 border-2 border-[var(--border-light)]">
+              <h3 class="text-sm font-medium text-[var(--text-secondary)] mb-3">Link to (Optional)</h3>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                   <div>
+                      <label for="linkClient" class="label text-xs">Client</label>
+                      <select 
+                        id="linkClient"
+                        v-model="selectedClient"
+                        class="input text-sm"
+                        :disabled="isLoadingClients"
+                      >
+                        <option :value="null">-- Select Client --</option>
+                        <option v-for="client in clients" :key="client.id" :value="client.id">
+                          {{ client.name }}
+                        </option>
+                      </select>
+                   </div>
+                   <div>
+                      <label for="linkProject" class="label text-xs">Project</label>
+                      <select 
+                        id="linkProject"
+                        v-model="selectedProject"
+                        class="input text-sm"
+                        :disabled="!selectedClient || isLoadingProjects"
+                      >
+                        <option :value="null">-- Select Project --</option>
+                        <option v-for="project in filteredProjectsForLinking" :key="project.id" :value="project.id">
+                          {{ project.title }}
+                        </option>
+                      </select>
+                   </div>
+              </div>
+          </div>
+
+          <!-- Main Input Form -->
+          <BrainDumpForm
+            v-model:user-input="userInput"
+            @clear-input="onClearInput"
+          />
+        
+          <!-- Context Options -->
+           <div class="mt-6 bg-[var(--surface-elevated)] p-4 border-2 border-[var(--border-light)]">
+               <h3 class="text-sm font-medium text-[var(--text-secondary)] mb-3">Include Context (Optional)</h3>
+                <ContextOptions
+                    :context-options="contextOptions"
+                    :is-loading="isLoadingContext"
+                    v-model:context-options="contextOptions"
+                />
+            </div>
+      </div>
+      
+      <!-- Right Column: Processing, Results -->
+      <div>
+        <!-- Processing Card (Moved Here) -->
+        <div class="card mb-6">
+            <h3 class="text-sm font-medium text-[var(--text-secondary)] mb-3">Processing Type</h3>
+            <div class="flex flex-wrap gap-2 mb-4">
+                <button 
+                    v-for="option in processingOptions" 
+                    :key="option.value"
+                    @click="selectedProcessingType = option.value"
+                    :class="[
+                        'px-3 py-1 text-xs font-medium transition-colors border-2',
+                        selectedProcessingType === option.value
+                            ? 'bg-[var(--accent-primary)] text-white border-[var(--accent-primary)]'
+                            : 'bg-[var(--surface)] text-[var(--text-secondary)] border-[var(--border-light)] hover:bg-[var(--surface-elevated)]'
+                    ]"
+                >
+                    {{ option.label }}
+                </button>
+            </div>
+             <button 
+                @click="processWithAI"
+                class="btn btn-primary w-full md:w-auto mt-4"
+                :disabled="isProcessing || !userInput.trim()"
+            >
+                 {{ isProcessing ? 'Processing...' : 'Process with Claude' }}
+                 <span v-if="isProcessing" class="animate-spin inline-block h-4 w-4 border-t-2 border-r-2 border-white rounded-full ml-2"></span>
+            </button>
+        </div>
+
+        <!-- Results Card -->
+        <BrainDumpResults
+          :ai-response="aiResponse"
+          @copy="onCopy"
+          @save-note="handleSaveNote"
+        />
+        
+        <!-- Actionable Items Card -->
+        <ActionableItems
+          v-if="actionableItems.length > 0"
+          :items="actionableItems"
+          :is-creating="isCreatingItems"
+          @create="createSelectedItems"
+          class="mt-6" 
+        />
+      </div>
+    </div>
+  </PageContainer>
+</template>
+
+<script setup>
+import { ref, reactive, onMounted, computed, watch } from 'vue';
+import { useToast } from 'vue-toastification';
+import brainDumpService from '@/services/brain-dump.service';
+import { useClientStore } from '@/stores/client';
+import { useProjectStore } from '@/stores/project';
+
+// Components
+import PageContainer from '@/components/ui/PageContainer.vue';
+import PageHeader from '@/components/ui/PageHeader.vue';
+import BrainDumpForm from '@/modules/brain-dump/components/BrainDumpForm.vue';
+import ContextOptions from '@/modules/brain-dump/components/ContextOptions.vue';
+import BrainDumpResults from '@/modules/brain-dump/components/BrainDumpResults.vue';
+import ActionableItems from '@/modules/brain-dump/components/ActionableItems.vue';
+import LoadingSpinner from '@/components/LoadingSpinner.vue';
+import EmptyState from '@/components/ui/EmptyState.vue';
+import { LightBulbIcon } from '@heroicons/vue/24/outline';
+
+import { useAuthStore } from '@/stores/auth';
+const toast = useToast();
+const clientStore = useClientStore();
+const projectStore = useProjectStore();
+const authStore = useAuthStore();
+
+// State for tabs and history
+const activeTab = ref('new');
+const historyItems = ref([]);
+const historyLoading = ref(false);
+const expandedItems = ref(new Set());
+
+async function loadHistory() {
+  if (historyLoading.value) return;
+  historyLoading.value = true;
+  try {
+    const data = await brainDumpService.getDumps();
+    historyItems.value = Array.isArray(data) ? data : (data.data || []);
+  } catch (err) {
+    toast.error('Failed to load brain dump history');
+    historyItems.value = [];
+  } finally {
+    historyLoading.value = false;
+  }
+}
+
+function toggleExpandItem(id) {
+  const newSet = new Set(expandedItems.value);
+  if (newSet.has(id)) {
+    newSet.delete(id);
+  } else {
+    newSet.add(id);
+  }
+  expandedItems.value = newSet;
+}
+
+async function deleteHistoryItem(id) {
+  if (!confirm('Are you sure you want to delete this brain dump?')) return;
+  try {
+    await brainDumpService.deleteDump(id);
+    historyItems.value = historyItems.value.filter(item => item.id !== id);
+    toast.success('Brain dump deleted');
+  } catch (err) {
+    toast.error('Failed to delete brain dump');
+  }
+}
+
+function formatHistoryDate(dateString) {
+  if (!dateString) return '';
+  try {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit'
+    });
+  } catch { return ''; }
+}
+
+// State for linking
+const selectedClient = ref(null);
+const selectedProject = ref(null);
+const isLoadingClients = ref(false);
+const isLoadingProjects = ref(false);
+
+// State for form/processing
+const selectedProcessingType = ref('summarize');
+const userInput = ref('');
+const isProcessing = ref(false);
+
+// Data for selectors
+const clients = computed(() => clientStore.clients);
+const projects = computed(() => projectStore.projects);
+
+// Filter projects based on selected client for linking
+const filteredProjectsForLinking = computed(() => {
+  if (!selectedClient.value) return [];
+  return projects.value.filter(p => p.clientId === selectedClient.value);
+});
+
+// State for context options - EXPANDED
+const contextOptions = reactive({
+  clientInfo: true, // Default
+  projectInfo: true, // Default
+  allNotes: false,
+  pastSummaries: true, // Default ON - filter notes by tag
+  tasks: true, // Default ON
+  campaigns: false,
+  calendarEvents: true, // Default ON
+  // meetingCount removed - simplify for now
+  // resources removed - simplify for now
+});
+const isLoadingContext = ref(false);
+const contextData = ref(null); // Holds fetched context data
+
+// State for results
+const aiResponse = ref('');
+const actionableItems = ref([]);
+const isCreatingItems = ref(false);
+
+// Processing options for AI (same as before)
+const processingOptions = [
+  { label: 'Summarize', value: 'summarize' },
+  { label: 'Extract Key Points', value: 'keyPoints' },
+  { label: 'Organize Thoughts', value: 'organize' },
+  { label: 'Generate Action Items', value: 'actionItems' },
+  { label: 'Find Patterns', value: 'patterns' },
+  { label: 'Creative Expansion', value: 'creative' },
+  { label: 'Meeting Notes', value: 'meetingNotes' }
+];
+
+// Lifecycle hooks
+onMounted(async () => {
+  isLoadingClients.value = true;
+  isLoadingProjects.value = true;
+  try {
+    // Use allSettled so one failing call doesn't block the other
+    const results = await Promise.allSettled([
+      clientStore.fetchClients(),
+      projectStore.fetchProjects()
+    ]);
+    results.forEach((result, i) => {
+      if (result.status === 'rejected') {
+        toast.error('Failed to load client or project data. Please try again.');
+      }
+    });
+  } catch(err) {
+    toast.error("Failed to load client/project list");
+  } finally {
+    isLoadingClients.value = false;
+    isLoadingProjects.value = false;
+  }
+});
+
+// Watch selected client to clear selected project
+watch(selectedClient, (newClientId) => {
+  selectedProject.value = null;
+});
+
+// Process input with AI (Main Logic)
+async function processWithAI() {
+  isProcessing.value = true;
+  aiResponse.value = '';
+  actionableItems.value = [];
+  contextData.value = null; // Clear previous context
+  let formattedContext = '';
+
+  try {
+    // 1. Fetch context data ONLY if needed options are selected
+    const requiresContextFetch = Object.entries(contextOptions).some(([key, value]) => value === true);
+    
+    if (requiresContextFetch && (selectedClient.value || selectedProject.value)) {
+      await fetchContextData(); // Fetches based on reactive contextOptions
+      if (contextData.value) {
+        formattedContext = formatContextDataForPrompt(); // Format it for the prompt
+      }
+    }
+    
+    // 2. Call the AI processing service
+    const result = await brainDumpService.processText({
+      input: userInput.value,
+      processingType: selectedProcessingType.value,
+      contextInfo: formattedContext, // Pass the potentially large context string
+      useEnrichedContext: !!formattedContext // Indicate if context was added
+    });
+    
+    // 3. Handle results
+    if (result) {
+      aiResponse.value = result.response || '';
+      if (result.structuredData?.length) {
+        actionableItems.value = result.structuredData.map(item => ({ ...item, selected: true }));
+      }
+      toast.success('Processing complete!');
+    } else {
+      throw new Error("Received empty response from AI service");
+    }
+
+  } catch (error) {
+    toast.error(`Processing failed: ${error.message || 'Unknown error'}`);
+    aiResponse.value = `Error during processing: ${error.message || 'Unknown error'}`;
+  } finally {
+    isProcessing.value = false;
+  }
+}
+
+// Fetch context data from various sources
+async function fetchContextData() {
+  isLoadingContext.value = true;
+  try {
+    // Pass selected options to the service
+    const params = {
+      clientId: selectedClient.value || undefined,
+      projectId: selectedProject.value || undefined,
+      options: JSON.stringify(contextOptions) // Send selected options
+    };
+    contextData.value = await brainDumpService.getContextData(params);
+  } catch (error) {
+    toast.error('Failed to load context data');
+    contextData.value = null;
+  } finally {
+    isLoadingContext.value = false;
+  }
+}
+
+// Format the FETCHED context data for the AI prompt
+function formatContextDataForPrompt() {
+  if (!contextData.value) return '';
+  let contextString = '';
+  const data = contextData.value;
+
+  // Format each section only if it exists in the fetched data
+  if (data.clientInfo) contextString += formatSection("Client Information", data.clientInfo);
+  if (data.projectInfo) contextString += formatSection("Project Information", data.projectInfo);
+  if (data.allNotes?.length) contextString += formatArraySection("All Notes", data.allNotes, item => `${item.title} (Created: ${formatDateSimple(item.createdAt)})`);
+  if (data.pastSummaries?.length) contextString += formatArraySection("Past Summaries/Brain Dumps", data.pastSummaries, item => `${item.title} (Created: ${formatDateSimple(item.createdAt)})`);
+  if (data.tasks?.length) contextString += formatArraySection("Associated Tasks", data.tasks, item => `${item.title} (Status: ${item.status}, Due: ${formatDateSimple(item.dueDate) || 'N/A'})`);
+  if (data.campaigns?.length) contextString += formatArraySection("Associated Campaigns", data.campaigns, item => `${item.title} (Status: ${item.status || 'N/A'}, End: ${formatDateSimple(item.endDate) || 'N/A'})`);
+  if (data.calendarEvents?.length) contextString += formatArraySection("Upcoming Calendar Events", data.calendarEvents, item => `${item.title} (Date: ${formatDateSimple(item.start || item.date)})`);
+
+  return contextString;
+}
+
+// Helper to format object sections
+function formatSection(title, obj) {
+  let str = `## ${title}\n`;
+  for (const [key, value] of Object.entries(obj)) {
+    if (value) str += `- ${key.replace(/([A-Z])/g, ' $1').trim()}: ${value}\n`;
+  }
+  return str + '\n';
+}
+
+// Helper to format array sections
+function formatArraySection(title, arr, formatter) {
+  let str = `## ${title}\n`;
+  arr.forEach(item => str += `- ${formatter(item)}\n`);
+  return str + '\n';
+}
+
+// Simple date formatter for context
+function formatDateSimple(dateString) {
+  if (!dateString) return null;
+  try {
+    return new Date(dateString).toLocaleDateString('en-CA'); // YYYY-MM-DD
+  } catch { return null; }
+}
+
+// Create selected actionable items
+async function createSelectedItems(selectedItems) {
+  if (!selectedItems.length) {
+    toast.warning('No items selected');
+    return;
+  }
+  
+  isCreatingItems.value = true;
+  
+  try {
+    // Categorize items by type
+    const tasks = selectedItems.filter(item => item.type.toLowerCase() === 'task');
+    const events = selectedItems.filter(item => item.type.toLowerCase() === 'event');
+    const projects = selectedItems.filter(item => item.type.toLowerCase() === 'project');
+    
+    // Call service to create items
+    const result = await brainDumpService.createItems({
+      tasks,
+      events,
+      projects
+    });
+    
+    // Build success message
+    const taskCount = result.results.taskCount;
+    const eventCount = result.results.eventCount;
+    const projectCount = result.results.projectCount;
+    
+    let message = 'Created: ';
+    if (taskCount > 0) message += `${taskCount} task${taskCount > 1 ? 's' : ''} `;
+    if (eventCount > 0) message += `${eventCount} event${eventCount > 1 ? 's' : ''} `;
+    if (projectCount > 0) message += `${projectCount} project${projectCount > 1 ? 's' : ''} `;
+    
+    toast.success(message);
+    
+    // Remove created items
+    actionableItems.value = actionableItems.value.filter(
+      item => !selectedItems.includes(item)
+    );
+  } catch (error) {
+    toast.error('Failed to create items');
+  } finally {
+    isCreatingItems.value = false;
+  }
+}
+
+// Event handlers
+function onClearInput() {
+  actionableItems.value = [];
+  aiResponse.value = '';
+}
+
+function onCopy() {
+  toast.info('Copied to clipboard');
+}
+
+function handleSaveNote() {
+  // This is now handled by the SaveNoteModal via brainDumpService.createNote
+  // which uses noteService. We don't need direct action here anymore.
+  // The modal emits 'saved', which could trigger UI updates if needed.
+}
+
+</script>
+
+<style scoped>
+/* Add specific styles */
+</style> 

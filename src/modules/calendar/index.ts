@@ -1,6 +1,6 @@
 import type { FeatureModule } from '@/core/types'
 
-const Calendar = () => import('@/pages/Calendar.vue')
+const Calendar = () => import('@/modules/calendar/pages/Calendar.vue')
 
 export const calendarModule: FeatureModule = {
   id: 'calendar',

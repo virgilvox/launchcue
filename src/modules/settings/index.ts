@@ -1,7 +1,7 @@
 import type { FeatureModule } from '@/core/types'
 
-const Settings = () => import('@/pages/Settings.vue')
-const Profile = () => import('@/pages/Profile.vue')
+const Settings = () => import('@/modules/settings/pages/Settings.vue')
+const Profile = () => import('@/modules/settings/pages/Profile.vue')
 
 export const settingsModule: FeatureModule = {
   id: 'settings',

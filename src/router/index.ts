@@ -22,7 +22,7 @@ const Register = () => import('../pages/auth/Register.vue')
 
 // Dashboard (always registered — not part of any feature module)
 const Home = () => import('../pages/Home.vue')
-const Dashboard = () => import('../pages/Dashboard.vue')
+const Dashboard = () => import('../modules/dashboard/pages/Dashboard.vue')
 
 /**
  * Static routes that are always present regardless of registered modules.

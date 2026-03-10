@@ -1,6 +1,6 @@
 import type { FeatureModule } from '@/core/types'
 
-const Notes = () => import('@/pages/Notes.vue')
+const Notes = () => import('@/modules/notes/pages/Notes.vue')
 
 export const notesModule: FeatureModule = {
   id: 'notes',

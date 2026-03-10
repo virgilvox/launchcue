@@ -1,6 +1,6 @@
 import type { FeatureModule } from '@/core/types'
 
-const Team = () => import('@/pages/Team.vue')
+const Team = () => import('@/modules/team/pages/Team.vue')
 
 export const teamModule: FeatureModule = {
   id: 'team',

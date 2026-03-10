@@ -1,6 +1,6 @@
 import type { FeatureModule } from '@/core/types'
 
-const BrainDump = () => import('@/pages/BrainDump.vue')
+const BrainDump = () => import('@/modules/brain-dump/pages/BrainDump.vue')
 
 export const brainDumpModule: FeatureModule = {
   id: 'brain-dump',

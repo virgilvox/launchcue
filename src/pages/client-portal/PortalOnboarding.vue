@@ -169,9 +169,9 @@ import { useRoute, useRouter } from 'vue-router'
 import { useToast } from 'vue-toastification'
 import onboardingService from '@/services/onboarding.service'
 import LoadingSpinner from '@/components/LoadingSpinner.vue'
-import OnboardingProgress from '@/components/onboarding/OnboardingProgress.vue'
-import OnboardingStepForm from '@/components/onboarding/OnboardingStepForm.vue'
-import OnboardingStepUpload from '@/components/onboarding/OnboardingStepUpload.vue'
+import OnboardingProgress from '@/modules/onboarding/components/OnboardingProgress.vue'
+import OnboardingStepForm from '@/modules/onboarding/components/OnboardingStepForm.vue'
+import OnboardingStepUpload from '@/modules/onboarding/components/OnboardingStepUpload.vue'
 
 const route = useRoute()
 const router = useRouter()

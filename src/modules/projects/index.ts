@@ -1,8 +1,8 @@
 import type { FeatureModule } from '@/core/types'
 
-const Projects = () => import('@/pages/Projects.vue')
-const ProjectDetail = () => import('@/pages/ProjectDetail.vue')
-const ProjectForm = () => import('@/pages/ProjectForm.vue')
+const Projects = () => import('@/modules/projects/pages/Projects.vue')
+const ProjectDetail = () => import('@/modules/projects/pages/ProjectDetail.vue')
+const ProjectForm = () => import('@/modules/projects/pages/ProjectForm.vue')
 
 export const projectsModule: FeatureModule = {
   id: 'projects',

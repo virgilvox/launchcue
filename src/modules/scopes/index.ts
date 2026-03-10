@@ -1,7 +1,7 @@
 import type { FeatureModule } from '@/core/types'
 
-const ScopeTemplates = () => import('@/pages/ScopeTemplates.vue')
-const ScopeBuilder = () => import('@/pages/ScopeBuilder.vue')
+const ScopeTemplates = () => import('@/modules/scopes/pages/ScopeTemplates.vue')
+const ScopeBuilder = () => import('@/modules/scopes/pages/ScopeBuilder.vue')
 
 export const scopesModule: FeatureModule = {
   id: 'scopes',

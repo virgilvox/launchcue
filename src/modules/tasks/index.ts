@@ -1,7 +1,7 @@
 import type { FeatureModule } from '@/core/types'
 
-const Tasks = () => import('@/pages/Tasks.vue')
-const TaskDetail = () => import('@/pages/TaskDetail.vue')
+const Tasks = () => import('@/modules/tasks/pages/Tasks.vue')
+const TaskDetail = () => import('@/modules/tasks/pages/TaskDetail.vue')
 
 export const tasksModule: FeatureModule = {
   id: 'tasks',
