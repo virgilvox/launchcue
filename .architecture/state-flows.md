@@ -43,6 +43,7 @@ Logout Flow:
 ```
   authStore.switchTeam(teamId)
     ├─ Update current team in state
+    ├─ setCurrentTeam() syncs team.role → user.value.role + sessionStorage
     ├─ Supabase custom claims updated (team_id, role)
     └─ Reload all stores with new team context
 ```
@@ -105,6 +106,8 @@ Logout Flow:
     ├─ registry.initialize(container)
     │   └─ Topological sort by dependencies
     │      Each module.setup(container) called in order
+    ├─ app.provide(containerKey/eventBusKey/registryKey)
+    │   └─ Typed InjectionKey<T> symbols from src/injection-keys.ts
     └─ createApp(App).mount('#app')
 
   Runtime Resolution:

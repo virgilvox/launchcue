@@ -4,7 +4,8 @@
 
 | File | Purpose | Key Dependencies |
 |------|---------|-----------------|
-| `src/main.ts` | App bootstrap: create Vue, register plugins via PluginRegistry, init Supabase auth | Pinia, Router, Toastification, PluginRegistry |
+| `src/main.ts` | App bootstrap: create Vue, register plugins via PluginRegistry, init Supabase auth | Pinia, Router, Toastification, PluginRegistry, injection-keys |
+| `src/injection-keys.ts` | Typed `InjectionKey<T>` symbols for Vue provide/inject (containerKey, eventBusKey, registryKey) | Vue, core/types, core/plugin-registry |
 | `src/App.vue` | Root component, RouterView wrapper, CSS var application | — |
 | `vite.config.ts` | Build config, @ alias, proxy /api → localhost:3001 | — |
 | `tailwind.config.js` | Design tokens: 0 radius, 2px borders, brutal shadows, fonts | — |

@@ -18,6 +18,7 @@
 ### Directory Structure
 ```
 src/
+  injection-keys.ts # Typed InjectionKey<T> symbols for Vue provide/inject
   core/             # DI container, event bus, plugin registry, types
   adapters/         # Repository implementations (supabase/), types, keys
   modules/          # 15 feature modules -each has {pages/, components/, index.ts}
@@ -232,6 +233,7 @@ See `.env.example` for all required variables. Key ones:
 ### Key Patterns
 - **Page layout**: Always `<PageContainer>` → `<PageHeader>` → content
 - **DI container**: `getContainer().resolve<T>(SYMBOL_KEY)` -stores use `getRepo()` helper
+- **Vue provide/inject**: Typed `InjectionKey<T>` symbols in `src/injection-keys.ts` — components use `inject(registryKey)`, NOT string keys
 - **Repository pattern**: `Repository<T, CreateDTO, UpdateDTO>` interface with Supabase implementations
 - **Feature modules**: Each declares `id`, `routes`, `navItems`, `searchProviders`, `dependencies`, `setup()`
 - **API calls**: Store → repository adapter → page component with try/catch + toast.error
@@ -338,7 +340,7 @@ Full-stack audit across SQL, RLS, Express, auth, DI, adapters, stores, modules, 
 - LoadingSpinner: `role="status"` and `aria-label` for accessibility
 - Audit logging: DELETE triggers on comments/notifications (migration 010); team_members/team_invites membership changes now audited
 - Router: Warns about failed modules via `registry.getFailedModules()`
-- DI: Typed `InjectionKey<T>` for provide/inject in main.ts
+- DI: Typed `InjectionKey<T>` symbols extracted to `src/injection-keys.ts`; used by `main.ts` (provide) and components (inject)
 
 **Documentation:**
 - `docs/plugin-guide.md`: Comprehensive developer guide for adding/removing feature modules (7 sections with code examples)
@@ -367,5 +369,21 @@ Full hardening pass: auth session reconciliation, concurrent loading safety, uns
 - 11 new store test files covering all CRUD operations, auth guards, error handling, computed properties
 - 2 composable test files covering concurrent operations, dirty tracking, cleanup
 - All 215 tests pass, `tsc --noEmit` clean, `vite build` succeeds
+
+### Navigation & Role Sync Fix (2026-03-10)
+Fixed two bugs causing missing sidebar navigation items:
+
+**Bug 1 — Sidebar inject key mismatch (all nav items missing for all users):**
+- `Sidebar.vue` used `inject('registry')` (string key) but `main.ts` provided with `Symbol('registry')` via typed `InjectionKey<T>`
+- `inject('registry')` returned `undefined`, so `getNavGroups()` was never called — only hardcoded Dashboard item showed
+- Fix: Import `registryKey` from `src/injection-keys.ts` and use typed inject
+- Extracted all three injection keys (`containerKey`, `eventBusKey`, `registryKey`) from `main.ts` into `src/injection-keys.ts` to avoid circular imports
+
+**Bug 2 — Missing user role after registration/team creation (ADMIN group hidden):**
+- `setCurrentTeam()` set `currentTeam.value` but never synced `team.role` to `user.value.role`
+- Auth adapter's `register()` returns user without role; `login()` explicitly includes role but only from the adapter response
+- After registration or `createTeam()`, `user.value.role` was undefined → RBAC computeds hid ADMIN nav group
+- Fix: `setCurrentTeam()` now syncs `team.role` to `user.value.role` and persists to sessionStorage
+- This fixes registration, createTeam, switchTeam, and loadUserTeams flows (all funnel through `setCurrentTeam()`)
 
 *Last updated: 2026-03-10*

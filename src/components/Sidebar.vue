@@ -147,13 +147,13 @@ import {
     ArrowLeftOnRectangleIcon as LogoutIcon,
     ChevronDownIcon
 } from '@heroicons/vue/24/outline'
+import { registryKey } from '@/injection-keys'
 
 const route = useRoute()
 const authStore = useAuthStore()
 const { isMobile } = useResponsive()
 
-/** @type {import('@/core/plugin-registry').PluginRegistry} */
-const registry = inject('registry')
+const registry = inject(registryKey)
 
 const isCollapsed = ref(false)
 const isOpen = ref(false)

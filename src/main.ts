@@ -8,18 +8,12 @@ import 'vue-toastification/dist/index.css'
 import { useAuthStore } from './stores/auth'
 
 // Core infrastructure
-import type { InjectionKey } from 'vue'
 import { initContainer } from './core/service-container'
 import { initEventBus } from './core/event-bus'
 import { initPluginRegistry } from './core/plugin-registry'
-import type { ServiceContainer, EventBus } from './core/types'
-import type { PluginRegistry } from './core/plugin-registry'
 import { registerSupabaseAdapters } from './adapters/supabase'
 import { registerAllModules } from './modules'
-
-export const containerKey: InjectionKey<ServiceContainer> = Symbol('container')
-export const eventBusKey: InjectionKey<EventBus> = Symbol('eventBus')
-export const registryKey: InjectionKey<PluginRegistry> = Symbol('registry')
+import { containerKey, eventBusKey, registryKey } from './injection-keys'
 
 async function bootstrap() {
   // 1. Initialize core infrastructure

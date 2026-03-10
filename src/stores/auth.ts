@@ -352,6 +352,11 @@ export const useAuthStore = defineStore('auth', () => {
   const setCurrentTeam = (team: TeamSummary | null): void => {
     currentTeam.value = team
     sessionStorage.setItem('currentTeam', JSON.stringify(team))
+    // Sync team role to user for RBAC computed properties
+    if (user.value && team?.role) {
+      user.value = { ...user.value, role: team.role as TeamRole | 'client' }
+      sessionStorage.setItem('user', JSON.stringify(user.value))
+    }
   }
 
   // Set session from external auth flow (e.g., client invitation acceptance)
