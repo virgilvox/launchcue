@@ -1,6 +1,8 @@
 import type { Task } from '@/types/models'
 import type { TaskCreateRequest, TaskUpdateRequest } from '@/types/api'
+import type { QueryFilter } from '../types'
 import { SupabaseBaseRepository } from './base.repository'
+import { getSupabase } from './client'
 
 export class SupabaseTaskRepository extends SupabaseBaseRepository<Task, TaskCreateRequest, TaskUpdateRequest> {
   constructor() {
@@ -18,6 +20,42 @@ export class SupabaseTaskRepository extends SupabaseBaseRepository<Task, TaskCre
       createdAt: 'created_at',
       updatedAt: 'updated_at',
     })
+  }
+
+  async findAll(filter: QueryFilter = {}): Promise<Task[]> {
+    const sb = getSupabase()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let query: any = sb.from(this.viewName).select(this.getSelectColumns())
+
+    const { startDate, endDate, hasDueDate, search, ...rest } = filter
+
+    // Semantic date range filters mapped to due_date column
+    if (startDate !== undefined && startDate !== null) {
+      query = query.gte('due_date', startDate)
+    }
+    if (endDate !== undefined && endDate !== null) {
+      query = query.lte('due_date', endDate)
+    }
+    if (hasDueDate) {
+      query = query.not('due_date', 'is', null)
+    }
+    // Text search on title (no 'search' column exists)
+    if (search) {
+      query = query.ilike('title', `%${search}%`)
+    }
+
+    // Apply remaining filters normally
+    for (const [key, value] of Object.entries(rest)) {
+      if (value === undefined || value === null) continue
+      const column = this.toSnake(key)
+      query = query.eq(column, value)
+    }
+
+    query = this.applyDefaultOrder(query)
+
+    const { data, error } = await query
+    if (error) throw new Error(error.message)
+    return (data || []).map((row: Record<string, unknown>) => this.mapFromDb(row))
   }
 
   protected mapFromDb(row: Record<string, unknown>): Task {

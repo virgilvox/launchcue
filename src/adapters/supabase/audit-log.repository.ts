@@ -20,7 +20,7 @@ export class SupabaseAuditLogRepository extends SupabaseBaseRepository<AuditLog,
       resourceType: row.resource_type as string,
       resourceId: row.resource_id as string,
       changes: row.changes as Record<string, { from: unknown; to: unknown }> | undefined,
-      timestamp: row.timestamp as string,
+      timestamp: row.created_at as string,
     }
   }
 

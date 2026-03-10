@@ -32,13 +32,50 @@ export class SupabaseTeamRepository implements Repository<Team, TeamCreateReques
   }
 
   async create(dto: TeamCreateRequest): Promise<Team> {
-    const { data, error } = await getSupabase()
+    const sb = getSupabase()
+
+    // Resolve the current user's app ID for owner_id (required by RLS)
+    const { data: { session } } = await sb.auth.getSession()
+    if (!session) throw new Error('Not authenticated')
+
+    const { data: appUser, error: userError } = await sb
+      .from('users')
+      .select('id')
+      .eq('auth_id', session.user.id)
+      .single()
+    if (userError) throw new Error(userError.message)
+
+    // Insert team with owner_id
+    const { data, error } = await sb
       .from('teams')
-      .insert({ name: dto.name })
+      .insert({ name: dto.name, owner_id: appUser.id })
       .select('*, team_members(*, users(id, name, email))')
       .single()
     if (error) throw new Error(error.message)
-    return this.mapFromDb(data as Record<string, unknown>)
+
+    const teamId = (data as Record<string, unknown>).id as string
+
+    // Add the creator as an owner in team_members
+    const { error: memberError } = await sb
+      .from('team_members')
+      .insert({ team_id: teamId, user_id: appUser.id, role: 'owner' })
+    if (memberError) throw new Error(memberError.message)
+
+    // Update the user's metadata to include this team
+    const currentMeta = session.user.user_metadata || {}
+    const currentTeamIds: string[] = currentMeta.team_ids || []
+    if (!currentTeamIds.includes(teamId)) {
+      await sb.auth.updateUser({
+        data: {
+          ...currentMeta,
+          team_ids: [...currentTeamIds, teamId],
+          current_team_id: teamId,
+        },
+      })
+    }
+
+    // Re-fetch the team to include the new member
+    return this.findById(teamId)
   }
 
   async update(id: string, dto: Partial<Team>): Promise<Team> {

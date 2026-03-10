@@ -57,10 +57,24 @@ export class SupabaseBrainDumpRepository extends SupabaseBaseRepository<BrainDum
 
     if (options.includeTasks !== false) {
       let query = sb.from('active_tasks').select('title, status, due_date')
-      if (clientId) query = query.eq('client_id', clientId)
+      if (clientId && !projectId) {
+        // Tasks don't have client_id — find via projects linked to this client
+        const { data: clientProjects } = await sb
+          .from('active_projects')
+          .select('id')
+          .eq('client_id', clientId)
+        const projectIds = (clientProjects || []).map((p: Record<string, unknown>) => p.id as string)
+        if (projectIds.length > 0) {
+          query = query.in('project_id', projectIds)
+        } else {
+          result.tasks = []
+        }
+      }
       if (projectId) query = query.eq('project_id', projectId)
-      const { data } = await query.limit(50)
-      result.tasks = data || []
+      if (!result.tasks) {
+        const { data } = await query.limit(50)
+        result.tasks = data || []
+      }
     }
 
     if (options.includeNotes !== false) {

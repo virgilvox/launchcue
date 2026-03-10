@@ -1,6 +1,8 @@
 import type { CalendarEvent } from '@/types/models'
 import type { CalendarEventCreateRequest } from '@/types/api'
+import type { QueryFilter } from '../types'
 import { SupabaseBaseRepository } from './base.repository'
+import { getSupabase } from './client'
 
 export class SupabaseCalendarEventRepository extends SupabaseBaseRepository<CalendarEvent, CalendarEventCreateRequest, Partial<CalendarEvent>> {
   constructor() {
@@ -14,6 +16,35 @@ export class SupabaseCalendarEventRepository extends SupabaseBaseRepository<Cale
       teamId: 'team_id',
       userId: 'user_id',
     })
+  }
+
+  async findAll(filter: QueryFilter = {}): Promise<CalendarEvent[]> {
+    const sb = getSupabase()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let query: any = sb.from(this.viewName).select(this.getSelectColumns())
+
+    const { startDate, endDate, ...rest } = filter
+
+    // Date range filters use gte/lte on start_time, not eq
+    if (startDate !== undefined && startDate !== null) {
+      query = query.gte('start_time', startDate)
+    }
+    if (endDate !== undefined && endDate !== null) {
+      query = query.lte('start_time', endDate)
+    }
+
+    // Apply remaining filters normally
+    for (const [key, value] of Object.entries(rest)) {
+      if (value === undefined || value === null) continue
+      const column = this.toSnake(key)
+      query = query.eq(column, value)
+    }
+
+    query = this.applyDefaultOrder(query)
+
+    const { data, error } = await query
+    if (error) throw new Error(error.message)
+    return (data || []).map((row: Record<string, unknown>) => this.mapFromDb(row))
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

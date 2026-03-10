@@ -1,5 +1,6 @@
 import type { Invoice } from '@/types/models'
 import type { InvoiceCreateRequest } from '@/types/api'
+import type { QueryFilter } from '../types'
 import { SupabaseBaseRepository } from './base.repository'
 import { getSupabase } from './client'
 
@@ -19,6 +20,35 @@ export class SupabaseInvoiceRepository extends SupabaseBaseRepository<Invoice, I
       paidAmount: 'paid_amount',
       createdBy: 'created_by',
     })
+  }
+
+  async findAll(filter: QueryFilter = {}): Promise<Invoice[]> {
+    const sb = getSupabase()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let query: any = sb.from(this.viewName).select(this.getSelectColumns())
+
+    const { dateFrom, dateTo, ...rest } = filter
+
+    // Date range filters on created_at (no date_from/date_to columns exist)
+    if (dateFrom !== undefined && dateFrom !== null) {
+      query = query.gte('created_at', dateFrom)
+    }
+    if (dateTo !== undefined && dateTo !== null) {
+      query = query.lte('created_at', dateTo)
+    }
+
+    // Apply remaining filters normally
+    for (const [key, value] of Object.entries(rest)) {
+      if (value === undefined || value === null) continue
+      const column = this.toSnake(key)
+      query = query.eq(column, value)
+    }
+
+    query = this.applyDefaultOrder(query)
+
+    const { data, error } = await query
+    if (error) throw new Error(error.message)
+    return (data || []).map((row: Record<string, unknown>) => this.mapFromDb(row))
   }
 
   async create(dto: InvoiceCreateRequest): Promise<Invoice> {
