@@ -4,6 +4,7 @@ import { getContainer } from '@/core/service-container'
 import { NOTIFICATION_REPO } from '@/adapters/repository-keys'
 import type { NotificationRepository } from '@/adapters/types'
 import type { Notification } from '../types/models'
+import { useAuthStore } from './auth'
 
 export const useNotificationStore = defineStore('notification', () => {
   const notifications = ref<Notification[]>([])
@@ -18,6 +19,7 @@ export const useNotificationStore = defineStore('notification', () => {
   const unreadCount = computed(() => notifications.value.filter(n => !n.read).length)
 
   const fetchNotifications = async (): Promise<Notification[]> => {
+    if (!useAuthStore().currentTeam) return []
     isLoading.value = true
     error.value = null
     try {

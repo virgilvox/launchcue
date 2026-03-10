@@ -29,7 +29,25 @@ aiRouter.post('/process', async (req, res) => {
     return
   }
 
+  // Validate processingDetails.type against allowlist
+  const allowedTypes = ['braindump', 'task', 'project', 'note', 'general']
+  const processType = allowedTypes.includes(processingDetails?.type) ? processingDetails.type : 'general'
+
   const clampedMaxTokens = Math.min(Math.max(Number(max_tokens) || 1024, 1), 4096)
+
+  // Build messages — user-provided context goes in a separate user message, not system prompt
+  const messages: Array<{ role: string; content: string }> = []
+  if (processingDetails?.context) {
+    const sanitizedContext = String(processingDetails.context).slice(0, 5000)
+    messages.push({
+      role: 'user',
+      content: `Context for processing (type: ${processType}):\n${sanitizedContext}`,
+    })
+  }
+  messages.push({
+    role: 'user',
+    content: prompt,
+  })
 
   try {
     const response = await fetch('https://api.anthropic.com/v1/messages', {
@@ -42,15 +60,8 @@ aiRouter.post('/process', async (req, res) => {
       body: JSON.stringify({
         model: 'claude-sonnet-4-6',
         max_tokens: clampedMaxTokens,
-        messages: [
-          {
-            role: 'user',
-            content: prompt,
-          },
-        ],
-        system: processingDetails?.context
-          ? `You are a DevRel assistant helping organize brain dumps. Context: ${processingDetails.context}`
-          : 'You are a DevRel assistant helping organize brain dumps into actionable items.',
+        messages,
+        system: 'You are a DevRel assistant helping organize brain dumps into actionable items.',
       }),
     })
 

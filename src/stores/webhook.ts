@@ -5,6 +5,7 @@ import { getEventBus } from '@/core/event-bus'
 import { WEBHOOK_REPO } from '@/adapters/repository-keys'
 import type { Repository } from '@/adapters/types'
 import type { Webhook } from '../types/models'
+import { useAuthStore } from './auth'
 
 export const useWebhookStore = defineStore('webhook', () => {
   const webhooks = ref<Webhook[]>([])
@@ -15,6 +16,7 @@ export const useWebhookStore = defineStore('webhook', () => {
   }
 
   const fetchWebhooks = async (): Promise<Webhook[]> => {
+    if (!useAuthStore().currentTeam) return []
     isLoading.value = true
     try {
       const response = await getRepo().findAll()

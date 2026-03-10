@@ -6,6 +6,7 @@ import { NOTE_REPO } from '@/adapters/repository-keys'
 import type { Repository } from '@/adapters/types'
 import type { Note } from '../types/models'
 import type { NoteCreateRequest } from '../types/api'
+import { useAuthStore } from './auth'
 
 export const useNoteStore = defineStore('note', () => {
   const notes = ref<Note[]>([])
@@ -16,6 +17,7 @@ export const useNoteStore = defineStore('note', () => {
   }
 
   const fetchNotes = async (params?: Record<string, unknown>): Promise<Note[]> => {
+    if (!useAuthStore().currentTeam) return []
     isLoading.value = true
     try {
       const response = await getRepo().findAll(params)

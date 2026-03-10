@@ -21,8 +21,8 @@ export function createEventBus(): EventBus {
         for (const handler of set) {
           try {
             handler(payload ?? ({} as T))
-          } catch {
-            // Swallow handler errors — one bad listener shouldn't break others
+          } catch (err) {
+            console.error(`[EventBus] Handler error for "${event}":`, err)
           }
         }
       }

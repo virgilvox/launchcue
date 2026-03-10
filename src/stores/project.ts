@@ -6,6 +6,7 @@ import { PROJECT_REPO } from '@/adapters/repository-keys'
 import type { Repository } from '@/adapters/types'
 import type { Project } from '../types/models'
 import type { ProjectCreateRequest } from '../types/api'
+import { useAuthStore } from './auth'
 
 export const useProjectStore = defineStore('project', () => {
   const projects = ref<Project[]>([])
@@ -16,6 +17,7 @@ export const useProjectStore = defineStore('project', () => {
   }
 
   const fetchProjects = async (): Promise<Project[]> => {
+    if (!useAuthStore().currentTeam) return []
     isLoading.value = true
     try {
       const response = await getRepo().findAll()

@@ -17,6 +17,8 @@ export class PluginRegistry {
     this.modules.set(mod.id, mod)
   }
 
+  private failedModules = new Set<string>()
+
   /** Initialize all modules in dependency order */
   async initialize(container: ServiceContainer): Promise<void> {
     if (this.initialized) return
@@ -25,11 +27,21 @@ export class PluginRegistry {
 
     for (const mod of sorted) {
       if (mod.setup) {
-        await mod.setup(container)
+        try {
+          await mod.setup(container)
+        } catch (err) {
+          console.error(`[PluginRegistry] Module "${mod.id}" setup() failed:`, err)
+          this.failedModules.add(mod.id)
+        }
       }
     }
 
     this.initialized = true
+  }
+
+  /** Get IDs of modules whose setup() failed */
+  getFailedModules(): string[] {
+    return [...this.failedModules]
   }
 
   /** Tear down all modules in reverse order */

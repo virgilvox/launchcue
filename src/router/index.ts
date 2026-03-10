@@ -112,6 +112,10 @@ function getStaticRoutes(): RouteRecordRaw[] {
  * Create the app router with dynamic routes from the plugin registry.
  */
 export function createAppRouter(registry: PluginRegistry) {
+  if (registry.getFailedModules().length > 0) {
+    console.warn('[Router] Some modules failed to initialize:', registry.getFailedModules())
+  }
+
   // Collect dynamic routes from registered modules
   const moduleRoutes = registry.getRoutes()
 

@@ -9,7 +9,7 @@ services:
     ports:
       - "5432:5432"
     environment:
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-your-super-secret-password}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required - generate with: openssl rand -hex 32}
       POSTGRES_DB: postgres
     volumes:
       - pgdata_dev:/var/lib/postgresql/data
@@ -32,11 +32,11 @@ services:
       GOTRUE_API_PORT: "9999"
       API_EXTERNAL_URL: http://localhost:8000
       GOTRUE_DB_DRIVER: postgres
-      GOTRUE_DB_DATABASE_URL: postgres://supabase_auth_admin:${POSTGRES_PASSWORD:-your-super-secret-password}@db:5432/postgres
+      GOTRUE_DB_DATABASE_URL: postgres://supabase_auth_admin:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required - generate with: openssl rand -hex 32}@db:5432/postgres
       GOTRUE_SITE_URL: http://localhost:5173
       GOTRUE_URI_ALLOW_LIST: ""
       GOTRUE_DISABLE_SIGNUP: "false"
-      GOTRUE_JWT_SECRET: ${JWT_SECRET:-your-super-secret-jwt-token-with-at-least-32-characters}
+      GOTRUE_JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required - generate with: openssl rand -hex 32}
       GOTRUE_JWT_EXP: "3600"
       GOTRUE_JWT_DEFAULT_GROUP_NAME: authenticated
       GOTRUE_EXTERNAL_EMAIL_ENABLED: "true"
@@ -50,10 +50,10 @@ services:
       db:
         condition: service_healthy
     environment:
-      PGRST_DB_URI: postgres://authenticator:${POSTGRES_PASSWORD:-your-super-secret-password}@db:5432/postgres
+      PGRST_DB_URI: postgres://authenticator:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required - generate with: openssl rand -hex 32}@db:5432/postgres
       PGRST_DB_SCHEMAS: public
       PGRST_DB_ANON_ROLE: anon
-      PGRST_JWT_SECRET: ${JWT_SECRET:-your-super-secret-jwt-token-with-at-least-32-characters}
+      PGRST_JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required - generate with: openssl rand -hex 32}
       PGRST_DB_USE_LEGACY_GUCS: "false"
     restart: unless-stopped
 
@@ -68,12 +68,12 @@ services:
       DB_HOST: db
       DB_PORT: "5432"
       DB_USER: supabase_admin
-      DB_PASSWORD: ${POSTGRES_PASSWORD:-your-super-secret-password}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required - generate with: openssl rand -hex 32}
       DB_NAME: postgres
       DB_AFTER_CONNECT_QUERY: "SET search_path TO _realtime"
       DB_ENC_KEY: supabaserealtime
-      API_JWT_SECRET: ${JWT_SECRET:-your-super-secret-jwt-token-with-at-least-32-characters}
-      SECRET_KEY_BASE: ${SECRET_KEY_BASE:-your-secret-key-base-at-least-64-chars-xxxxxxxxxxxxxxxxxxxxxxxx}
+      API_JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required - generate with: openssl rand -hex 32}
+      SECRET_KEY_BASE: ${SECRET_KEY_BASE:?SECRET_KEY_BASE is required - generate with: openssl rand -hex 64}
       ERL_AFLAGS: "-proto_dist inet_tcp"
       DNS_NODES: "''"
       RLIMIT_NOFILE: "10000"

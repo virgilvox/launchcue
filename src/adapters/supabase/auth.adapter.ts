@@ -20,13 +20,23 @@ export class SupabaseAuthAdapter implements AuthAdapter {
     const teams = await this.getUserTeams(user.id)
 
     // Read current_team_id from user metadata for team context
-    const currentTeamId = data.user.user_metadata?.current_team_id as string | undefined
+    let currentTeamId = data.user.user_metadata?.current_team_id as string | undefined
     const currentTeam = currentTeamId
       ? teams.find(t => t.id === currentTeamId)
       : teams[0]
 
+    // Ensure current_team_id is set in metadata — if missing, set it and refresh JWT
+    let accessToken = data.session.access_token
+    if (!currentTeamId && currentTeam) {
+      await sb.auth.updateUser({ data: { current_team_id: currentTeam.id } })
+      const { data: refreshed, error: refreshErr } = await sb.auth.refreshSession()
+      if (!refreshErr && refreshed.session) {
+        accessToken = refreshed.session.access_token
+      }
+    }
+
     return {
-      token: data.session.access_token,
+      token: accessToken,
       user: {
         id: user.id,
         name: user.name,
@@ -61,13 +71,17 @@ export class SupabaseAuthAdapter implements AuthAdapter {
 
       const { user_id, team_id, team_name } = result as { user_id: string; team_id: string; team_name: string }
 
-      // Set current team in user metadata
+      // Set current team in user metadata and refresh JWT to include it
       await sb.auth.updateUser({
         data: { current_team_id: team_id },
       })
+      const { data: refreshed, error: refreshErr } = await sb.auth.refreshSession()
+      const accessToken = (!refreshErr && refreshed.session)
+        ? refreshed.session.access_token
+        : data.session!.access_token
 
       return {
-        token: data.session!.access_token,
+        token: accessToken,
         user: { id: user_id, name: regData.name, email: regData.email },
         teams: [{ id: team_id, name: team_name, role: 'owner' }],
         currentTeamId: team_id,

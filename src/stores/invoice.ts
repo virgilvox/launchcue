@@ -6,6 +6,7 @@ import { INVOICE_REPO, SCOPE_REPO } from '@/adapters/repository-keys'
 import type { Repository } from '@/adapters/types'
 import type { Invoice, Scope } from '../types/models'
 import type { InvoiceCreateRequest } from '../types/api'
+import { useAuthStore } from './auth'
 
 export const useInvoiceStore = defineStore('invoice', () => {
   const invoices = ref<Invoice[]>([])
@@ -26,6 +27,7 @@ export const useInvoiceStore = defineStore('invoice', () => {
   })
 
   const fetchInvoices = async (params?: { clientId?: string; projectId?: string; status?: string; dateFrom?: string; dateTo?: string }): Promise<Invoice[]> => {
+    if (!useAuthStore().currentTeam) return []
     isLoading.value = true
     try {
       const response = await getRepo().findAll(params)

@@ -4,6 +4,7 @@ import { getContainer } from '@/core/service-container'
 import { AUDIT_LOG_REPO } from '@/adapters/repository-keys'
 import type { Repository } from '@/adapters/types'
 import type { AuditLog } from '../types/models'
+import { useAuthStore } from './auth'
 
 export const useAuditLogStore = defineStore('auditLog', () => {
   const logs = ref<AuditLog[]>([])
@@ -14,6 +15,7 @@ export const useAuditLogStore = defineStore('auditLog', () => {
   }
 
   const fetchLogs = async (params?: Record<string, unknown>): Promise<AuditLog[]> => {
+    if (!useAuthStore().currentTeam) return []
     isLoading.value = true
     try {
       const response = await getRepo().findAll(params)

@@ -6,6 +6,7 @@ import { TASK_REPO } from '@/adapters/repository-keys'
 import type { Repository } from '@/adapters/types'
 import type { Task } from '../types/models'
 import type { TaskCreateRequest, TaskUpdateRequest, TaskFilter } from '../types/api'
+import { useAuthStore } from './auth'
 
 export const useTaskStore = defineStore('task', () => {
   const tasks = ref<Task[]>([])
@@ -17,6 +18,7 @@ export const useTaskStore = defineStore('task', () => {
   }
 
   const fetchTasks = async (filter: TaskFilter = {}): Promise<Task[]> => {
+    if (!useAuthStore().currentTeam) return []
     isLoading.value = true
     error.value = null
     try {

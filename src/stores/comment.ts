@@ -5,6 +5,7 @@ import { getEventBus } from '@/core/event-bus'
 import { COMMENT_REPO } from '@/adapters/repository-keys'
 import type { CommentRepository } from '@/adapters/types'
 import type { Comment } from '../types/models'
+import { useAuthStore } from './auth'
 
 export const useCommentStore = defineStore('comment', () => {
   const comments = ref<Comment[]>([])
@@ -15,6 +16,7 @@ export const useCommentStore = defineStore('comment', () => {
   }
 
   const fetchComments = async (resourceType: string, resourceId: string): Promise<Comment[]> => {
+    if (!useAuthStore().currentTeam) return []
     isLoading.value = true
     try {
       const response = await getRepo().getComments(resourceType, resourceId)

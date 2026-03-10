@@ -6,6 +6,7 @@ import { BRAIN_DUMP_REPO, AI_ADAPTER } from '@/adapters/repository-keys'
 import type { Repository, AiAdapter } from '@/adapters/types'
 import type { BrainDump } from '../types/models'
 import type { BrainDumpCreateRequest } from '../types/api'
+import { useAuthStore } from './auth'
 
 // Extended repository interface for brain-dump-specific operations
 interface BrainDumpRepository extends Repository<BrainDump, BrainDumpCreateRequest, Partial<BrainDumpCreateRequest>> {
@@ -26,6 +27,7 @@ export const useBrainDumpStore = defineStore('brainDump', () => {
   }
 
   const fetchDumps = async (): Promise<BrainDump[]> => {
+    if (!useAuthStore().currentTeam) return []
     isLoading.value = true
     try {
       const response = await getRepo().findAll()

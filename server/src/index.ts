@@ -25,6 +25,15 @@ app.use((_req: express.Request, res: express.Response, next: express.NextFunctio
   res.setHeader('X-Frame-Options', 'DENY')
   res.setHeader('X-XSS-Protection', '1; mode=block')
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin')
+  res.setHeader('Content-Security-Policy', [
+    "default-src 'self'",
+    "script-src 'self'",
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+    "font-src 'self' https://fonts.gstatic.com",
+    `connect-src 'self' ${process.env.SUPABASE_URL || 'http://localhost:8000'}`,
+    "img-src 'self' data: blob:",
+    "frame-ancestors 'none'",
+  ].join('; '))
   if (process.env.NODE_ENV === 'production') {
     res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains')
   }
@@ -46,9 +55,16 @@ app.use('/ai', aiRouter)
 app.use('/webhooks', webhookRouter)
 app.use('/email', emailRouter)
 
-// Health check
-app.get('/health', (_req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() })
+// Health check with DB ping
+app.get('/health', async (_req, res) => {
+  let dbOk = false
+  try {
+    const { getSupabase: getSb } = await import('./supabase.js')
+    const { error } = await getSb().from('users').select('id').limit(1)
+    dbOk = !error
+  } catch { /* db unreachable */ }
+  const status = dbOk ? 'ok' : 'degraded'
+  res.status(dbOk ? 200 : 503).json({ status, db: dbOk, timestamp: new Date().toISOString() })
 })
 
 // Global error handler

@@ -139,6 +139,28 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  // Reset all Pinia stores except auth — for logout and team switch
+  const resetAllStores = (): void => {
+    // Stop notification polling before disposing stores
+    try {
+      const pinia = getActivePinia()
+      if (pinia) {
+        const notifStore = (pinia as any)._s.get('notification')
+        if (notifStore?.stopPolling) notifStore.stopPolling()
+      }
+    } catch { /* ignore */ }
+
+    const pinia = getActivePinia()
+    if (pinia) {
+      (pinia as any)._s.forEach((store: any, id: string) => {
+        if (id !== 'auth') store.$dispose()
+      })
+      ;(pinia as any)._s.forEach((_: any, id: string) => {
+        if (id !== 'auth') (pinia as any)._s.delete(id)
+      })
+    }
+  }
+
   // Logout
   const logout = async (): Promise<void> => {
     try {
@@ -157,15 +179,7 @@ export const useAuthStore = defineStore('auth', () => {
       sessionStorage.removeItem('currentTeam')
 
       // Reset all other Pinia stores to clear stale data
-      const pinia = getActivePinia()
-      if (pinia) {
-        (pinia as any)._s.forEach((store: any, id: string) => {
-          if (id !== 'auth') store.$dispose()
-        })
-        ;(pinia as any)._s.forEach((_: any, id: string) => {
-          if (id !== 'auth') (pinia as any)._s.delete(id)
-        })
-      }
+      resetAllStores()
 
       // Redirect to landing page
       router.push('/')
@@ -286,6 +300,9 @@ export const useAuthStore = defineStore('auth', () => {
           updatedUser.role = response.user.role as TeamRole | 'client'
         }
         setUserData(updatedUser, response.token)
+
+        // Reset all stores before reload to clear stale team-scoped data
+        resetAllStores()
 
         // Data reload is handled by DefaultLayout's window.location.reload()
         return targetTeam

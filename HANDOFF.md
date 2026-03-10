@@ -49,7 +49,7 @@ src/
   utils/            # Utility functions + icon resolver
 server/             # Express API server (AI, webhooks, email)
 supabase/
-  migrations/       # PostgreSQL schema (8 migrations, 26 tables, RLS, triggers)
+  migrations/       # PostgreSQL schema (10 migrations, 26 tables, RLS, triggers)
 supabase/           # Kong config, migrations for Docker
 infra/              # Droplet setup script
 .do/                # DigitalOcean App Platform spec
@@ -100,11 +100,12 @@ tests/
 - **Feature Modules**: 15 modules declaring routes, nav items, search providers, dependencies
 - **All 18 Pinia stores**: Fully migrated to repository pattern via DI container
 - **Zero legacy imports**: No `src/services/`, no axios, no Netlify code -all deleted
-- **Supabase Backend**: 8 SQL migrations, 26 tables, RLS policies, active_* views for soft delete, auto_inject triggers
+- **Supabase Backend**: 10 SQL migrations, 26 tables, RLS policies, active_* views for soft delete, auto_inject triggers
 - **Express API Server**: AI processing (Anthropic), webhook delivery (HMAC + retry), email (nodemailer)
 - **Docker**: Full-stack compose (docker-compose.yml) + dev-only Supabase stack (docker-compose.dev.yml)
 - **CI/CD**: ESLint v9 flat config, Prettier, GitHub Actions, DO App Platform deploy-on-push
-- **Docs**: All 7 docs/ files, 6 .architecture/ files, README.md fully updated for Supabase stack
+- **Health check**: `/health` endpoint with DB ping, integrated with DO App Platform health monitoring
+- **Docs**: All docs/ files (including plugin-guide.md), 6 .architecture/ files, README.md fully updated for Supabase stack
 - **Search→Notes**: Highlight query param + scroll-to on Notes page mount
 
 ### UX Polish
@@ -114,7 +115,7 @@ tests/
 - **Error handling**: Toast notifications on mutation errors only; stores never toast on fetch failures (pages decide)
 - **Toast discipline**: All Promise.allSettled loops use `results.some()` for a single toast max, not forEach
 - **Delete confirmation**: ConfirmDialog modal component used everywhere (BrainDump, Resources, Tasks, Projects, Notes); `window.confirm()` only in onBeforeRouteLeave navigation guards
-- **Accessibility**: aria-labels on icon-only buttons, focus trapping in modals, focus restore on search close, sr-only labels on search inputs
+- **Accessibility**: aria-labels on icon-only buttons, focus trapping in modals, focus restore on search close, sr-only labels on search inputs, aria-invalid/aria-describedby on form fields, aria-live result announcements in GlobalSearch, role="status" on LoadingSpinner
 - **Print/PDF**: Global print stylesheet, dedicated preview modals for invoices and scopes
 - **Getting Started checklist**: Shows on first login, wired to real store data (team, client, project, task, brain dump)
 - **Team creation**: "+" button in header for creating new teams (both single-team and multi-team users)
@@ -131,27 +132,25 @@ tests/
 - **Soft delete**: active_* views filter deleted rows, all writes use soft delete
 - **RBAC**: Role-based access control in JWT claims, route guards on frontend, sidebar filtering
 - **Rate limiting**: Express API server uses express-rate-limit (100 req/15 min global)
-- **Security headers**: X-Content-Type-Options, X-Frame-Options, X-XSS-Protection, Referrer-Policy, HSTS (prod)
-- **Input validation**: AI endpoint enforces 50K char prompt limit and max_tokens clamping; email endpoint validates format and sanitizes HTML
-- **Audit logging**: Create/update/delete operations log to audit trail
+- **Security headers**: X-Content-Type-Options, X-Frame-Options, X-XSS-Protection, Referrer-Policy, HSTS (prod), Content-Security-Policy (Express + nginx)
+- **Input validation**: AI endpoint enforces 50K char prompt limit, max_tokens clamping, type allowlist; context isolated from system prompt; email endpoint validates format and sanitizes HTML
+- **Audit logging**: Create/update/delete operations log to audit trail; DELETE triggers on comments/notifications; team_members/team_invites membership changes audited
 - **Cascade protection**: Client delete blocked if active projects exist
 
 ### Known remaining gaps
 - **AI adapter missing auth header**: `ai.adapter.ts` does not send Authorization header; AI feature will 401 in production
-- **getToken() returns null**: `auth.adapter.ts` getToken() hardcodes `return null`; any adapter needing the JWT from auth won't get it
-- **Registration race condition**: `register()` does 4 sequential DB inserts without a transaction; partial failure leaves orphaned records
-- **Notifications INSERT too permissive**: Any authenticated user can insert notifications for any user
+- **getToken() vestigial**: `auth.adapter.ts` getToken() reads from sessionStorage but is unused now that persistSession is true
+- **Registration race condition**: `register()` does 4 sequential DB inserts without a transaction; partial failure leaves orphaned records (mitigated by cleanup catch block)
 - **RBAC on DELETE**: Most resource endpoints allow any authenticated team member to delete. Consider RLS policies to restrict to owner/admin
-- **No team guard on 13 store fetch methods**: Stores like brain-dump, campaign, comment, invoice, note, onboarding, project, scope, webhook, api-key, audit-log call findAll() without checking currentTeam first; RLS provides server-side protection but app-level guard is missing
-- **Store state not reset on team switch**: Data stores don't clear state when user switches teams; auth store disposes stores on logout but not on team switch (mitigated by window.location.reload() in team switcher)
-- **Shared isLoading race condition**: 10 stores share a single `isLoading` ref across multiple async methods; concurrent calls can conflict (calendar, campaign, invoice, note, onboarding, project, resource, scope, task, team, webhook)
+- **Shared isLoading race condition**: 10+ stores share a single `isLoading` ref across multiple async methods; concurrent calls can conflict. Consider `useLoadingCounter()` utility
 - **Comment adapter missing team_id/user_id**: `comment.repository.ts` createComment() does not inject team_id or user_id; auto_inject trigger handles this but explicit injection would be more robust
 - **Base repository doesn't inject team_id/created_by**: `base.repository.ts` create() relies on auto_inject triggers to fill these; no app-level fallback if triggers are missing
 - **Email endpoint missing protocol validation**: inviteUrl accepts non-https protocols (javascript://, data://)
 - **AI endpoint needs per-user rate limiting**: Global 100 req/15min is too lenient for expensive Anthropic API calls
-- **Missing Content-Security-Policy**: Neither nginx.conf nor Express server set CSP headers
-- **Docker compose weak defaults**: Fallback passwords for Postgres, hardcoded DB_ENC_KEY for Realtime
+- **Unsaved changes guard incomplete**: Only Invoice, Scope, Project forms have `onBeforeRouteLeave`; Task, Note, Campaign, Client forms don't
+- **~100 Vue components missing `lang="ts"`**: Progressive migration needed, starting with `src/components/ui/`
 - **Home.vue**: Landing page has its own scoped button styles that diverge from the brutalist design system (intentional for marketing)
+- **Supabase Realtime deployed but unused**: Either switch notifications from polling to Realtime or remove from docker-compose
 
 ---
 
@@ -188,7 +187,7 @@ tests/
 | Pinia stores | 18 (all TS, all using repository pattern) |
 | Supabase adapter files | 25 (20 repository + 1 auth + 1 search + 1 AI + base class + index + client) |
 | Express API endpoints | 3 (AI, webhooks, email) |
-| SQL migrations | 8 (26 tables) |
+| SQL migrations | 10 (26 tables) |
 | Test files | 4 (52 tests) |
 | Type definition files | 4 (models, api, enums, index) + core/types.ts |
 
@@ -304,5 +303,37 @@ Deep audit of all 20 Supabase adapter repositories, 18 Pinia stores, and SQL tri
 
 **SQL trigger bug (migration 008):**
 - 4 tables (campaigns, notes, calendar_events, brain_dumps) had `team_and_user` trigger mode but use `user_id` not `created_by`. PL/pgSQL would error on `NEW.created_by` for these tables. Fixed: migration 008 changes to `team_and_userid`. Applied on live DB.
+
+### Comprehensive Security & Quality Audit (2026-03-10)
+Full-stack audit across SQL, RLS, Express, auth, DI, adapters, stores, modules, components, router, infra, and accessibility. Fixed 25+ issues:
+
+**P0 — Critical Security Fixes:**
+- Auth: `register()` now refreshes JWT after `updateUser()` to include `current_team_id` in claims (was returning stale JWT → all INSERTs failed with RLS 42501)
+- Auth: `login()` now sets `current_team_id` in metadata if missing + refreshes JWT (permanent fix for users with broken metadata)
+- Auth: `persistSession: true` — Supabase SDK now persists sessions natively (page reload no longer loses SDK session)
+- Docker: All compose files use `${VAR:?error}` syntax — `docker compose up` fails loudly without required env vars
+- RLS: Notification INSERT restricted to `service_role` only (migration 009) — prevents user-spoofed notifications
+- AI: User-provided context moved to separate user message (not interpolated into system prompt) — prevents prompt injection. Type allowlist + 5000 char limit.
+- Webhooks: Queue endpoint now verifies admin/owner role via `team_members` table
+- CSP: Content-Security-Policy headers added to both Express API and nginx
+
+**P1 — Architecture & Reliability:**
+- Auth store: Extracted `resetAllStores()` — called on both logout AND team switch (stops notification polling, disposes all stores)
+- PluginRegistry: `setup()` errors caught per-module — logs error, continues initializing remaining modules, tracks `failedModules`
+- EventBus: Handler errors logged with `console.error` instead of silently swallowed
+- Client store: `loading` renamed to `isLoading` (consistent with all 17 other stores)
+- 13 stores: Added early-return team guard (`if (!useAuthStore().currentTeam) return []`) to all fetch methods
+- Health check: Enhanced with DB ping, returns `{ status, db, timestamp }`, 503 on failure; added `health_check` to `.do/app.yaml`
+
+**P2 — Quality & DX:**
+- Forms: `aria-invalid`, `aria-describedby`, `role="alert"` on FormInput/FormSelect/FormTextarea error states
+- GlobalSearch: `aria-live="polite"` region announces result counts to screen readers
+- LoadingSpinner: `role="status"` and `aria-label` for accessibility
+- Audit logging: DELETE triggers on comments/notifications (migration 010); team_members/team_invites membership changes now audited
+- Router: Warns about failed modules via `registry.getFailedModules()`
+- DI: Typed `InjectionKey<T>` for provide/inject in main.ts
+
+**Documentation:**
+- `docs/plugin-guide.md`: Comprehensive developer guide for adding/removing feature modules (7 sections with code examples)
 
 *Last updated: 2026-03-10*

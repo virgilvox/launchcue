@@ -6,6 +6,7 @@ import { ONBOARDING_REPO, CLIENT_INVITATION_REPO } from '@/adapters/repository-k
 import type { Repository } from '@/adapters/types'
 import type { ClientInvitation, OnboardingChecklist } from '../types/models'
 import type { ClientInvitationCreateRequest, OnboardingCreateRequest } from '../types/api'
+import { useAuthStore } from './auth'
 
 
 export const useOnboardingStore = defineStore('onboarding', () => {
@@ -24,6 +25,7 @@ export const useOnboardingStore = defineStore('onboarding', () => {
   // ─── Invitation Actions ───
 
   const fetchInvitations = async (clientId?: string): Promise<ClientInvitation[]> => {
+    if (!useAuthStore().currentTeam) return []
     isLoading.value = true
     try {
       const filter = clientId ? { clientId } : {}
@@ -78,6 +80,7 @@ export const useOnboardingStore = defineStore('onboarding', () => {
   // ─── Checklist Actions ───
 
   const fetchChecklists = async (params?: { clientId?: string; projectId?: string }): Promise<OnboardingChecklist[]> => {
+    if (!useAuthStore().currentTeam) return []
     isLoading.value = true
     try {
       const response = await getChecklistRepo().findAll(params)

@@ -22,7 +22,7 @@ interface ClientStoreResult<T = undefined> {
 
 export const useClientStore = defineStore('client', () => {
   const clients = ref<Client[]>([])
-  const loading = ref<boolean>(false)
+  const isLoading = ref<boolean>(false)
   const error = ref<string | null>(null)
   const authStore = useAuthStore()
   const toast = useToast()
@@ -38,18 +38,18 @@ export const useClientStore = defineStore('client', () => {
   async function fetchClients(): Promise<Client[] | ClientStoreResult> {
     if (!authStore.currentTeam) return { success: false, error: 'No team selected' }
 
-    loading.value = true
+    isLoading.value = true
     error.value = null
 
     try {
       const response = await getRepo().findAll()
       clients.value = response
-      loading.value = false
+      isLoading.value = false
       return response
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to fetch clients'
       error.value = message
-      loading.value = false
+      isLoading.value = false
       return { success: false, error: error.value }
     }
   }
@@ -161,7 +161,7 @@ export const useClientStore = defineStore('client', () => {
 
   return {
     clients,
-    loading,
+    isLoading,
     error,
     fetchClients,
     getClient,

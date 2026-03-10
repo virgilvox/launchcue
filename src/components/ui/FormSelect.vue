@@ -9,6 +9,8 @@
       :value="modelValue"
       :required="required"
       :disabled="disabled"
+      :aria-invalid="!!error"
+      :aria-describedby="error ? `${selectId}-error` : hint ? `${selectId}-hint` : undefined"
       class="form-select"
       v-bind="$attrs"
       @change="$emit('update:modelValue', $event.target.value)"
@@ -22,8 +24,8 @@
         {{ option.label }}
       </option>
     </select>
-    <p v-if="hint" class="mt-1 text-xs text-[var(--text-secondary)]">{{ hint }}</p>
-    <p v-if="error" class="mt-1 text-xs text-[var(--danger)]">{{ error }}</p>
+    <p v-if="hint" :id="`${selectId}-hint`" class="mt-1 text-xs text-[var(--text-secondary)]">{{ hint }}</p>
+    <p v-if="error" :id="`${selectId}-error`" role="alert" class="mt-1 text-xs text-[var(--danger)]">{{ error }}</p>
   </div>
 </template>
 

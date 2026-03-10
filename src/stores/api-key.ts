@@ -6,6 +6,7 @@ import { API_KEY_REPO } from '@/adapters/repository-keys'
 import type { Repository } from '@/adapters/types'
 import type { ApiKey } from '../types/models'
 import type { ApiKeyCreateRequest, ApiKeyCreateResponse } from '../types/api'
+import { useAuthStore } from './auth'
 
 export const useApiKeyStore = defineStore('apiKey', () => {
   const apiKeys = ref<ApiKey[]>([])
@@ -16,6 +17,7 @@ export const useApiKeyStore = defineStore('apiKey', () => {
   }
 
   const fetchApiKeys = async (): Promise<ApiKey[]> => {
+    if (!useAuthStore().currentTeam) return []
     isLoading.value = true
     try {
       const response = await getRepo().findAll()

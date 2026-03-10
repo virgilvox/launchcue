@@ -12,6 +12,10 @@ services:
     instance_size_slug: professional-xs
     routes:
       - path: /api
+    health_check:
+      http_path: /health
+      initial_delay_seconds: 10
+      period_seconds: 30
     envs:
       - key: SUPABASE_URL
         type: SECRET

@@ -6,6 +6,7 @@ import { CAMPAIGN_REPO } from '@/adapters/repository-keys'
 import type { Repository } from '@/adapters/types'
 import type { Campaign } from '../types/models'
 import type { CampaignCreateRequest } from '../types/api'
+import { useAuthStore } from './auth'
 
 export const useCampaignStore = defineStore('campaign', () => {
   const campaigns = ref<Campaign[]>([])
@@ -16,6 +17,7 @@ export const useCampaignStore = defineStore('campaign', () => {
   }
 
   const fetchCampaigns = async (params?: Record<string, unknown>): Promise<Campaign[]> => {
+    if (!useAuthStore().currentTeam) return []
     isLoading.value = true
     try {
       const response = await getRepo().findAll(params)

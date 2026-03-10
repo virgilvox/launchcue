@@ -6,6 +6,7 @@ import { SCOPE_REPO, SCOPE_TEMPLATE_REPO } from '@/adapters/repository-keys'
 import type { Repository } from '@/adapters/types'
 import type { ScopeTemplate, Scope } from '../types/models'
 import type { ScopeTemplateCreateRequest, ScopeCreateRequest } from '../types/api'
+import { useAuthStore } from './auth'
 
 export const useScopeStore = defineStore('scope', () => {
   const templates = ref<ScopeTemplate[]>([])
@@ -21,6 +22,7 @@ export const useScopeStore = defineStore('scope', () => {
   }
 
   const fetchTemplates = async (): Promise<ScopeTemplate[]> => {
+    if (!useAuthStore().currentTeam) return []
     isLoading.value = true
     try {
       const response = await getTemplateRepo().findAll()
@@ -35,6 +37,7 @@ export const useScopeStore = defineStore('scope', () => {
   }
 
   const fetchScopes = async (params?: { projectId?: string; clientId?: string; status?: string }): Promise<Scope[]> => {
+    if (!useAuthStore().currentTeam) return []
     isLoading.value = true
     try {
       const response = await getScopeRepo().findAll(params)

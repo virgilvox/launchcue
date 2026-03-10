@@ -11,12 +11,14 @@
       :placeholder="placeholder"
       :required="required"
       :disabled="disabled"
+      :aria-invalid="!!error"
+      :aria-describedby="error ? `${inputId}-error` : hint ? `${inputId}-hint` : undefined"
       class="form-input"
       v-bind="$attrs"
       @input="$emit('update:modelValue', $event.target.value)"
     />
-    <p v-if="hint" class="mt-1 text-xs text-[var(--text-secondary)]">{{ hint }}</p>
-    <p v-if="error" class="mt-1 text-xs text-[var(--danger)]">{{ error }}</p>
+    <p v-if="hint" :id="`${inputId}-hint`" class="mt-1 text-xs text-[var(--text-secondary)]">{{ hint }}</p>
+    <p v-if="error" :id="`${inputId}-error`" role="alert" class="mt-1 text-xs text-[var(--danger)]">{{ error }}</p>
   </div>
 </template>
 

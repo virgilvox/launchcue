@@ -47,6 +47,13 @@
             </div>
           </div>
 
+          <!-- Accessible result count announcement -->
+          <div role="status" aria-live="polite" class="sr-only">
+            <span v-if="isCommandMode && filteredCommands.length > 0">{{ filteredCommands.length }} command{{ filteredCommands.length !== 1 ? 's' : '' }} available</span>
+            <span v-else-if="hasSearched && groupedResults.length > 0">{{ totalResults }} result{{ totalResults !== 1 ? 's' : '' }} found</span>
+            <span v-else-if="hasSearched && searchQuery.length >= 2">No results found</span>
+          </div>
+
           <!-- Results Area -->
           <div class="max-h-[60vh] overflow-y-auto">
             <!-- Loading State -->
