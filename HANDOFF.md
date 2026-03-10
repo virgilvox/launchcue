@@ -49,7 +49,7 @@ src/
   utils/            # Utility functions + icon resolver
 server/             # Express API server (AI, webhooks, email)
 supabase/
-  migrations/       # PostgreSQL schema (5 migrations, 26 tables, RLS, triggers)
+  migrations/       # PostgreSQL schema (8 migrations, 26 tables, RLS, triggers)
 supabase/           # Kong config, migrations for Docker
 infra/              # Droplet setup script
 .do/                # DigitalOcean App Platform spec
@@ -100,7 +100,7 @@ tests/
 - **Feature Modules**: 15 modules declaring routes, nav items, search providers, dependencies
 - **All 18 Pinia stores**: Fully migrated to repository pattern via DI container
 - **Zero legacy imports**: No `src/services/`, no axios, no Netlify code -all deleted
-- **Supabase Backend**: 6 SQL migrations, 26 tables, RLS policies, active_* views for soft delete
+- **Supabase Backend**: 8 SQL migrations, 26 tables, RLS policies, active_* views for soft delete, auto_inject triggers
 - **Express API Server**: AI processing (Anthropic), webhook delivery (HMAC + retry), email (nodemailer)
 - **Docker**: Full-stack compose (docker-compose.yml) + dev-only Supabase stack (docker-compose.dev.yml)
 - **CI/CD**: ESLint v9 flat config, Prettier, GitHub Actions, DO App Platform deploy-on-push
@@ -145,9 +145,8 @@ tests/
 - **No team guard on 13 store fetch methods**: Stores like brain-dump, campaign, comment, invoice, note, onboarding, project, scope, webhook, api-key, audit-log call findAll() without checking currentTeam first; RLS provides server-side protection but app-level guard is missing
 - **Store state not reset on team switch**: Data stores don't clear state when user switches teams; auth store disposes stores on logout but not on team switch (mitigated by window.location.reload() in team switcher)
 - **Shared isLoading race condition**: 10 stores share a single `isLoading` ref across multiple async methods; concurrent calls can conflict (calendar, campaign, invoice, note, onboarding, project, resource, scope, task, team, webhook)
-- **Comment adapter missing team_id/user_id**: `comment.repository.ts` createComment() does not inject team_id or user_id; inserts will fail with RLS/NOT NULL errors
-- **Brain-dump getContextData() filter bug**: Lines 86-87 still filter by `start` instead of `start_time` on calendar events query (range filter, not select)
-- **Base repository doesn't inject team_id/created_by**: `base.repository.ts` create() relies on DTO having these values; no fallback to auth context
+- **Comment adapter missing team_id/user_id**: `comment.repository.ts` createComment() does not inject team_id or user_id; auto_inject trigger handles this but explicit injection would be more robust
+- **Base repository doesn't inject team_id/created_by**: `base.repository.ts` create() relies on auto_inject triggers to fill these; no app-level fallback if triggers are missing
 - **Email endpoint missing protocol validation**: inviteUrl accepts non-https protocols (javascript://, data://)
 - **AI endpoint needs per-user rate limiting**: Global 100 req/15min is too lenient for expensive Anthropic API calls
 - **Missing Content-Security-Policy**: Neither nginx.conf nor Express server set CSP headers
@@ -189,7 +188,7 @@ tests/
 | Pinia stores | 18 (all TS, all using repository pattern) |
 | Supabase adapter files | 25 (20 repository + 1 auth + 1 search + 1 AI + base class + index + client) |
 | Express API endpoints | 3 (AI, webhooks, email) |
-| SQL migrations | 6 (26 tables) |
+| SQL migrations | 8 (26 tables) |
 | Test files | 4 (52 tests) |
 | Type definition files | 4 (models, api, enums, index) + core/types.ts |
 
@@ -283,5 +282,27 @@ See `.env.example` for all required variables. Key ones:
 - Router role-check redirect now shows "insufficient permissions" toast instead of silent redirect
 - Dashboard wired hasBrainDump prop to real brainDumpStore.dumps data
 - Added "Create Team" button to header layout (both single-team and multi-team views)
+
+### Adapter & Trigger Audit (2026-03-10)
+Deep audit of all 20 Supabase adapter repositories, 18 Pinia stores, and SQL triggers. Found and fixed 11 bugs:
+
+**Column mismatch / phantom filter bugs (adapters):**
+- Calendar `findAll({ startDate, endDate })` produced `.eq('start_date', ...)` — column is `start_time`. Fixed: override with `.gte('start_time')` / `.lte('start_time')`
+- Task `findAll({ startDate, endDate, hasDueDate })` produced 3 phantom columns. Fixed: override with `.gte('due_date')` / `.lte('due_date')` / `.not('due_date', 'is', null)`
+- Task `search` filter would produce `.eq('search', ...)`. Fixed: handle as `.ilike('title', ...)`
+- Invoice `dateFrom`/`dateTo` would produce phantom columns. Fixed: override with `.gte('created_at')` / `.lte('created_at')`
+- Brain-dump `getContextData()` queried tasks with `.eq('client_id', ...)` — tasks have no `client_id`. Fixed: resolve via project join
+- Audit log `mapFromDb` read `row.timestamp` — column is `created_at`. Fixed
+
+**RLS / NOT NULL violations (adapters):**
+- Team `create()` omitted `owner_id` (required by RLS). Fixed: resolve user ID, insert with `owner_id`, create `team_members` row, update user metadata
+- Team `inviteUser()` omitted `invited_by` and `expires_at` (both NOT NULL). Fixed: resolve user ID, set 7-day expiry
+
+**Model / mapping bugs:**
+- Notification model + adapter missing `teamId` field (DB has `team_id NOT NULL`). Fixed
+- Brain-dump `createItems()` used brain dump's field map for tasks/events/projects — `start` stayed as `start` instead of `start_time`. Fixed: entity-specific field maps
+
+**SQL trigger bug (migration 008):**
+- 4 tables (campaigns, notes, calendar_events, brain_dumps) had `team_and_user` trigger mode but use `user_id` not `created_by`. PL/pgSQL would error on `NEW.created_by` for these tables. Fixed: migration 008 changes to `team_and_userid`. Applied on live DB.
 
 *Last updated: 2026-03-10*
