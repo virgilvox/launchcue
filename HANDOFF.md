@@ -58,7 +58,9 @@ tests/
   helpers/          # Mock factories, store setup, mock router/toast
   core/             # Service container, event bus, plugin registry tests
   stores/           # Store tests (auth, task, notification, team, project, client, calendar, campaign, invoice, comment, brain-dump, scope, resource, note, onboarding, webhook, api-key, audit-log)
-  composables/      # Composable tests (useLoadingCounter, useUnsavedChanges, useConfirmDialog, useModalState, useTooltips, useEntityLookup)
+  composables/      # Composable tests (all 8: useLoadingCounter, useUnsavedChanges, useConfirmDialog, useModalState, useTooltips, useEntityLookup, useResponsive, useKeyboardShortcuts)
+  router/           # Router guard tests
+server/tests/       # Express API route tests (vitest + supertest)
 ```
 
 ### Design System
@@ -134,9 +136,13 @@ tests/
 - **Team scoping**: RLS policies on all tables enforce team_id from JWT claims
 - **Soft delete**: active_* views filter deleted rows, all writes use soft delete
 - **RBAC**: Role-based access control in JWT claims, route guards on frontend, sidebar filtering
-- **Rate limiting**: Express API server uses express-rate-limit (100 req/15 min global)
+- **Rate limiting**: Express API server uses express-rate-limit (60 req/15min global, 20 req/15min AI per-user, 10 req/15min email)
 - **Security headers**: X-Content-Type-Options, X-Frame-Options, X-XSS-Protection, Referrer-Policy, HSTS (prod), Content-Security-Policy (Express + nginx)
-- **Input validation**: AI endpoint enforces 50K char prompt limit, max_tokens clamping, type allowlist; context isolated from system prompt; email endpoint validates format and sanitizes HTML
+- **Input validation**: Zod schema validation on AI and email endpoints; AI enforces 50K char prompt limit, max_tokens clamping, type enum; email validates email format and URL; webhook URLs require HTTPS with SSRF protection
+- **XSS protection**: All `v-html` usage sanitized with DOMPurify (InvoicePreview, ScopePreview, Notes, BrainDumpResults)
+- **View security**: All `active_*` views have `security_invoker = true` (prevents RLS bypass via superuser-owned views)
+- **Auth tokens**: Supabase SDK owns tokens exclusively (localStorage); sessionStorage stores only app metadata (user, teams, currentTeam)
+- **RLS hardening**: `auth.current_team_id()` cross-checks `team_members` table (prevents `user_metadata` tampering)
 - **Audit logging**: Create/update/delete operations log to audit trail; DELETE triggers on comments/notifications; team_members/team_invites membership changes audited
 - **Cascade protection**: Client delete blocked if active projects exist
 
@@ -165,13 +171,14 @@ tests/
 - **~100 Vue components still use `<script setup>` without `lang="ts"`**
 
 ### Testing
-- 378 tests across 28 test files
+- **438 tests** across 34 test files (405 frontend + 33 server)
 - Core: service-container (8), event-bus (8), plugin-registry (19)
-- Auth store: 20 tests (SDK session recovery, fallback, login/register/logout/switchTeam/createTeam, RBAC computeds)
-- Store tests: task, notification, team, project, client, calendar, campaign, invoice, comment, brain-dump, scope, resource, note, onboarding, webhook, api-key, audit-log (18 store test files)
-- Composable tests: useLoadingCounter, useUnsavedChanges, useConfirmDialog, useModalState, useTooltips, useEntityLookup (6 composable test files)
+- Auth store: 20 tests (SDK session recovery, login/register/logout/switchTeam/createTeam, RBAC computeds)
+- Store tests: all 18 stores tested (task, notification, team, project, client, calendar, campaign, invoice, comment, brain-dump, scope, resource, note, onboarding, webhook, api-key, audit-log)
+- Composable tests: all 8 composables tested (useLoadingCounter, useUnsavedChanges, useConfirmDialog, useModalState, useTooltips, useEntityLookup, useResponsive, useKeyboardShortcuts)
 - Router tests: guards (auth, team context, client role, portal, RBAC)
-- Test helpers: mock factories (7 factories), store setup, mock router/toast
+- **Server tests**: auth middleware, AI route, email route, webhooks route (vitest + supertest)
+- Test helpers: mock factories (7+ factories), store setup with SDK session mock, mock router/toast
 - No component tests, integration tests, or E2E tests
 
 ### Other
@@ -180,6 +187,9 @@ tests/
 - No inline editing on table cells
 - No dashboard widget customization/drag-and-drop
 - No recent items in search
+- No form validation library (field-level real-time feedback)
+- No skeleton loaders (only spinners)
+- No viewer role UI feedback (buttons not visually disabled for read-only users)
 - ~~App.vue hex values~~: Fixed — now uses `var(--page-bg)` and `var(--page-text)`
 
 ---
@@ -194,8 +204,8 @@ tests/
 | Pinia stores | 18 (all TS, all using repository pattern) |
 | Supabase adapter files | 25 (20 repository + 1 auth + 1 search + 1 AI + base class + index + client) |
 | Express API endpoints | 3 (AI, webhooks, email) |
-| SQL migrations | 12 (26 tables) |
-| Test files | 28 (378 tests) |
+| SQL migrations | 16 (26 tables + RLS + triggers + functions) |
+| Test files | 34 (438 tests: 30 frontend + 4 server) |
 | Type definition files | 4 (models, api, enums, index) + core/types.ts |
 
 ---
@@ -212,7 +222,8 @@ npm run dev:full         # Start all three above
 # Or run individual commands
 npm run build            # Production build (Vite)
 npm run type-check       # vue-tsc --noEmit
-npm test                 # Run vitest tests (378 tests)
+npm test                 # Run vitest frontend tests (405 tests)
+cd server && npm test    # Run vitest server tests (33 tests)
 npm run lint             # ESLint check
 npm run format           # Prettier format
 
