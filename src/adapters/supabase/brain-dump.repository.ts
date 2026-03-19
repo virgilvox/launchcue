@@ -39,7 +39,12 @@ export class SupabaseBrainDumpRepository extends SupabaseBaseRepository<BrainDum
 
   async getContextData(params: Record<string, unknown>): Promise<unknown> {
     const sb = getSupabase()
-    const options = typeof params.options === 'string' ? JSON.parse(params.options) : (params.options || {})
+    let options: Record<string, unknown> = {}
+    if (typeof params.options === 'string') {
+      try { options = JSON.parse(params.options) } catch { /* malformed options ignored */ }
+    } else if (params.options) {
+      options = params.options as Record<string, unknown>
+    }
     const clientId = params.clientId as string | undefined
     const projectId = params.projectId as string | undefined
 

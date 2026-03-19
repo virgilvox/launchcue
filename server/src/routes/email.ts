@@ -66,11 +66,19 @@ emailRouter.post('/invite', validateBody(inviteSchema), async (req, res) => {
     return
   }
 
-  // Validate inviteUrl is HTTPS (Zod already validated URL format)
+  // Validate inviteUrl is HTTPS and points to this application (prevent open redirect)
   try {
     const parsed = new URL(inviteUrl)
     if (parsed.protocol !== 'https:' && !(process.env.NODE_ENV === 'development' && parsed.protocol === 'http:')) {
       res.status(400).json({ error: 'Invite URL must use HTTPS' })
+      return
+    }
+    // Validate origin matches allowed origins to prevent phishing via attacker-controlled URLs
+    const allowedOrigins = (process.env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['http://localhost:5173'])
+      .map(o => { try { return new URL(o).origin } catch { return null } })
+      .filter(Boolean)
+    if (!allowedOrigins.includes(parsed.origin)) {
+      res.status(400).json({ error: 'Invite URL must point to this application' })
       return
     }
   } catch {

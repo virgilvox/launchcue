@@ -49,10 +49,11 @@ const limiter = rateLimit({
 })
 app.use(limiter)
 
-// Stricter rate limit for email endpoints (invitation abuse prevention)
+// Stricter rate limit for email endpoints (invitation abuse prevention, keyed by user)
 const emailLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 10,
+  keyGenerator: (req: express.Request) => (req as any).user?.authId || req.ip || 'unknown',
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Too many email requests. Please try again later.' },

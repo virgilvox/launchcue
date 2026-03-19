@@ -10,6 +10,7 @@ process.env.SMTP_USER = 'test'
 process.env.SMTP_PASS = 'test'
 process.env.SMTP_FROM = 'noreply@test.dev'
 process.env.NODE_ENV = 'test'
+process.env.ALLOWED_ORIGINS = 'https://launchcue.app,http://localhost:5173'
 
 // Mock the supabase module globally — individual tests override return values
 vi.mock('../src/supabase.js', () => {

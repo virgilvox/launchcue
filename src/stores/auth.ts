@@ -16,13 +16,19 @@ function getAuth(): AuthAdapter {
   return getContainer().resolve<AuthAdapter>(AUTH_ADAPTER)
 }
 
+/** Safe JSON.parse that returns fallback on malformed data instead of crashing */
+function safeJsonParse<T>(raw: string | null, fallback: T): T {
+  if (!raw) return fallback
+  try { return JSON.parse(raw) } catch { return fallback }
+}
+
 export const useAuthStore = defineStore('auth', () => {
   // State — user/teams/currentTeam stored in sessionStorage (app-level metadata)
   // Token is owned by the Supabase SDK (localStorage) — we keep a reactive ref for isAuthenticated
-  const user = ref<AuthUser | null>(JSON.parse(sessionStorage.getItem('user') || 'null'))
+  const user = ref<AuthUser | null>(safeJsonParse(sessionStorage.getItem('user'), null))
   const token = ref<string | null>(null)
-  const userTeams = ref<TeamSummary[]>(JSON.parse(sessionStorage.getItem('teams') || '[]'))
-  const currentTeam = ref<TeamSummary | null>(JSON.parse(sessionStorage.getItem('currentTeam') || 'null'))
+  const userTeams = ref<TeamSummary[]>(safeJsonParse(sessionStorage.getItem('teams'), []))
+  const currentTeam = ref<TeamSummary | null>(safeJsonParse(sessionStorage.getItem('currentTeam'), null))
   const isLoading = ref<boolean>(false)
 
   // Computed
