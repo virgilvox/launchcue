@@ -1,5 +1,5 @@
 <template>
-  <div class="bg-[var(--surface-elevated)] border border-[var(--border-light)] p-4">
+  <div class="bg-[var(--surface-elevated)] border-2 p-4" :class="hasRowError ? 'border-[var(--danger)]' : 'border-[var(--border-light)]'">
     <!-- Desktop grid layout -->
     <div class="grid grid-cols-1 md:grid-cols-12 gap-3 items-start">
       <!-- Row number (desktop only) -->
@@ -14,9 +14,12 @@
           type="text"
           :value="item.description"
           @input="onTextChange('description', $event)"
+          @blur="blurred.description = true"
           placeholder="Item description"
           class="input text-sm w-full"
+          :class="{ 'border-[var(--danger)]': descriptionInvalid }"
         />
+        <p v-if="descriptionInvalid" class="text-xs text-[var(--danger)] mt-1">Description is required</p>
       </div>
 
       <!-- Quantity -->
@@ -26,11 +29,14 @@
           type="number"
           :value="item.quantity"
           @input="onNumberChange('quantity', $event)"
+          @blur="blurred.quantity = true"
           placeholder="Qty"
           min="0"
           step="1"
           class="input text-sm w-full"
+          :class="{ 'border-[var(--danger)]': quantityInvalid }"
         />
+        <p v-if="quantityInvalid" class="text-xs text-[var(--danger)] mt-1">Must be greater than 0</p>
       </div>
 
       <!-- Unit -->
@@ -54,12 +60,15 @@
             type="number"
             :value="item.rate"
             @input="onNumberChange('rate', $event)"
+            @blur="blurred.rate = true"
             placeholder="0.00"
             min="0"
             step="0.01"
             class="input text-sm pl-6 w-full"
+            :class="{ 'border-[var(--danger)]': rateInvalid }"
           />
         </div>
+        <p v-if="rateInvalid" class="text-xs text-[var(--danger)] mt-1">Must be greater than 0</p>
       </div>
 
       <!-- Computed Amount (display only) -->
@@ -86,7 +95,7 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, reactive } from 'vue'
 import { TrashIcon } from '@heroicons/vue/24/outline'
 import { formatCurrency } from '@/utils/formatters'
 
@@ -99,12 +108,38 @@ const props = defineProps({
     type: Number,
     required: true,
   },
+  showErrors: {
+    type: Boolean,
+    default: false,
+  },
 })
 
 const emit = defineEmits(['update', 'remove'])
 
+const blurred = reactive({
+  description: false,
+  quantity: false,
+  rate: false,
+})
+
 const amount = computed(() => {
   return (props.item.quantity || 0) * (props.item.rate || 0)
+})
+
+const descriptionInvalid = computed(() => {
+  return (blurred.description || props.showErrors) && (!props.item.description || props.item.description.trim() === '')
+})
+
+const quantityInvalid = computed(() => {
+  return (blurred.quantity || props.showErrors) && (!props.item.quantity || props.item.quantity <= 0)
+})
+
+const rateInvalid = computed(() => {
+  return (blurred.rate || props.showErrors) && (!props.item.rate || props.item.rate <= 0)
+})
+
+const hasRowError = computed(() => {
+  return descriptionInvalid.value || quantityInvalid.value || rateInvalid.value
 })
 
 function onTextChange(field, event) {

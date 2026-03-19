@@ -10,7 +10,7 @@
       <div class="flex gap-3">
         <button @click="showPreview = true" class="btn btn-ghost">Preview</button>
         <button @click="printInvoice" class="btn btn-secondary">Print / PDF</button>
-        <button v-if="formData.status === 'draft'" type="button" @click="save" class="btn btn-primary" :disabled="saving">
+        <button v-if="formData.status === 'draft'" type="button" @click="save" class="btn btn-primary" :disabled="saving || !canSave">
           {{ saving ? 'Saving...' : (formData.id ? 'Save Changes' : 'Create Invoice') }}
         </button>
         <button v-if="formData.id && formData.status === 'draft'" @click="markAsSent" class="btn btn-secondary">
@@ -31,10 +31,11 @@
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label class="label">Client *</label>
-              <select v-model="formData.clientId" class="input">
+              <select v-model="formData.clientId" class="input" :class="{ 'border-[var(--danger)]': submitted && !formData.clientId }">
                 <option :value="null">— Select client —</option>
                 <option v-for="c in clients" :key="c.id" :value="c.id">{{ c.name }}</option>
               </select>
+              <p v-if="submitted && !formData.clientId" class="text-xs text-[var(--danger)] mt-1">Select a client</p>
             </div>
             <div>
               <label class="label">Project</label>
@@ -67,6 +68,7 @@
 
           <div v-if="formData.lineItems.length === 0" class="text-center py-8 text-[var(--text-secondary)]">
             <p>No line items. Add items or import from a scope.</p>
+            <p v-if="submitted" class="text-xs text-[var(--danger)] mt-2">Add at least one line item</p>
             <button v-if="availableScopes.length > 0" @click="showScopeImport = true" class="btn btn-sm btn-secondary mt-3">Import from Scope</button>
           </div>
 
@@ -76,6 +78,7 @@
               :key="item.id"
               :item="item"
               :index="index"
+              :show-errors="submitted"
               @update="updateLineItem(index, $event)"
               @remove="removeLineItem(index)"
             />
@@ -168,6 +171,7 @@ const saving = ref(false);
 const error = ref(null);
 const showPreview = ref(false);
 const showScopeImport = ref(false);
+const submitted = ref(false);
 const formData = ref({
   id: null,
   invoiceNumber: '',
@@ -198,6 +202,16 @@ const filteredProjects = computed(() => {
 const availableScopes = computed(() => {
   if (!formData.value.projectId) return [];
   return scopeStore.scopes.filter(s => s.projectId === formData.value.projectId);
+});
+
+const canSave = computed(() => {
+  if (!formData.value.clientId) return false;
+  if (formData.value.lineItems.length === 0) return false;
+  return formData.value.lineItems.every(item =>
+    item.description && item.description.trim() !== '' &&
+    item.rate > 0 &&
+    item.quantity > 0
+  );
 });
 
 const previewInvoice = computed(() => {
@@ -345,8 +359,10 @@ function importFromScope(scope) {
 // --- Save ---
 
 async function save() {
-  if (!formData.value.clientId) {
-    toast.warning('Please select a client.');
+  submitted.value = true;
+
+  if (!canSave.value) {
+    toast.warning('Please fix the validation errors before saving.');
     return;
   }
 
