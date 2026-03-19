@@ -187,8 +187,8 @@ server/tests/       # Express API route tests (vitest + supertest)
 - No inline editing on table cells
 - No dashboard widget customization/drag-and-drop
 - No recent items in search
-- No form validation library (field-level real-time feedback)
-- No dark mode persistence (toggle works in-session only, resets on page reload)
+- ~~No form validation~~: InvoiceBuilder now has field-level validation (client, line items, amounts). Other forms still lack it.
+- ~~No dark mode persistence~~: Built — `useDarkMode` composable persists to localStorage with system preference fallback + Settings UI toggle
 - ~~Skeleton loaders~~: Built — Tasks, Projects, Clients, Notes use SkeletonLoader; other pages still use LoadingSpinner
 - ~~Viewer role UI feedback~~: Built — `usePermissions` composable disables action buttons for viewers with tooltip
 - ~~App.vue hex values~~: Fixed — now uses `var(--page-bg)` and `var(--page-text)`
@@ -201,7 +201,7 @@ server/tests/       # Express API route tests (vitest + supertest)
 |----------|-------|
 | Feature modules | 15 |
 | Vue files (total) | 107 (21 module pages + 2 standalone pages + 6 auth + 3 portal + 75 components) |
-| Composables | 9 (+ usePermissions) |
+| Composables | 10 (+ usePermissions, useDarkMode) |
 | Pinia stores | 18 (all TS, all using repository pattern) |
 | Supabase adapter files | 25 (20 repository + 1 auth + 1 search + 1 AI + base class + index + client) |
 | Express API endpoints | 3 (AI, webhooks, email) |
@@ -501,6 +501,25 @@ Full 7-stream audit (architecture, security, UI flows, data model, tests, compet
 - Viewer role feedback: `usePermissions` composable with `disabledProps()` helper; action buttons on Tasks, Projects, Clients, Notes, Dashboard now disabled (not hidden) for viewers with tooltip
 - Skeleton loaders: `SkeletonLoader.vue` component with row/card/text types, custom shimmer animation; replaces LoadingSpinner on Tasks (row), Projects/Clients/Notes (card)
 - Dark mode: Fixed sidebar active state (`bg-white/10` → `--sidebar-active-bg` CSS variable); extracted hardcoded calendar event colors from 4 components into shared `calendarColors.ts` utility
+
+**Re-Audit Fixes (security):**
+- Safe JSON.parse in auth store init (prevents crash on malformed sessionStorage)
+- Invite URL origin validation against ALLOWED_ORIGINS (prevents phishing via attacker-controlled URLs)
+- Safe JSON.parse in brain-dump getContextData
+- Email rate limiter keyed by user ID instead of IP
+- Wired SSRF validateWebhookUrl() into webhook-processor delivery loop (was defined but never called)
+- Fixed pagination not resetting on Tasks filter change
+
+**Additional Features:**
+- Invoice form validation: clientId, line items non-empty, description/rate/quantity required per row
+- Dark mode persistence: `useDarkMode` composable with localStorage + system preference fallback + Settings UI toggle
+
+**Remaining Gaps (acceptable / future work):**
+- Project team members not persisted to DB (local-only, lost on reload) — needs schema decision
+- Campaign delete UI missing (cards are read-only links)
+- Profile picture upload disabled ("Coming soon")
+- ~100 Vue components missing `lang="ts"` (progressive migration)
+- No component tests, integration tests, or E2E tests
 
 **Manual Action Required:**
 - Revoke Anthropic API key `sk-ant-api03-XAR84sW9...` from Anthropic dashboard
