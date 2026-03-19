@@ -14,8 +14,11 @@ import { initPluginRegistry } from './core/plugin-registry'
 import { registerSupabaseAdapters } from './adapters/supabase'
 import { registerAllModules } from './modules'
 import { containerKey, eventBusKey, registryKey } from './injection-keys'
+import { useDarkMode } from './composables/useDarkMode'
 
 async function bootstrap() {
+  // 0. Apply saved theme immediately to prevent flash
+  useDarkMode().init()
   // 1. Initialize core infrastructure
   const container = initContainer()
   const eventBus = initEventBus()

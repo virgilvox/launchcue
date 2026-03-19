@@ -219,6 +219,7 @@ import { useRouter } from 'vue-router'
 import { useToast } from 'vue-toastification'
 import { getContainer } from '@/core/service-container'
 import { SEARCH_ADAPTER } from '@/adapters/repository-keys'
+import { useDarkMode } from '@/composables/useDarkMode'
 import {
   MagnifyingGlassIcon,
   ChevronRightIcon,
@@ -239,6 +240,7 @@ import {
 
 const router = useRouter()
 const toast = useToast()
+const { toggle: toggleDarkMode } = useDarkMode()
 
 const isOpen = ref(false)
 const searchQuery = ref('')
@@ -271,7 +273,7 @@ const commands = [
   { id: 'go-notes', label: 'Go to Notes', description: null, icon: DocumentTextIcon, iconBg: 'transparent', iconColor: 'var(--text-secondary)', shortcut: 'G → N', category: 'Navigate', action: () => router.push('/notes') },
   { id: 'go-braindump', label: 'Go to Brain Dump', description: null, icon: LightBulbIcon, iconBg: 'transparent', iconColor: 'var(--text-secondary)', shortcut: 'G → B', category: 'Navigate', action: () => router.push('/brain-dump') },
   { id: 'go-settings', label: 'Go to Settings', description: null, icon: Cog6ToothIcon, iconBg: 'transparent', iconColor: 'var(--text-secondary)', shortcut: 'G → S', category: 'Navigate', action: () => router.push('/settings') },
-  { id: 'toggle-dark', label: 'Toggle Dark Mode', description: 'Switch between light and dark theme', icon: SunIcon, iconBg: 'transparent', iconColor: 'var(--text-secondary)', shortcut: null, category: 'System', action: () => document.documentElement.classList.toggle('dark') },
+  { id: 'toggle-dark', label: 'Toggle Dark Mode', description: 'Switch between light and dark theme', icon: SunIcon, iconBg: 'transparent', iconColor: 'var(--text-secondary)', shortcut: null, category: 'System', action: () => toggleDarkMode() },
 ]
 
 const filteredCommands = computed(() => {

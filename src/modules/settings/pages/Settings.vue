@@ -10,6 +10,9 @@
             <a href="#profile" class="nav-link" :class="{'nav-link-active': activeSection === 'profile'}" @click.prevent="scrollToSection('profile')">Profile</a>
           </li>
           <li>
+            <a href="#appearance" class="nav-link" :class="{'nav-link-active': activeSection === 'appearance'}" @click.prevent="scrollToSection('appearance')">Appearance</a>
+          </li>
+          <li>
             <a href="#api-keys" class="nav-link" :class="{'nav-link-active': activeSection === 'api-keys'}" @click.prevent="scrollToSection('api-keys')">API Keys</a>
           </li>
           <li>
@@ -34,6 +37,29 @@
           <h3 class="heading-card mb-4">Profile</h3>
           <p class="text-[var(--text-secondary)] mb-4">Manage your personal information and password.</p>
           <router-link to="/profile" class="btn btn-secondary">Go to Profile Page</router-link>
+        </section>
+
+        <!-- Appearance Section -->
+        <section id="appearance" class="card">
+          <h3 class="heading-card mb-4">Appearance</h3>
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="font-medium text-[var(--text-primary)]">Dark Mode</p>
+              <p class="text-sm text-[var(--text-secondary)]">Switch between light and dark theme</p>
+            </div>
+            <button
+              @click="toggleDarkMode()"
+              class="relative inline-flex h-7 w-12 items-center border-2 border-[var(--border)] transition-colors duration-200"
+              :class="isDark ? 'bg-[var(--accent-primary)]' : 'bg-[var(--surface)]'"
+              role="switch"
+              :aria-checked="isDark"
+            >
+              <span
+                class="inline-block h-5 w-5 border-2 border-[var(--border)] bg-white transition-transform duration-200"
+                :class="isDark ? 'translate-x-5' : 'translate-x-0.5'"
+              />
+            </button>
+          </div>
         </section>
 
         <!-- API Keys Section -->
@@ -83,6 +109,9 @@ import PageHeader from '@/components/ui/PageHeader.vue';
 import ApiKeyManager from '@/modules/settings/components/ApiKeyManager.vue';
 import WebhookManager from '@/modules/settings/components/WebhookManager.vue';
 import AuditLogViewer from '@/modules/settings/components/AuditLogViewer.vue';
+import { useDarkMode } from '@/composables/useDarkMode';
+
+const { isDark, toggle: toggleDarkMode } = useDarkMode();
 
 const activeSection = ref('profile');
 
@@ -98,7 +127,7 @@ function scrollToSection(id) {
 let observer = null;
 
 onMounted(() => {
-  const sections = document.querySelectorAll('#profile, #api-keys, #webhooks, #audit-log, #billing, #integrations');
+  const sections = document.querySelectorAll('#profile, #appearance, #api-keys, #webhooks, #audit-log, #billing, #integrations');
   observer = new IntersectionObserver(
     (entries) => {
       for (const entry of entries) {
