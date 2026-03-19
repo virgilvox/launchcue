@@ -446,4 +446,49 @@ Forms initialize optional fields to `''` (empty string), but PostgreSQL rejects 
 - **`task.ts` store**: Removed `new Date(dueDate).toISOString()` conversion in both `createTask` and `updateTask` — DATE columns accept `YYYY-MM-DD` directly; ISO TIMESTAMPTZ conversion was unnecessary and incorrect.
 - **Tests**: Updated 2 task store tests to expect date passthrough instead of ISO conversion. All 378 tests pass.
 
-*Last updated: 2026-03-10*
+### Comprehensive Security & Feature Audit (2026-03-19)
+
+Full 7-stream audit (architecture, security, UI flows, data model, tests, competitive research, documentation). Findings and fixes:
+
+**Security Fixes (Critical):**
+- Removed exposed Anthropic API key from `.env` (was committed with `VITE_API_KEY` prefix exposing to frontend bundle)
+- Fixed stored XSS in `InvoicePreview.vue` and `ScopePreview.vue` — added DOMPurify sanitization
+- Removed auth token from `sessionStorage` — Supabase SDK now owns tokens exclusively
+- Added `team_members` cross-check to `auth.current_team_id()` (migration 013) — prevents `user_metadata` tampering
+- Added `security_invoker = true` to all 15 `active_*` views (migration 015) — views were bypassing RLS
+
+**Security Hardening:**
+- Added Zod schema validation to AI and email Express endpoints (`server/src/middleware/validate.ts`)
+- Added webhook URL validation: HTTPS required, SSRF protection utility (`server/src/utils/url-validation.ts`)
+- Tightened rate limits: global 100→60/15min, dedicated email limiter 10/15min
+- Server-side invoice total validation trigger (migration 016)
+
+**Wired UI Features (previously stubbed):**
+- Client contacts CRUD in `ClientDetail.vue` — was empty stubs, now fully functional with email validation
+- Scope approval in client portal — "Approve" and "Request Revision" buttons with RLS policy for client role (migration 014)
+- Pending team invitations section on Team page with cancel action
+- Added `cancelInvite` to team repository and store, fixed `getPendingInvites` field mapping
+
+**Pagination:**
+- Tasks, Notes, Audit Logs, Notifications stores now use `findPaginated()` with offset pagination
+- PaginationControls component wired into list pages
+- Removed old `MAX_TASKS=100` client-side slice
+
+**Test Coverage:**
+- Express API route tests: 33 tests (auth middleware, AI, email, webhooks) via vitest + supertest
+- Composable tests: `useResponsive` (6 tests), `useKeyboardShortcuts` (21 tests) — composables now 8/8 (100%)
+- Total: 405 frontend tests (30 files) + 33 server tests (4 files) = 438 tests
+
+**New Migrations (run in order):**
+- `013_secure_current_team_id.sql` — cross-check team_members in current_team_id()
+- `014_client_scope_approval.sql` — revision_notes column + client RLS policy for scope approval
+- `015_views_security_invoker.sql` — security_invoker on all active_* views (requires PG 15+)
+- `016_validate_invoice_totals.sql` — trigger to validate invoice totals from line_items
+
+**Manual Action Required:**
+- Revoke Anthropic API key `sk-ant-api03-XAR84sW9...` from Anthropic dashboard
+- Scrub `.env` from git history: `git filter-repo --path .env --invert-paths`
+- Confirm production JWT_SECRET differs from the exposed value
+- Run migrations 013-016 on the Supabase instance
+
+*Last updated: 2026-03-19*
