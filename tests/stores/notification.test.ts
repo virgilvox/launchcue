@@ -12,12 +12,14 @@ describe('useNotificationStore', () => {
   let mockRepo: ReturnType<typeof createMockNotificationRepository>
 
   beforeEach(() => {
+    localStorage.clear()
     mockRepo = createMockNotificationRepository()
     setupStoreTest([{ key: NOTIFICATION_REPO, factory: () => mockRepo }])
     seedAuth()
   })
 
   afterEach(() => {
+    localStorage.clear()
     vi.restoreAllMocks()
   })
 
