@@ -252,6 +252,7 @@ const searchInput = ref(null)
 const previousActiveElement = ref(null)
 
 let debounceTimer = null
+let searchSequence = 0
 
 // Command mode detection
 const isCommandMode = computed(() => searchQuery.value.startsWith('>'))
@@ -401,18 +402,24 @@ watch(searchQuery, (newVal) => {
 })
 
 async function performSearch(query) {
+  const seq = ++searchSequence
   try {
     isLoading.value = true
     const searchAdapter = getContainer().resolve(SEARCH_ADAPTER)
     const response = await searchAdapter.search(query)
+    // Ignore stale results from an older search
+    if (seq !== searchSequence) return
     results.value = response || []
     hasSearched.value = true
   } catch (error) {
+    if (seq !== searchSequence) return
     toast.error('Search failed. Please try again.')
     results.value = []
     hasSearched.value = true
   } finally {
-    isLoading.value = false
+    if (seq === searchSequence) {
+      isLoading.value = false
+    }
   }
 }
 
