@@ -28,6 +28,12 @@ export const useClientStore = defineStore('client', () => {
   const toast = useToast()
   const { isLoading, wrap } = useLoadingCounter()
 
+  // Pagination state
+  const currentPage = ref(1)
+  const totalItems = ref(0)
+  const totalPages = ref(0)
+  const pageSize = ref(50)
+
   function getRepo() {
     return getContainer().resolve<Repository<Client, ClientCreateRequest, Partial<ClientCreateRequest>>>(CLIENT_REPO)
   }
@@ -36,15 +42,31 @@ export const useClientStore = defineStore('client', () => {
     return getContainer().resolve<Repository<Project>>(PROJECT_REPO)
   }
 
-  async function fetchClients(): Promise<Client[] | ClientStoreResult> {
+  async function fetchClients(pagination?: { page?: number; limit?: number }): Promise<Client[] | ClientStoreResult> {
     if (!authStore.currentTeam) return { success: false, error: 'No team selected' }
 
     return wrap(async () => {
       error.value = null
       try {
-        const response = await getRepo().findAll()
-        clients.value = response
-        return response
+        const repo = getRepo()
+        const page = pagination?.page ?? 1
+        const limit = pagination?.limit ?? 50
+
+        if (repo.findPaginated) {
+          const result = await repo.findPaginated({}, { page, limit })
+          clients.value = result.data || []
+          currentPage.value = result.page
+          totalItems.value = result.total
+          totalPages.value = result.totalPages
+          pageSize.value = result.limit
+        } else {
+          const response = await repo.findAll()
+          clients.value = response
+          totalItems.value = response.length
+          totalPages.value = 1
+          currentPage.value = 1
+        }
+        return clients.value
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : 'Failed to fetch clients'
         error.value = message
@@ -122,6 +144,9 @@ export const useClientStore = defineStore('client', () => {
       if (index !== -1) {
         clients.value.splice(index, 1)
       }
+      totalItems.value = Math.max(0, totalItems.value - 1)
+      totalPages.value = Math.max(1, Math.ceil(totalItems.value / pageSize.value))
+      if (currentPage.value > totalPages.value) currentPage.value = totalPages.value
 
       getEventBus().emit('client.deleted', { id })
       toast.success('Client deleted successfully')
@@ -164,6 +189,10 @@ export const useClientStore = defineStore('client', () => {
     clients,
     isLoading,
     error,
+    currentPage,
+    totalItems,
+    totalPages,
+    pageSize,
     fetchClients,
     getClient,
     createClient,

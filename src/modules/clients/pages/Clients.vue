@@ -113,7 +113,17 @@
         </div>
       </div>
     </div>
-    
+
+    <!-- Pagination -->
+    <PaginationControls
+      v-if="clientStore.totalPages > 1"
+      :page="clientStore.currentPage"
+      :total-pages="clientStore.totalPages"
+      :total-items="clientStore.totalItems"
+      :page-size="clientStore.pageSize"
+      @update:page="handlePageChange"
+    />
+
     <!-- Add/Edit Client Modal -->
     <Modal v-model="showClientModal" :title="editingClient ? 'Edit Client' : 'Add Client'">
       <form @submit.prevent="saveClient" class="space-y-4">
@@ -182,6 +192,7 @@ import PageContainer from '@/components/ui/PageContainer.vue';
 import PageHeader from '@/components/ui/PageHeader.vue';
 import SkeletonLoader from '@/components/ui/SkeletonLoader.vue';
 import EmptyState from '@/components/ui/EmptyState.vue';
+import PaginationControls from '@/components/ui/Pagination.vue';
 import ClientColorPicker from '@/components/ui/ClientColorPicker.vue';
 import { getNextClientColor, getClientColor } from '@/constants/clientColors';
 
@@ -220,14 +231,14 @@ const clientForm = ref({
 const validationErrors = reactive({ name: '' });
 const submitted = ref(false);
 
-async function loadClients() {
+async function loadClients(page = 1) {
   loading.value = true;
   error.value = null;
 
   try {
     // Fetch clients and projects in parallel (single request each)
     const [clientResponse] = await Promise.allSettled([
-      clientStore.fetchClients(),
+      clientStore.fetchClients({ page, limit: 50 }),
       projectStore.fetchProjects(),
     ]);
 
@@ -243,6 +254,10 @@ async function loadClients() {
   } finally {
     loading.value = false;
   }
+}
+
+function handlePageChange(page) {
+  loadClients(page);
 }
 
 function attachProjectsFromStore() {
