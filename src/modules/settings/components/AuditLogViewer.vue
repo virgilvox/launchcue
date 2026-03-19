@@ -29,7 +29,7 @@
     </div>
 
     <!-- Empty State -->
-    <div v-else-if="logs.length === 0" class="text-center py-6 border border-[var(--border-light)]">
+    <div v-else-if="auditLogStore.logs.length === 0" class="text-center py-6 border border-[var(--border-light)]">
       <p class="text-[var(--text-secondary)]">No audit log entries found.</p>
     </div>
 
@@ -46,7 +46,7 @@
           </tr>
         </thead>
         <tbody class="divide-y divide-[var(--border-light)]">
-          <tr v-for="log in logs" :key="log.id" class="hover:bg-[var(--surface)]">
+          <tr v-for="log in auditLogStore.logs" :key="log.id" class="hover:bg-[var(--surface)]">
             <td class="px-4 py-3 text-[var(--text-primary)] whitespace-nowrap">
               {{ formatTimestamp(log.timestamp) }}
             </td>
@@ -73,27 +73,13 @@
     </div>
 
     <!-- Pagination -->
-    <div v-if="pagination && pagination.totalPages > 1" class="flex items-center justify-between mt-4">
-      <p class="text-xs text-[var(--text-secondary)]">
-        Page {{ pagination.page }} of {{ pagination.totalPages }} ({{ pagination.total }} entries)
-      </p>
-      <div class="flex gap-2">
-        <button
-          @click="loadLogs(pagination.page - 1)"
-          :disabled="pagination.page <= 1"
-          class="btn btn-outline text-xs px-3 py-1"
-        >
-          Previous
-        </button>
-        <button
-          @click="loadLogs(pagination.page + 1)"
-          :disabled="!pagination.hasMore"
-          class="btn btn-outline text-xs px-3 py-1"
-        >
-          Next
-        </button>
-      </div>
-    </div>
+    <PaginationControls
+      :page="auditLogStore.currentPage"
+      :total-pages="auditLogStore.totalPages"
+      :total="auditLogStore.totalItems"
+      :limit="auditLogStore.pageSize"
+      @update:page="loadLogs"
+    />
   </section>
 </template>
 
@@ -102,13 +88,12 @@ import { ref, onMounted } from 'vue';
 import { useAuditLogStore } from '@/stores/audit-log';
 import { useToast } from 'vue-toastification';
 import LoadingSpinner from '@/components/LoadingSpinner.vue';
+import PaginationControls from '@/components/ui/Pagination.vue';
 
 const toast = useToast();
 const auditLogStore = useAuditLogStore();
 
-const logs = ref([]);
 const loading = ref(false);
-const pagination = ref(null);
 
 const filters = ref({
   resourceType: '',
@@ -118,19 +103,11 @@ const filters = ref({
 async function loadLogs(page = 1) {
   loading.value = true;
   try {
-    const params = { page, limit: 25 };
+    const params = {};
     if (filters.value.resourceType) params.resourceType = filters.value.resourceType;
     if (filters.value.action) params.action = filters.value.action;
 
-    const result = await auditLogStore.fetchLogs(params);
-
-    if (result && result.data) {
-      logs.value = result.data;
-      pagination.value = result.pagination;
-    } else if (Array.isArray(result)) {
-      logs.value = result;
-      pagination.value = null;
-    }
+    await auditLogStore.fetchLogs(params, { page, limit: 25 });
   } catch (error) {
     toast.error('Failed to load audit logs.');
   } finally {

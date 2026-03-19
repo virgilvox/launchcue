@@ -12,16 +12,41 @@ export const useNoteStore = defineStore('note', () => {
   const notes = ref<Note[]>([])
   const isLoading = ref(false)
 
+  // Pagination state
+  const currentPage = ref(1)
+  const totalItems = ref(0)
+  const totalPages = ref(0)
+  const pageSize = ref(50)
+
   function getRepo() {
     return getContainer().resolve<Repository<Note, NoteCreateRequest, Partial<NoteCreateRequest>>>(NOTE_REPO)
   }
 
-  const fetchNotes = async (params?: Record<string, unknown>): Promise<Note[]> => {
+  const fetchNotes = async (
+    params?: Record<string, unknown>,
+    pagination?: { page?: number; limit?: number }
+  ): Promise<Note[]> => {
     if (!useAuthStore().currentTeam) return []
     isLoading.value = true
     try {
-      const response = await getRepo().findAll(params)
-      notes.value = Array.isArray(response) ? response : []
+      const repo = getRepo()
+      const page = pagination?.page ?? 1
+      const limit = pagination?.limit ?? 50
+
+      if (repo.findPaginated) {
+        const result = await repo.findPaginated(params || {}, { page, limit })
+        notes.value = result.data || []
+        currentPage.value = result.page
+        totalItems.value = result.total
+        totalPages.value = result.totalPages
+        pageSize.value = result.limit
+      } else {
+        const response = await repo.findAll(params)
+        notes.value = Array.isArray(response) ? response : []
+        totalItems.value = notes.value.length
+        totalPages.value = 1
+        currentPage.value = 1
+      }
       return notes.value
     } catch (error) {
       notes.value = []
@@ -88,6 +113,10 @@ export const useNoteStore = defineStore('note', () => {
   return {
     notes,
     isLoading,
+    currentPage,
+    totalItems,
+    totalPages,
+    pageSize,
     fetchNotes,
     getNote,
     createNote,

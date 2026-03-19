@@ -12,19 +12,43 @@ export const useNotificationStore = defineStore('notification', () => {
   const error = ref<string | null>(null)
   let pollInterval: ReturnType<typeof setInterval> | null = null
 
+  // Pagination state
+  const currentPage = ref(1)
+  const totalItems = ref(0)
+  const totalPages = ref(0)
+  const pageSize = ref(50)
+
   function getRepo() {
     return getContainer().resolve<NotificationRepository>(NOTIFICATION_REPO)
   }
 
   const unreadCount = computed(() => notifications.value.filter(n => !n.read).length)
 
-  const fetchNotifications = async (): Promise<Notification[]> => {
+  const fetchNotifications = async (
+    pagination?: { page?: number; limit?: number }
+  ): Promise<Notification[]> => {
     if (!useAuthStore().currentTeam) return []
     isLoading.value = true
     error.value = null
     try {
-      const response = await getRepo().getAll()
-      notifications.value = response || []
+      const repo = getRepo()
+      const page = pagination?.page ?? 1
+      const limit = pagination?.limit ?? 50
+
+      if (repo.getPaginated) {
+        const result = await repo.getPaginated({ page, limit })
+        notifications.value = result.data || []
+        currentPage.value = result.page
+        totalItems.value = result.total
+        totalPages.value = result.totalPages
+        pageSize.value = result.limit
+      } else {
+        const response = await repo.getAll()
+        notifications.value = response || []
+        totalItems.value = notifications.value.length
+        totalPages.value = 1
+        currentPage.value = 1
+      }
       return notifications.value
     } catch (err: unknown) {
       error.value = err instanceof Error ? err.message : 'Failed to fetch notifications'
@@ -87,6 +111,10 @@ export const useNotificationStore = defineStore('notification', () => {
     isLoading,
     error,
     unreadCount,
+    currentPage,
+    totalItems,
+    totalPages,
+    pageSize,
     fetchNotifications,
     markAsRead,
     markAllAsRead,

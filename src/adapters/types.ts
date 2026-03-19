@@ -86,6 +86,7 @@ export interface CommentRepository {
 
 export interface NotificationRepository {
   getAll(): Promise<import('@/types/models').Notification[]>
+  getPaginated?(options: PaginationOptions): Promise<PaginatedResult<import('@/types/models').Notification>>
   markRead(id: string): Promise<void>
   markAllRead(): Promise<void>
   delete(id: string): Promise<void>

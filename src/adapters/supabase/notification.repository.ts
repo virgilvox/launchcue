@@ -1,5 +1,5 @@
 import type { Notification } from '@/types/models'
-import type { NotificationRepository } from '../types'
+import type { NotificationRepository, PaginationOptions, PaginatedResult } from '../types'
 import { getSupabase } from './client'
 import type { RealtimeChannel } from '@supabase/supabase-js'
 
@@ -21,6 +21,28 @@ export class SupabaseNotificationRepository implements NotificationRepository {
     if (error) throw new Error(error.message)
 
     return (data || []).map((row: Record<string, unknown>) => this.mapFromDb(row))
+  }
+
+  async getPaginated(options: PaginationOptions): Promise<PaginatedResult<Notification>> {
+    const from = (options.page - 1) * options.limit
+    const to = from + options.limit - 1
+
+    const { data, count, error } = await getSupabase()
+      .from('notifications')
+      .select('*', { count: 'exact' })
+      .order('created_at', { ascending: false })
+      .range(from, to)
+
+    if (error) throw new Error(error.message)
+
+    const total = count || 0
+    return {
+      data: (data || []).map((row: Record<string, unknown>) => this.mapFromDb(row)),
+      total,
+      page: options.page,
+      limit: options.limit,
+      totalPages: Math.ceil(total / options.limit),
+    }
   }
 
   async markRead(id: string): Promise<void> {

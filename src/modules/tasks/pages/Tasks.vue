@@ -80,6 +80,15 @@
       @action="openNewTaskModal"
     />
 
+    <!-- Pagination -->
+    <PaginationControls
+      :page="taskStore.currentPage"
+      :total-pages="taskStore.totalPages"
+      :total="taskStore.totalItems"
+      :limit="taskStore.pageSize"
+      @update:page="handlePageChange"
+    />
+
     <!-- New/Edit Task Modal -->
     <Modal v-model="showTaskFormModal" :title="isEditing ? 'Edit Task' : 'New Task'">
       <TaskForm 
@@ -149,6 +158,7 @@ import TaskForm from '@/modules/tasks/components/TaskForm.vue'
 import TaskKanban from '@/modules/tasks/components/TaskKanban.vue'
 import TaskChecklistModal from '@/modules/tasks/components/TaskChecklistModal.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
+import PaginationControls from '@/components/ui/Pagination.vue'
 
 // Stores & Toast
 const taskStore = useTaskStore()
@@ -256,28 +266,24 @@ const filteredAndSortedTasks = computed(() => {
     return 0;
   });
   
-  // Limit the number of tasks shown to prevent performance issues
-  const MAX_TASKS = 100;
-  if (result.length > MAX_TASKS) {
-    return result.slice(0, MAX_TASKS);
-  }
-  
   return result
 })
 
 // Methods
-const fetchTasks = async () => {
+const fetchTasks = async (page = 1) => {
   isLoading.value = true
   try {
-    await taskStore.fetchTasks()
+    await taskStore.fetchTasks({}, { page, limit: 50 })
   } catch (error) {
     toast.error('Failed to load tasks. Please try again.')
-    // Ensure loading is stopped even on error
-    isLoading.value = false; 
+    isLoading.value = false;
   } finally {
-    // isLoading is set false here too, but catch might exit first
     isLoading.value = false
   }
+}
+
+const handlePageChange = (page) => {
+  fetchTasks(page)
 }
 
 const fetchSupportData = async () => {

@@ -111,6 +111,15 @@
       </div>
     </div>
 
+    <!-- Pagination -->
+    <PaginationControls
+      :page="noteStore.currentPage"
+      :total-pages="noteStore.totalPages"
+      :total="noteStore.totalItems"
+      :limit="noteStore.pageSize"
+      @update:page="handlePageChange"
+    />
+
     <!-- Add/Edit Note Modal -->
     <Modal v-model="showNoteModal" :title="editingNote ? 'Edit Note' : 'Add Note'" size="lg">
         <form @submit.prevent="saveNote" class="space-y-4">
@@ -199,6 +208,7 @@ import PageContainer from '@/components/ui/PageContainer.vue';
 import PageHeader from '@/components/ui/PageHeader.vue';
 import EmptyState from '@/components/ui/EmptyState.vue';
 import { PlusIcon, DocumentTextIcon } from '@heroicons/vue/24/outline';
+import PaginationControls from '@/components/ui/Pagination.vue';
 
 import { useAuthStore } from '@/stores/auth';
 import { useUnsavedChanges } from '@/composables/useUnsavedChanges';
@@ -330,18 +340,21 @@ async function loadDependencies() {
     }
 }
 
-async function loadNotes() {
+async function loadNotes(page = 1) {
   loading.value = true;
   error.value = null;
   try {
-    // Fetch all notes for the team
-    notes.value = await noteStore.fetchNotes();
+    notes.value = await noteStore.fetchNotes({}, { page, limit: 50 });
   } catch (err) {
     error.value = 'Failed to load notes. Please try again.';
     toast.error(error.value);
   } finally {
     loading.value = false;
   }
+}
+
+function handlePageChange(page) {
+  loadNotes(page);
 }
 
 function clearFilters() {

@@ -40,13 +40,13 @@ describe('useAuditLogStore', () => {
       expect(mockRepo.findAll).toHaveBeenCalled()
     })
 
-    it('passes params to findAll', async () => {
+    it('passes filter params to findAll (pagination keys stripped)', async () => {
       ;(mockRepo.findAll as ReturnType<typeof vi.fn>).mockResolvedValue([])
 
       const store = useAuditLogStore()
-      await store.fetchLogs({ action: 'task.created', limit: 50 })
+      await store.fetchLogs({ action: 'task.created' })
 
-      expect(mockRepo.findAll).toHaveBeenCalledWith({ action: 'task.created', limit: 50 })
+      expect(mockRepo.findAll).toHaveBeenCalledWith({ action: 'task.created' })
     })
 
     it('clears logs and throws on error', async () => {
