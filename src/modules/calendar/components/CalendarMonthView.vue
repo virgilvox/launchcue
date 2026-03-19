@@ -76,18 +76,9 @@ defineEmits<{
   (e: 'select-event', event: CalendarEvent): void;
 }>();
 
-const colorMap: Record<string, { bg: string; text: string }> = {
-  blue: { bg: 'bg-[#3B82F6]', text: 'text-white' },
-  green: { bg: 'bg-[#22C55E]', text: 'text-white' },
-  red: { bg: 'bg-[#EF4444]', text: 'text-white' },
-  orange: { bg: 'bg-[#F97316]', text: 'text-white' },
-  purple: { bg: 'bg-[#8B5CF6]', text: 'text-white' },
-  yellow: { bg: 'bg-[#EAB308]', text: 'text-[#1A1A1A]' },
-  pink: { bg: 'bg-[#EC4899]', text: 'text-white' },
-  indigo: { bg: 'bg-[#6366F1]', text: 'text-white' },
-};
+import { getCalendarColor } from '@/utils/calendarColors';
 const getEventBg = (color: string) => {
-  const entry = colorMap[color];
-  return entry ? `${entry.bg} ${entry.text}` : 'bg-[var(--accent-primary)] text-white';
+  const entry = getCalendarColor(color);
+  return `${entry.bg} ${entry.text}`;
 };
 </script>

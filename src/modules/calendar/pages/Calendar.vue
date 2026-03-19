@@ -196,6 +196,7 @@ import CalendarMonthView from '@/modules/calendar/components/CalendarMonthView.v
 import CalendarWeekView from '@/modules/calendar/components/CalendarWeekView.vue';
 import CalendarDayView from '@/modules/calendar/components/CalendarDayView.vue';
 import CalendarEventSidebar from '@/modules/calendar/components/CalendarEventSidebar.vue';
+import { getCalendarBgClass } from '@/utils/calendarColors';
 
 const router = useRouter();
 const toast = useToast();
@@ -210,15 +211,15 @@ const clients = computed(() => clientStore.clients);
 const tasks = ref([]);
 
 const statusColorMap = {
-  blue: 'bg-[#3B82F6]',
-  green: 'bg-[#22C55E]',
-  red: 'bg-[#EF4444]',
-  orange: 'bg-[#F97316]',
-  purple: 'bg-[#8B5CF6]',
-  yellow: 'bg-[#EAB308]',
-  pink: 'bg-[#EC4899]',
-  indigo: 'bg-[#6366F1]',
-  gray: 'bg-[#6B7280]',
+  blue: getCalendarBgClass('blue'),
+  green: getCalendarBgClass('green'),
+  red: getCalendarBgClass('red'),
+  orange: getCalendarBgClass('orange'),
+  purple: getCalendarBgClass('purple'),
+  yellow: getCalendarBgClass('yellow'),
+  pink: getCalendarBgClass('pink'),
+  indigo: getCalendarBgClass('indigo'),
+  gray: 'bg-gray-500',
 };
 const getStatusDotBg = (color) => statusColorMap[color] || 'bg-[var(--accent-primary)]';
 

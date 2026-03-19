@@ -23,6 +23,7 @@
   --sidebar-text-active: #FFFFFF;
   --sidebar-border: rgba(255,255,255,0.08);
   --sidebar-hover: rgba(255,255,255,0.06);
+  --sidebar-active-bg: rgba(255,255,255,0.12);
   --danger: #DC2626;
   --warning: #F59E0B;
   --success: #0D9488;
@@ -49,6 +50,7 @@
   --sidebar-text-active: #F0EBE5;
   --sidebar-border: rgba(255,255,255,0.06);
   --sidebar-hover: rgba(255,255,255,0.05);
+  --sidebar-active-bg: rgba(255,255,255,0.10);
   --danger: #EF4444;
   --warning: #FBBF24;
   --success: #14B8A6;

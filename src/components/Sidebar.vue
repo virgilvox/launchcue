@@ -72,7 +72,7 @@
                   :class="[
                     'group flex items-center px-2 py-2 text-sm font-medium transition-colors',
                     isItemActive(item)
-                      ? 'bg-white/10 text-[var(--sidebar-text-active)] border-l-[3px] border-[var(--accent-primary)]'
+                      ? 'bg-[var(--sidebar-active-bg)] text-[var(--sidebar-text-active)] border-l-[3px] border-[var(--accent-primary)]'
                       : 'text-[var(--sidebar-text)] hover:bg-[var(--sidebar-hover)] hover:text-[var(--sidebar-text-active)] border-l-[3px] border-transparent'
                   ]"
                   :title="item.name"
@@ -99,7 +99,7 @@
               :class="[
                 'group flex items-center justify-center py-2 transition-colors relative',
                 isItemActive(item)
-                  ? 'bg-white/10 text-[var(--sidebar-text-active)] border-l-[3px] border-[var(--accent-primary)]'
+                  ? 'bg-[var(--sidebar-active-bg)] text-[var(--sidebar-text-active)] border-l-[3px] border-[var(--accent-primary)]'
                   : 'text-[var(--sidebar-text)] hover:bg-[var(--sidebar-hover)] hover:text-[var(--sidebar-text-active)] border-l-[3px] border-transparent'
               ]"
               :title="item.name"
