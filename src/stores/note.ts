@@ -102,6 +102,9 @@ export const useNoteStore = defineStore('note', () => {
     try {
       await getRepo().delete(id)
       notes.value = notes.value.filter(n => n.id !== id)
+      totalItems.value = Math.max(0, totalItems.value - 1)
+      totalPages.value = Math.max(1, Math.ceil(totalItems.value / pageSize.value))
+      if (currentPage.value > totalPages.value) currentPage.value = totalPages.value
       getEventBus().emit('note.deleted', { id })
     } catch (error) {
       throw error

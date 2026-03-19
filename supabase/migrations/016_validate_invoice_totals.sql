@@ -10,9 +10,14 @@ DECLARE
   computed_subtotal NUMERIC;
   item JSONB;
 BEGIN
+  -- Require at least one line item
+  IF NEW.line_items IS NULL OR jsonb_array_length(NEW.line_items) = 0 THEN
+    RAISE EXCEPTION 'Invoice requires at least one line item';
+  END IF;
+
   -- Calculate subtotal from line_items JSONB array
   computed_subtotal := 0;
-  IF NEW.line_items IS NOT NULL AND jsonb_array_length(NEW.line_items) > 0 THEN
+  IF jsonb_array_length(NEW.line_items) > 0 THEN
     FOR item IN SELECT * FROM jsonb_array_elements(NEW.line_items)
     LOOP
       computed_subtotal := computed_subtotal +

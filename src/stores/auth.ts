@@ -54,9 +54,9 @@ export const useAuthStore = defineStore('auth', () => {
           token.value = session.access_token
 
           // Recover app-level metadata from sessionStorage
-          user.value = JSON.parse(sessionStorage.getItem('user') || 'null')
-          userTeams.value = JSON.parse(sessionStorage.getItem('teams') || '[]')
-          currentTeam.value = JSON.parse(sessionStorage.getItem('currentTeam') || 'null')
+          user.value = safeJsonParse(sessionStorage.getItem('user'), null)
+          userTeams.value = safeJsonParse(sessionStorage.getItem('teams'), [])
+          currentTeam.value = safeJsonParse(sessionStorage.getItem('currentTeam'), null)
 
           // If no user data in sessionStorage (new tab), rebuild from API
           if (!user.value) {

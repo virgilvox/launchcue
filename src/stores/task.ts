@@ -113,6 +113,12 @@ export const useTaskStore = defineStore('task', () => {
     try {
       await getRepo().delete(id)
       tasks.value = tasks.value.filter(t => t.id !== id)
+      totalItems.value = Math.max(0, totalItems.value - 1)
+      totalPages.value = Math.max(1, Math.ceil(totalItems.value / pageSize.value))
+      // If current page is now beyond total pages, go back one page
+      if (currentPage.value > totalPages.value) {
+        currentPage.value = totalPages.value
+      }
       getEventBus().emit('task.deleted', { id })
     } catch (err) {
       throw err

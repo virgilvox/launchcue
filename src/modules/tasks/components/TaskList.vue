@@ -21,7 +21,7 @@
           class="hover:bg-[var(--surface)] transition-colors cursor-pointer"
         >
           <td>
-            <div class="font-medium text-[var(--text-primary)]">{{ task.title }}</div>
+            <div class="font-medium text-[var(--text-primary)] truncate max-w-[400px]" :title="task.title">{{ task.title }}</div>
             <div v-if="task.type" class="mt-0.5">
               <span :class="['badge', getTypeClass(task.type)]">{{ task.type }}</span>
             </div>
