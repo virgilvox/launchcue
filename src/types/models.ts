@@ -268,6 +268,7 @@ export interface Scope extends Timestamped {
   terms?: string
   totalAmount: number
   status: ScopeStatus
+  revisionNotes?: string | null
   sentAt?: string | null
   approvedAt?: string | null
   teamId: string

@@ -53,12 +53,77 @@
       <div v-if="pendingScopes.length > 0">
         <h2 class="heading-section mb-4">Pending Approvals</h2>
         <div class="space-y-3">
-          <div v-for="scope in pendingScopes" :key="scope.id" class="card p-5 flex justify-between items-center">
-            <div>
-              <h3 class="heading-card">{{ scope.title }}</h3>
-              <p class="text-caption">{{ scope.deliverables?.length || 0 }} deliverables &bull; {{ formatCurrency(scope.totalAmount) }}</p>
+          <div v-for="scope in pendingScopes" :key="scope.id" class="card p-5">
+            <div class="flex justify-between items-start">
+              <div>
+                <h3 class="heading-card">{{ scope.title }}</h3>
+                <p class="text-caption">{{ scope.deliverables?.length || 0 }} deliverables &bull; {{ formatCurrency(scope.totalAmount) }}</p>
+              </div>
+              <router-link :to="`/portal/projects/${scope.projectId}`" class="btn btn-sm btn-ghost">Review Details</router-link>
             </div>
-            <router-link :to="`/portal/projects/${scope.projectId}`" class="btn btn-sm btn-primary">Review</router-link>
+
+            <!-- Revision reason input (shown when requesting revision) -->
+            <div v-if="revisionScopeId === scope.id" class="mt-4 space-y-3">
+              <label class="block text-sm font-medium text-[var(--text-primary)]">
+                Reason for revision
+              </label>
+              <textarea
+                v-model="revisionReason"
+                rows="3"
+                class="input w-full"
+                placeholder="Describe what changes you'd like..."
+              ></textarea>
+              <div class="flex gap-2">
+                <button
+                  class="btn btn-sm btn-accent"
+                  :disabled="!revisionReason.trim() || scopeActionLoading"
+                  @click="submitRevision(scope.id)"
+                >
+                  {{ scopeActionLoading ? 'Submitting...' : 'Submit Revision Request' }}
+                </button>
+                <button
+                  class="btn btn-sm btn-ghost"
+                  :disabled="scopeActionLoading"
+                  @click="cancelRevision()"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+
+            <!-- Action buttons -->
+            <div v-else class="mt-4 flex gap-2">
+              <button
+                class="btn btn-sm btn-primary"
+                :disabled="scopeActionLoading"
+                @click="handleApproveScope(scope.id)"
+              >
+                Approve
+              </button>
+              <button
+                class="btn btn-sm btn-outline"
+                :disabled="scopeActionLoading"
+                @click="handleRequestRevision(scope.id)"
+              >
+                Request Revision
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Confirm Approve Dialog -->
+      <div v-if="approveDialog.isOpen.value" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+        <div class="card p-6 max-w-md w-full mx-4 shadow-brutal">
+          <h3 class="heading-card mb-2">Approve Scope</h3>
+          <p class="text-[var(--text-secondary)] mb-6">
+            Are you sure you want to approve this scope? This action cannot be undone.
+          </p>
+          <div class="flex gap-2 justify-end">
+            <button class="btn btn-sm btn-ghost" :disabled="approveDialog.isProcessing.value" @click="approveDialog.cancel()">Cancel</button>
+            <button class="btn btn-sm btn-primary" :disabled="approveDialog.isProcessing.value" @click="approveDialog.confirm()">
+              {{ approveDialog.isProcessing.value ? 'Approving...' : 'Confirm Approve' }}
+            </button>
           </div>
         </div>
       </div>
@@ -71,6 +136,8 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useToast } from 'vue-toastification'
 import { useAuthStore } from '@/stores/auth'
+import { useScopeStore } from '@/stores/scope'
+import { useConfirmDialog } from '@/composables/useConfirmDialog'
 import { getContainer } from '@/core/service-container'
 import { PROJECT_REPO, SCOPE_REPO, ONBOARDING_REPO } from '@/adapters/repository-keys'
 import LoadingSpinner from '@/components/LoadingSpinner.vue'
@@ -80,11 +147,16 @@ import { formatCurrency } from '@/utils/formatters'
 const router = useRouter()
 const toast = useToast()
 const authStore = useAuthStore()
+const scopeStore = useScopeStore()
+const approveDialog = useConfirmDialog()
 
 const loading = ref(true)
 const projects = ref([])
 const checklists = ref([])
 const scopes = ref([])
+const scopeActionLoading = ref(false)
+const revisionScopeId = ref(null)
+const revisionReason = ref('')
 
 const userName = computed(() => authStore.user?.name || '')
 
@@ -95,6 +167,59 @@ const activeChecklists = computed(() => {
 const pendingScopes = computed(() => {
   return scopes.value.filter(s => s.status === 'sent')
 })
+
+async function handleApproveScope(scopeId) {
+  const confirmed = await approveDialog.requestConfirm(scopeId)
+  if (!confirmed) return
+
+  scopeActionLoading.value = true
+  try {
+    await scopeStore.updateScope(scopeId, { status: 'approved' })
+    // Update local scopes list so it disappears from pending
+    const idx = scopes.value.findIndex(s => s.id === scopeId)
+    if (idx !== -1) {
+      scopes.value[idx] = { ...scopes.value[idx], status: 'approved' }
+    }
+    toast.success('Scope approved successfully')
+  } catch (err) {
+    toast.error(err.message || 'Failed to approve scope')
+  } finally {
+    scopeActionLoading.value = false
+    approveDialog.done()
+  }
+}
+
+function handleRequestRevision(scopeId) {
+  revisionScopeId.value = scopeId
+  revisionReason.value = ''
+}
+
+function cancelRevision() {
+  revisionScopeId.value = null
+  revisionReason.value = ''
+}
+
+async function submitRevision(scopeId) {
+  if (!revisionReason.value.trim()) return
+
+  scopeActionLoading.value = true
+  try {
+    await scopeStore.updateScope(scopeId, {
+      status: 'revised',
+      revisionNotes: revisionReason.value.trim(),
+    })
+    const idx = scopes.value.findIndex(s => s.id === scopeId)
+    if (idx !== -1) {
+      scopes.value[idx] = { ...scopes.value[idx], status: 'revised' }
+    }
+    toast.success('Revision request submitted')
+    cancelRevision()
+  } catch (err) {
+    toast.error(err.message || 'Failed to request revision')
+  } finally {
+    scopeActionLoading.value = false
+  }
+}
 
 function completedStepCount(checklist) {
   if (!checklist.steps || checklist.steps.length === 0) return 0

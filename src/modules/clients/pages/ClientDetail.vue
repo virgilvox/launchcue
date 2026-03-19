@@ -151,7 +151,10 @@
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div class="form-group">
             <label for="contactEmail" class="label">Email</label>
-            <input id="contactEmail" v-model="contactForm.email" type="email" class="input" />
+            <input id="contactEmail" v-model="contactForm.email" type="email" class="input" :class="{ 'border-[var(--danger)]': contactForm.email && !isValidEmail(contactForm.email) }" />
+            <p v-if="contactForm.email && !isValidEmail(contactForm.email)" class="text-xs text-[var(--danger)] mt-1">
+              Please enter a valid email address
+            </p>
           </div>
           <div class="form-group">
             <label for="contactPhone" class="label">Phone</label>
@@ -166,9 +169,9 @@
           <input id="contactPrimary" v-model="contactForm.isPrimary" type="checkbox" class="form-checkbox mr-2" />
           <label for="contactPrimary" class="label mb-0">Set as primary contact</label>
         </div>
-        <div class="form-actions">
-          <button type="button" @click="closeContactModal" class="btn btn-outline">Cancel</button>
-          <button type="submit" class="btn btn-primary" :disabled="savingContact">
+        <div class="flex justify-end space-x-3 pt-4 border-t border-[var(--border)]">
+          <button type="button" @click="closeContactModal" class="btn btn-secondary">Cancel</button>
+          <button type="submit" class="btn btn-primary" :disabled="savingContact || (contactForm.email && !isValidEmail(contactForm.email))">
             {{ savingContact ? 'Saving...' : 'Save Contact' }}
           </button>
         </div>
@@ -181,8 +184,8 @@
         <p class="text-[var(--text-primary)]">
           Are you sure you want to delete contact "{{ contactToDelete.name }}"?
         </p>
-        <div class="form-actions">
-          <button type="button" @click="closeDeleteContactModal" class="btn btn-outline">Cancel</button>
+        <div class="flex justify-end space-x-3 pt-4 border-t border-[var(--border)]">
+          <button type="button" @click="closeDeleteContactModal" class="btn btn-secondary">Cancel</button>
           <button
             type="button"
             @click="deleteContact"
@@ -325,6 +328,14 @@ async function loadClient() {
       client.value = result.client
     } else {
       throw new Error(result.error || 'Failed to load client')
+    }
+
+    // Ensure contacts are loaded (getClient may return a cached version without the join)
+    if (!client.value.contacts) {
+      const contactsResult = await clientStore.getClientContacts(clientId)
+      if (contactsResult.success) {
+        client.value.contacts = contactsResult.contacts || []
+      }
     }
 
     // Load projects for this client
@@ -484,59 +495,53 @@ function closeContactModal() {
   editingContact.value = null
 }
 
+function isValidEmail(email) {
+  if (!email) return true // empty is ok, it's optional
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+}
+
 async function saveContact() {
+  // Validate email before submitting
+  if (!isValidEmail(contactForm.value.email)) {
+    toast.error('Please enter a valid email address')
+    return
+  }
+
   savingContact.value = true
   try {
     const clientId = client.value.id
+    const { getSupabase } = await import('@/adapters/supabase/client')
+    const sb = getSupabase()
+
+    // Normalize empty strings to null for optional fields
+    const payload = {
+      name: contactForm.value.name,
+      email: contactForm.value.email || null,
+      phone: contactForm.value.phone || null,
+      role: contactForm.value.role || null,
+      is_primary: contactForm.value.isPrimary || false,
+      notes: contactForm.value.notes || null,
+    }
 
     if (editingContact.value) {
-      // Update existing contact in client_contacts table
-      const contactData = {
-        ...editingContact.value,
-        ...contactForm.value
-      }
-      const { id: contactId, createdAt, updatedAt, ...updateFields } = contactData
-      const sb = (await import('@/adapters/supabase/client')).getSupabase()
       const { error: updateErr } = await sb
         .from('client_contacts')
-        .update({
-          name: updateFields.name,
-          email: updateFields.email,
-          phone: updateFields.phone,
-          role: updateFields.role,
-          is_primary: updateFields.isPrimary || false,
-          notes: updateFields.notes,
-        })
-        .eq('id', contactId)
+        .update(payload)
+        .eq('id', editingContact.value.id)
       if (updateErr) throw updateErr
     } else {
-      // Insert new contact into client_contacts table
-      const sb = (await import('@/adapters/supabase/client')).getSupabase()
       const { error: insertErr } = await sb
         .from('client_contacts')
-        .insert({
-          client_id: clientId,
-          name: contactForm.value.name,
-          email: contactForm.value.email,
-          phone: contactForm.value.phone,
-          role: contactForm.value.role,
-          is_primary: contactForm.value.isPrimary || false,
-          notes: contactForm.value.notes,
-        })
+        .insert({ client_id: clientId, ...payload })
       if (insertErr) throw insertErr
     }
 
+    toast.success(editingContact.value ? 'Contact updated' : 'Contact added')
+    closeContactModal()
     // Reload client to get updated contacts
     await loadClient()
-    closeContactModal()
   } catch (err) {
-    if (!err.silentError) {
-      toast.error('Failed to save contact')
-    } else {
-      toast.success(editingContact.value ? 'Contact updated' : 'Contact added')
-      closeContactModal()
-      await loadClient()
-    }
+    toast.error('Failed to save contact')
   } finally {
     savingContact.value = false
   }

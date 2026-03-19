@@ -160,9 +160,22 @@ export class SupabaseTeamRepository implements Repository<Team, TeamCreateReques
     return (data || []).map((inv: Record<string, unknown>) => ({
       id: inv.id as string,
       email: inv.email as string,
+      teamId: inv.team_id as string,
+      invitedBy: inv.invited_by as string,
       status: inv.status as string,
+      role: inv.role as string,
+      expiresAt: inv.expires_at as string,
       createdAt: inv.created_at as string,
+      updatedAt: inv.updated_at as string,
     } as TeamInvite))
+  }
+
+  async cancelInvite(inviteId: string): Promise<void> {
+    const { error } = await getSupabase()
+      .from('team_invites')
+      .delete()
+      .eq('id', inviteId)
+    if (error) throw new Error(error.message)
   }
 
   async removeMember(teamId: string, memberId: string): Promise<void> {

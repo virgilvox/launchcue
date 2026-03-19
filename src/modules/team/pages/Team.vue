@@ -108,6 +108,59 @@
         </div>
       </div>
 
+      <!-- Pending Invitations Card -->
+      <div v-if="authStore.canManageTeam" class="card mb-6">
+        <div class="pb-4 mb-4" style="border-bottom: 2px solid var(--border);">
+          <h3 class="heading-card">Pending Invitations</h3>
+        </div>
+
+        <div v-if="teamStore.isLoadingInvites" class="flex justify-center py-8">
+          <LoadingSpinner text="Loading invitations..." />
+        </div>
+
+        <div v-else-if="!teamStore.pendingInvites || teamStore.pendingInvites.length === 0" class="text-center py-6">
+          <p class="text-body">No pending invitations.</p>
+        </div>
+
+        <div v-else class="space-y-4">
+          <div
+            v-for="invite in teamStore.pendingInvites"
+            :key="invite.id"
+            class="card flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"
+          >
+            <div class="flex items-center space-x-3 min-w-0">
+              <div class="h-10 w-10 flex items-center justify-center flex-shrink-0" style="background-color: var(--accent-primary-wash); border: 2px solid var(--border);">
+                <span class="font-bold text-sm" style="color: var(--accent-primary);">
+                  {{ invite.email ? invite.email[0].toUpperCase() : '?' }}
+                </span>
+              </div>
+              <div class="min-w-0">
+                <h3 class="heading-card truncate">{{ invite.email }}</h3>
+                <p class="text-caption">
+                  Sent {{ formatDate(invite.createdAt) }}
+                  <span v-if="invite.expiresAt">
+                    &middot;
+                    <span v-if="isExpired(invite.expiresAt)" style="color: var(--danger);">Expired</span>
+                    <span v-else>Expires {{ formatDate(invite.expiresAt) }}</span>
+                  </span>
+                </p>
+              </div>
+              <span :class="getRoleBadgeClass(invite.role)" class="badge">
+                {{ formatRole(invite.role) }}
+              </span>
+            </div>
+            <div class="flex items-center flex-shrink-0">
+              <button
+                @click="confirmCancelInvite(invite)"
+                class="btn btn-danger btn-sm"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Your Teams Section -->
       <div class="mt-6">
         <div class="flex justify-between items-center mb-4">
@@ -280,6 +333,28 @@
         </button>
       </div>
     </Modal>
+    <!-- Cancel Invitation Confirmation Modal -->
+    <Modal v-model="showCancelInviteModal" title="Cancel Invitation">
+      <p class="text-body mb-4">
+        Are you sure you want to cancel the invitation to <strong>{{ inviteToCancel?.email }}</strong>?
+      </p>
+
+      <div class="flex justify-end space-x-3">
+        <button
+          @click="showCancelInviteModal = false"
+          class="btn btn-secondary"
+        >
+          Keep
+        </button>
+        <button
+          @click="executeCancelInvite"
+          class="btn btn-danger"
+          :disabled="cancellingInvite"
+        >
+          {{ cancellingInvite ? 'Cancelling...' : 'Cancel Invitation' }}
+        </button>
+      </div>
+    </Modal>
   </PageContainer>
 </template>
 
@@ -316,6 +391,9 @@ const showRoleChangeModal = ref(false);
 const roleChangeTarget = ref(null);
 const roleChangeNewRole = ref('');
 const changingRole = ref(false);
+const showCancelInviteModal = ref(false);
+const inviteToCancel = ref(null);
+const cancellingInvite = ref(false);
 
 const userInitials = computed(() => {
   if (!authStore.user) return '';
@@ -428,6 +506,7 @@ async function sendInvite() {
       showInviteModal.value = false;
       inviteEmail.value = '';
       toast.success('Invitation sent successfully');
+      await loadPendingInvites();
     } else {
       inviteError.value = result.error || 'Failed to send invite. Please try again.';
       toast.error(inviteError.value);
@@ -573,6 +652,46 @@ async function executeRoleChange() {
   }
 }
 
+async function loadPendingInvites() {
+  if (!authStore.currentTeam?.id) return;
+  await teamStore.fetchPendingInvites();
+}
+
+function confirmCancelInvite(invite) {
+  inviteToCancel.value = invite;
+  showCancelInviteModal.value = true;
+}
+
+async function executeCancelInvite() {
+  if (!inviteToCancel.value) return;
+
+  cancellingInvite.value = true;
+
+  try {
+    const result = await teamStore.cancelInvite(inviteToCancel.value.id);
+    if (!result.success) {
+      toast.error(result.error || 'Failed to cancel invitation');
+    }
+  } catch (err) {
+    toast.error('Failed to cancel invitation');
+  } finally {
+    cancellingInvite.value = false;
+    showCancelInviteModal.value = false;
+    inviteToCancel.value = null;
+  }
+}
+
+function formatDate(dateStr) {
+  if (!dateStr) return '—';
+  const d = new Date(dateStr);
+  return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+}
+
+function isExpired(dateStr) {
+  if (!dateStr) return false;
+  return new Date(dateStr) < new Date();
+}
+
 onMounted(async () => {
   loading.value = true;
   error.value = null;
@@ -584,6 +703,7 @@ onMounted(async () => {
     
     if (authStore.currentTeam?.id) {
       await loadTeamMembers();
+      await loadPendingInvites();
     }
   } catch (err) {
     error.value = 'Failed to load team data.';

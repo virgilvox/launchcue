@@ -226,6 +226,7 @@ export interface ScopeCreateRequest {
   }>
   terms?: string
   status?: string
+  revisionNotes?: string | null
 }
 
 // ─── API Key ───

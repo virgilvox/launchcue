@@ -16,6 +16,7 @@ interface TeamRepository extends Repository<Team, TeamCreateRequest, Partial<Tea
   getMembers(teamId: string): Promise<TeamMember[]>
   inviteUser(teamId: string, email: string): Promise<unknown>
   getPendingInvites(teamId: string): Promise<TeamInvite[]>
+  cancelInvite(inviteId: string): Promise<void>
   removeMember(teamId: string, memberId: string): Promise<void>
   updateMemberRole(teamId: string, memberId: string, role: string): Promise<unknown>
   leaveTeam(teamId: string): Promise<void>
@@ -163,6 +164,23 @@ export const useTeamStore = defineStore('team', () => {
     }
   }
 
+  async function cancelInvite(inviteId: string): Promise<{ success: boolean; error?: string }> {
+    return wrap(async () => {
+      error.value = null
+      try {
+        await getRepo().cancelInvite(inviteId)
+        pendingInvites.value = pendingInvites.value.filter(inv => inv.id !== inviteId)
+        toast.success('Invitation cancelled')
+        return { success: true }
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : 'Failed to cancel invitation'
+        error.value = message
+        toast.error(error.value)
+        return { success: false, error: error.value }
+      }
+    })
+  }
+
   async function removeMember(memberId: string): Promise<{ success: boolean; error?: string }> {
     if (!authStore.currentTeam) {
       return { success: false, error: 'No team selected' }
@@ -258,6 +276,7 @@ export const useTeamStore = defineStore('team', () => {
     createTeam,
     inviteUser,
     fetchPendingInvites,
+    cancelInvite,
     removeMember,
     updateMemberRole,
     leaveTeam,
