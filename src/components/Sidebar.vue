@@ -113,8 +113,9 @@
       <!-- User Info / Logout -->
       <div class="mt-auto p-3 border-t border-[var(--sidebar-border)]">
         <div v-if="authStore.user" class="flex items-center mb-2" :class="{'justify-center': isCollapsed && !isMobile}">
-          <div class="w-8 h-8 bg-[var(--accent-primary)] text-white flex items-center justify-center text-xs font-heading font-bold flex-shrink-0">
-            {{ userInitials }}
+          <div class="w-8 h-8 bg-[var(--accent-primary)] text-white flex items-center justify-center text-xs font-heading font-bold flex-shrink-0 overflow-hidden border-2 border-[var(--sidebar-border)]">
+            <img v-if="authStore.user.avatarUrl" :src="authStore.user.avatarUrl" alt="" class="w-full h-full object-cover" />
+            <span v-else>{{ userInitials }}</span>
           </div>
           <div v-if="!isCollapsed || isMobile" class="ml-3 flex-1 min-w-0">
             <p class="text-sm font-medium text-[var(--sidebar-text-active)] truncate">{{ authStore.user.name }}</p>

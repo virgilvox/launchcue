@@ -88,6 +88,16 @@
 
               <!-- Notifications -->
               <NotificationBell />
+
+              <!-- User Avatar -->
+              <router-link
+                to="/settings/profile"
+                class="w-8 h-8 bg-[var(--accent-primary)] text-white flex items-center justify-center text-xs font-heading font-bold flex-shrink-0 overflow-hidden border-2 border-[var(--border)] hover:border-[var(--accent-primary)] transition-colors"
+                title="Profile settings"
+              >
+                <img v-if="authStore.user?.avatarUrl" :src="authStore.user.avatarUrl" alt="" class="w-full h-full object-cover" />
+                <span v-else>{{ userInitials }}</span>
+              </router-link>
             </div>
           </div>
         </div>
@@ -191,6 +201,7 @@ import { useToast } from 'vue-toastification';
 import { MagnifyingGlassIcon, XMarkIcon, PlusIcon } from '@heroicons/vue/24/outline'
 import { useKeyboardShortcuts } from '@/composables/useKeyboardShortcuts'
 import { hasUnsavedChanges } from '@/composables/useUnsavedChanges'
+import { getInitials } from '@/utils/formatters'
 
 const authStore = useAuthStore()
 const notificationStore = useNotificationStore()
@@ -205,6 +216,7 @@ const isMac = computed(() => typeof navigator !== 'undefined' && /Mac|iPod|iPhon
 const showCreateTeam = ref(false);
 const newTeamName = ref('');
 const creatingTeam = ref(false);
+const userInitials = computed(() => getInitials(authStore.user?.name));
 
 async function handleCreateTeam() {
   if (!newTeamName.value.trim()) return;
