@@ -133,7 +133,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { useTaskStore } from '@/stores/task'
 import { useProjectStore } from '@/stores/project'
 import { useClientStore } from '@/stores/client'
@@ -287,6 +287,13 @@ const fetchTasks = async (page = 1) => {
 const handlePageChange = (page) => {
   fetchTasks(page)
 }
+
+// Reset to page 1 when filters change
+watch(filters, () => {
+  if (taskStore.currentPage !== 1) {
+    fetchTasks(1)
+  }
+}, { deep: true })
 
 const fetchSupportData = async () => {
   // Fetch projects, clients, and team members needed for filtering

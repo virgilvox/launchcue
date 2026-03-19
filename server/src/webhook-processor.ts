@@ -1,6 +1,7 @@
 import cron from 'node-cron'
 import crypto from 'crypto'
 import { getSupabase } from './supabase.js'
+import { validateWebhookUrl } from './utils/url-validation.js'
 
 /**
  * Webhook queue processor — delivers queued webhooks with retry logic.
@@ -35,6 +36,13 @@ async function processQueue(): Promise<void> {
   for (const item of items) {
     const webhook = item.webhooks as { url: string; secret: string }
     if (!webhook) continue
+
+    // SSRF protection: validate URL before delivery
+    const urlCheck = await validateWebhookUrl(webhook.url)
+    if (!urlCheck.valid) {
+      await handleFailure(sb, item, `URL validation failed: ${urlCheck.error}`)
+      continue
+    }
 
     try {
       const payload = JSON.stringify(item.payload)
