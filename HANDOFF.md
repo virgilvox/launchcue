@@ -105,7 +105,7 @@ server/tests/       # Express API route tests (vitest + supertest)
 - **Feature Modules**: 15 modules declaring routes, nav items, search providers, dependencies
 - **All 18 Pinia stores**: Fully migrated to repository pattern via DI container
 - **Zero legacy imports**: No `src/services/`, no axios, no Netlify code -all deleted
-- **Supabase Backend**: 12 SQL migrations, 26 tables, RLS policies, active_* views for soft delete, auto_inject triggers
+- **Supabase Backend**: 20 SQL migrations, 26 tables, RLS policies, active_* views (security_invoker), auto_inject triggers, validation triggers
 - **Express API Server**: AI processing (Anthropic), webhook delivery (HMAC + retry), email (nodemailer)
 - **Docker**: Full-stack compose (docker-compose.yml) + dev-only Supabase stack (docker-compose.dev.yml)
 - **CI/CD**: ESLint v9 flat config, Prettier, GitHub Actions, DO App Platform deploy-on-push
@@ -116,6 +116,10 @@ server/tests/       # Express API route tests (vitest + supertest)
 ### UX Polish
 - **Unsaved changes warning**: `useUnsavedChanges` composable (dirty tracking + route guard + beforeunload) on InvoiceBuilder, ScopeBuilder, ProjectForm
 - **Loading states**: SkeletonLoader on list pages (Tasks, Projects, Clients, Notes); LoadingSpinner on detail/modal/auth pages
+- **Pagination**: Offset-based pagination on Tasks, Notes, Clients, Audit Logs, Notifications with PaginationControls component; pagination state resets on filter change and after delete
+- **Profile picture**: Upload via Supabase Storage (JPEG/PNG/WebP, max 2MB), shown in sidebar footer and header
+- **Dark mode**: Persistent via localStorage with system preference fallback; toggle in Settings + command palette
+- **Notification coordination**: Leader election across tabs via localStorage; only one tab polls API, others sync via storage events
 - **Empty states**: EmptyState component with icons and action buttons on all list pages
 - **Error handling**: Toast notifications on mutation errors only; stores never toast on fetch failures (pages decide)
 - **Toast discipline**: All Promise.allSettled loops use `results.some()` for a single toast max, not forEach
@@ -171,7 +175,7 @@ server/tests/       # Express API route tests (vitest + supertest)
 - **~100 Vue components still use `<script setup>` without `lang="ts"`**
 
 ### Testing
-- **438 tests** across 34 test files (405 frontend + 33 server)
+- **474 tests** across 37 test files (441 frontend + 33 server)
 - Core: service-container (8), event-bus (8), plugin-registry (19)
 - Auth store: 20 tests (SDK session recovery, login/register/logout/switchTeam/createTeam, RBAC computeds)
 - Store tests: all 18 stores tested (task, notification, team, project, client, calendar, campaign, invoice, comment, brain-dump, scope, resource, note, onboarding, webhook, api-key, audit-log)
@@ -179,19 +183,14 @@ server/tests/       # Express API route tests (vitest + supertest)
 - Router tests: guards (auth, team context, client role, portal, RBAC)
 - **Server tests**: auth middleware, AI route, email route, webhooks route (vitest + supertest)
 - Test helpers: mock factories (7+ factories), store setup with SDK session mock, mock router/toast
-- No component tests, integration tests, or E2E tests
 
 ### Other
-- No file upload (resources are link-based only)
+- No file upload for resources (link-based only; profile pictures use Supabase Storage)
 - No bulk actions on list pages
 - No inline editing on table cells
 - No dashboard widget customization/drag-and-drop
 - No recent items in search
-- ~~No form validation~~: InvoiceBuilder now has field-level validation (client, line items, amounts). Other forms still lack it.
-- ~~No dark mode persistence~~: Built — `useDarkMode` composable persists to localStorage with system preference fallback + Settings UI toggle
-- ~~Skeleton loaders~~: Built — Tasks, Projects, Clients, Notes use SkeletonLoader; other pages still use LoadingSpinner
-- ~~Viewer role UI feedback~~: Built — `usePermissions` composable disables action buttons for viewers with tooltip
-- ~~App.vue hex values~~: Fixed — now uses `var(--page-bg)` and `var(--page-text)`
+- No component tests, integration tests, or E2E tests (unit tests comprehensive: 474 across 37 files)
 
 ---
 
@@ -201,12 +200,12 @@ server/tests/       # Express API route tests (vitest + supertest)
 |----------|-------|
 | Feature modules | 15 |
 | Vue files (total) | 107 (21 module pages + 2 standalone pages + 6 auth + 3 portal + 75 components) |
-| Composables | 10 (+ usePermissions, useDarkMode) |
+| Composables | 10 (useModalState, useEntityLookup, useLoadingCounter, useUnsavedChanges, useConfirmDialog, useTooltips, useResponsive, useKeyboardShortcuts, usePermissions, useDarkMode) |
 | Pinia stores | 18 (all TS, all using repository pattern) |
 | Supabase adapter files | 25 (20 repository + 1 auth + 1 search + 1 AI + base class + index + client) |
 | Express API endpoints | 3 (AI, webhooks, email) |
-| SQL migrations | 16 (26 tables + RLS + triggers + functions) |
-| Test files | 34 (438 tests: 30 frontend + 4 server) |
+| SQL migrations | 20 (26 tables + RLS + triggers + functions + storage) |
+| Test files | 37 (474 tests: 33 frontend + 4 server) |
 | Type definition files | 4 (models, api, enums, index) + core/types.ts |
 
 ---
@@ -514,17 +513,39 @@ Full 7-stream audit (architecture, security, UI flows, data model, tests, compet
 - Invoice form validation: clientId, line items non-empty, description/rate/quantity required per row
 - Dark mode persistence: `useDarkMode` composable with localStorage + system preference fallback + Settings UI toggle
 
-**Remaining Gaps (acceptable / future work):**
-- Project team members not persisted to DB (local-only, lost on reload) — needs schema decision
-- Campaign delete UI missing (cards are read-only links)
-- Profile picture upload disabled ("Coming soon")
-- ~100 Vue components missing `lang="ts"` (progressive migration)
+**Deep Audit Fixes (4th pass):**
+- Pagination after delete: recalculate totalPages/currentPage in task/note/client stores
+- assigned_members UUID validation trigger (migration 018) + auto-cleanup on team member removal
+- Invoice trigger rejects NULL/empty line_items with EXCEPTION
+- safeJsonParse in initAuth(), task list title truncation
+- Invoice number race condition: advisory lock per team (migration 019) + retry on duplicate
+- Team switch warns about unsaved changes (global dirty counter)
+- maxlength on all title/description inputs (14 inputs across 8 forms)
+- Client delete warns about orphaned projects
+
+**Final Round:**
+- Profile picture upload via Supabase Storage (migration 020: avatars bucket + policies)
+- Notification cross-tab leader election (only 1 tab polls, others sync via localStorage)
+- Search race condition fix (sequence counter discards stale results)
+- 4 shared UI components migrated to TypeScript (PageContainer, PageHeader, EmptyState, Modal)
+- Clients page pagination (completes pagination on all list pages)
+- Campaign delete UI: kebab menu on list + delete button on builder
+
+**Migrations 013-020 deployed to production 2026-03-19.**
+
+**Final Audit: 42/42 checks pass** (security, data integrity, UI/UX, code quality).
+**Test suite: 474 tests across 37 files (441 frontend + 33 server), 0 failures.**
+
+**Remaining (future work):**
+- ~100 Vue components missing `lang="ts"` (progressive migration; 4 done)
 - No component tests, integration tests, or E2E tests
+- Resource file upload (link-based only; profile pictures use Supabase Storage)
+- No bulk actions on list pages
+- Phase 7 roadmap: CFP/events, GitHub/Discord/Slack integrations, engagement scoring, MFA, billing
 
 **Manual Action Required:**
 - Revoke Anthropic API key `sk-ant-api03-XAR84sW9...` from Anthropic dashboard
 - Scrub `.env` from git history: `git filter-repo --path .env --invert-paths`
 - Confirm production JWT_SECRET differs from the exposed value
-- Run migrations 013-016 on the Supabase instance
 
 *Last updated: 2026-03-19*
