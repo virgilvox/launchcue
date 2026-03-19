@@ -4,14 +4,24 @@
       <form @submit.prevent="saveCampaign">
       <header class="mb-6 flex justify-between items-center">
         <h2 class="heading-page">Campaign Builder</h2>
-        <button
-          v-if="authStore.canEdit"
-          type="submit"
-          class="btn btn-primary"
-          :disabled="savingCampaign"
-        >
-          {{ savingCampaign ? 'Saving...' : (campaign.id ? 'Save Changes' : 'Save Campaign') }}
-        </button>
+        <div class="flex items-center gap-3">
+          <button
+            v-if="authStore.canEdit && campaign.id"
+            type="button"
+            class="btn btn-danger"
+            @click="confirmDelete"
+          >
+            Delete
+          </button>
+          <button
+            v-if="authStore.canEdit"
+            type="submit"
+            class="btn btn-primary"
+            :disabled="savingCampaign"
+          >
+            {{ savingCampaign ? 'Saving...' : (campaign.id ? 'Save Changes' : 'Save Campaign') }}
+          </button>
+        </div>
       </header>
 
       <div class="flex space-x-6">
@@ -59,6 +69,22 @@
       </div>
 
       </form>
+
+      <!-- Delete Confirmation -->
+      <div v-if="deleteDialog.isOpen.value" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+        <div class="bg-[var(--surface-elevated)] border-2 border-[var(--border-light)] p-6 w-full max-w-md">
+          <h3 class="heading-section mb-4">Confirm Delete</h3>
+          <p class="text-[var(--text-secondary)] mb-6">
+            Are you sure you want to delete "<strong>{{ campaign.title }}</strong>"? This action cannot be undone.
+          </p>
+          <div class="flex justify-end space-x-3">
+            <button @click="deleteDialog.cancel()" class="btn btn-secondary">Cancel</button>
+            <button @click="deleteDialog.confirm()" class="btn btn-danger" :disabled="deleteDialog.isProcessing.value">
+              {{ deleteDialog.isProcessing.value ? 'Deleting...' : 'Delete Campaign' }}
+            </button>
+          </div>
+        </div>
+      </div>
 
       <!-- Generate Recap Modal -->
       <Modal v-model="showRecapModal" :title="`Recap: ${campaign.title || 'Campaign'}`">
@@ -119,6 +145,7 @@ import CampaignForm from '@/modules/campaigns/components/CampaignForm.vue';
 import CampaignCard from '@/modules/campaigns/components/CampaignCard.vue';
 import { useToast } from 'vue-toastification';
 import { useUnsavedChanges } from '@/composables/useUnsavedChanges';
+import { useConfirmDialog } from '@/composables/useConfirmDialog';
 
 const toast = useToast();
 
@@ -175,6 +202,7 @@ const teamMembers = ref([]);
 // Recap modal
 const showRecapModal = ref(false);
 const savingCampaign = ref(false);
+const deleteDialog = useConfirmDialog();
 
 // Data for selectors
 const clients = computed(() => clientStore.clients);
@@ -363,6 +391,21 @@ async function saveCampaign() {
     toast.error(error.value);
   } finally {
     savingCampaign.value = false;
+  }
+}
+
+async function confirmDelete() {
+  const confirmed = await deleteDialog.requestConfirm(campaign.value);
+  if (confirmed) {
+    try {
+      await campaignStore.deleteCampaign(campaign.value.id);
+      toast.success('Campaign deleted');
+      router.push('/campaigns');
+    } catch (err) {
+      toast.error('Failed to delete campaign');
+    } finally {
+      deleteDialog.done();
+    }
   }
 }
 

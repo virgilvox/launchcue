@@ -60,39 +60,65 @@
 
     <!-- Campaign List/Grid -->
     <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <router-link 
-            v-for="campaign in filteredCampaigns" 
+        <div
+            v-for="campaign in filteredCampaigns"
             :key="campaign.id"
-            :to="`/campaigns/${campaign.id}`" 
-            class="card group"
-         >
+            class="card group flex flex-col"
+        >
             <div class="flex justify-between items-start mb-2">
-                <h3 class="text-lg font-semibold text-[var(--text-primary)] group-hover:text-[var(--accent-primary)]">{{ campaign.title }}</h3>
-                <span :class="statusBadgeClass(campaign.status)">{{ campaign.status || 'draft' }}</span>
+                <router-link :to="`/campaigns/${campaign.id}`" class="flex-1 mr-2">
+                    <h3 class="text-lg font-semibold text-[var(--text-primary)] group-hover:text-[var(--accent-primary)]">{{ campaign.title }}</h3>
+                </router-link>
+                <div class="flex items-center gap-2 flex-shrink-0">
+                    <span :class="statusBadgeClass(campaign.status)">{{ campaign.status || 'draft' }}</span>
+                    <!-- Actions Menu -->
+                    <div v-if="authStore.canEdit" class="relative">
+                        <button @click.stop="toggleMenu(campaign.id)" class="text-[var(--text-secondary)] hover:text-[var(--text-primary)] p-1">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M10 6a2 2 0 110-4 2 2 0 010 4zm0 6a2 2 0 110-4 2 2 0 010 4zm0 6a2 2 0 110-4 2 2 0 010 4z" /></svg>
+                        </button>
+                        <div v-if="activeMenu === campaign.id" @click.stop class="absolute right-0 mt-1 w-40 bg-[var(--surface-elevated)] border-2 border-[var(--border-light)] z-20 py-1">
+                            <router-link :to="`/campaigns/${campaign.id}`" class="context-menu-item">Edit Campaign</router-link>
+                            <button @click="confirmDeleteCampaign(campaign)" class="context-menu-item text-[var(--danger)]">Delete Campaign</button>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <p class="text-sm text-[var(--text-secondary)] mb-3 line-clamp-2">{{ campaign.description }}</p>
-            <div class="text-xs text-[var(--text-secondary)]">
-                 <span v-if="campaign.clientId" class="inline-flex items-center gap-1"><ClientColorDot :color="getClientColorId(campaign.clientId)" /> Client: {{ getClientName(campaign.clientId) }}</span>
-                 <span v-if="campaign.clientId && campaign.projectId"> • </span>
-                 <span v-if="campaign.projectId">Project: {{ getProjectName(campaign.projectId) }}</span>
-             </div>
-            <div v-if="campaign.budget != null" class="mt-2 text-sm font-medium text-[var(--text-primary)]">
-                Budget: ${{ campaign.budget.toLocaleString() }}
-            </div>
-            <div class="mt-3 pt-3 border-t border-[var(--border-light)] text-xs text-[var(--text-secondary)]">
-                Dates: {{ formatShortDate(campaign.startDate) || 'N/A' }} - {{ formatShortDate(campaign.endDate) || 'N/A' }}
-            </div>
-             <div v-if="campaign.types && campaign.types.length > 0" class="mt-2 flex flex-wrap gap-1">
-                 <span v-for="type in campaign.types" :key="type" class="tag">{{ type }}</span>
-            </div>
-        </router-link>
+            <router-link :to="`/campaigns/${campaign.id}`" class="flex-1">
+                <p class="text-sm text-[var(--text-secondary)] mb-3 line-clamp-2">{{ campaign.description }}</p>
+                <div class="text-xs text-[var(--text-secondary)]">
+                     <span v-if="campaign.clientId" class="inline-flex items-center gap-1"><ClientColorDot :color="getClientColorId(campaign.clientId)" /> Client: {{ getClientName(campaign.clientId) }}</span>
+                     <span v-if="campaign.clientId && campaign.projectId"> • </span>
+                     <span v-if="campaign.projectId">Project: {{ getProjectName(campaign.projectId) }}</span>
+                 </div>
+                <div v-if="campaign.budget != null" class="mt-2 text-sm font-medium text-[var(--text-primary)]">
+                    Budget: ${{ campaign.budget.toLocaleString() }}
+                </div>
+                <div class="mt-3 pt-3 border-t border-[var(--border-light)] text-xs text-[var(--text-secondary)]">
+                    Dates: {{ formatShortDate(campaign.startDate) || 'N/A' }} - {{ formatShortDate(campaign.endDate) || 'N/A' }}
+                </div>
+                 <div v-if="campaign.types && campaign.types.length > 0" class="mt-2 flex flex-wrap gap-1">
+                     <span v-for="type in campaign.types" :key="type" class="tag">{{ type }}</span>
+                </div>
+            </router-link>
+        </div>
     </div>
+
+    <!-- Delete Confirmation Modal -->
+    <Modal v-model="showDeleteModal" title="Confirm Delete Campaign">
+        <div v-if="campaignToDelete" class="space-y-4">
+            <p class="text-[var(--text-primary)]">Are you sure you want to delete "<strong>{{ campaignToDelete.title }}</strong>"? This action cannot be undone.</p>
+            <div class="form-actions">
+                <button type="button" @click="closeDeleteModal" class="btn btn-outline">Cancel</button>
+                <button type="button" @click="deleteCampaign" class="btn btn-danger" :disabled="deleting">{{ deleting ? 'Deleting...' : 'Delete Campaign' }}</button>
+            </div>
+        </div>
+    </Modal>
 
   </PageContainer>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue';
+import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue';
 import { useCampaignStore } from '@/stores/campaign';
 import { useClientStore } from '@/stores/client';
 import { useProjectStore } from '@/stores/project';
@@ -104,6 +130,7 @@ import PageHeader from '@/components/ui/PageHeader.vue';
 import LoadingSpinner from '@/components/LoadingSpinner.vue';
 import ClientColorDot from '@/components/ui/ClientColorDot.vue';
 import EmptyState from '@/components/ui/EmptyState.vue';
+import Modal from '@/components/Modal.vue';
 import { MegaphoneIcon } from '@heroicons/vue/24/outline';
 
 import { useAuthStore } from '@/stores/auth';
@@ -117,6 +144,10 @@ const { getClientName, getProjectName, getClientColorId } = useEntityLookup();
 const campaigns = ref([]);
 const loading = ref(false);
 const error = ref(null);
+const activeMenu = ref(null);
+const showDeleteModal = ref(false);
+const campaignToDelete = ref(null);
+const deleting = ref(false);
 const filters = ref({
     clientId: null,
     projectId: null,
@@ -186,6 +217,42 @@ function clearFilters() {
     filters.value = { clientId: null, projectId: null, status: null };
 }
 
+function toggleMenu(campaignId) {
+    activeMenu.value = activeMenu.value === campaignId ? null : campaignId;
+}
+
+function confirmDeleteCampaign(campaign) {
+    campaignToDelete.value = campaign;
+    activeMenu.value = null;
+    showDeleteModal.value = true;
+}
+
+function closeDeleteModal() {
+    showDeleteModal.value = false;
+    campaignToDelete.value = null;
+}
+
+async function deleteCampaign() {
+    if (!campaignToDelete.value) return;
+    deleting.value = true;
+    try {
+        await campaignStore.deleteCampaign(campaignToDelete.value.id);
+        campaigns.value = campaigns.value.filter(c => c.id !== campaignToDelete.value.id);
+        toast.success('Campaign deleted');
+        closeDeleteModal();
+    } catch (err) {
+        toast.error('Failed to delete campaign. Please try again.');
+    } finally {
+        deleting.value = false;
+    }
+}
+
+function handleOutsideClick(event) {
+    if (activeMenu.value && !event.target.closest('.relative')) {
+        activeMenu.value = null;
+    }
+}
+
 function statusBadgeClass(status) {
     const base = 'inline-block px-2 py-0.5 text-xs font-medium capitalize whitespace-nowrap border-2';
     switch (status) {
@@ -198,6 +265,11 @@ function statusBadgeClass(status) {
 
 onMounted(() => {
     loadInitialData();
+    document.addEventListener('click', handleOutsideClick);
+});
+
+onBeforeUnmount(() => {
+    document.removeEventListener('click', handleOutsideClick);
 });
 </script>
 
@@ -209,5 +281,22 @@ onMounted(() => {
     font-size: 0.75rem;
     color: var(--text-secondary);
     font-family: 'JetBrains Mono', monospace;
+}
+.context-menu-item {
+    display: block;
+    width: 100%;
+    text-align: left;
+    padding: 0.5rem 1rem;
+    font-size: 0.8125rem;
+    color: var(--text-primary);
+}
+.context-menu-item:hover {
+    background-color: var(--surface);
+}
+.form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    margin-top: 1rem;
 }
 </style> 
