@@ -1,11 +1,21 @@
 import { Router } from 'express'
 import nodemailer from 'nodemailer'
+import { z } from 'zod'
 import { requireAuth, type AuthenticatedRequest } from '../middleware/auth.js'
+import { validateBody } from '../middleware/validate.js'
 import { getSupabase } from '../supabase.js'
 
 export const emailRouter = Router()
 
 emailRouter.use(requireAuth)
+
+const inviteSchema = z.object({
+  email: z.string().email('Invalid email address'),
+  name: z.string().max(200).optional(),
+  inviteUrl: z.string().url('Invalid invite URL'),
+  teamName: z.string().max(200).optional(),
+  type: z.enum(['team', 'client']).default('team'),
+})
 
 function getTransporter() {
   return nodemailer.createTransport({
@@ -22,14 +32,9 @@ function getTransporter() {
 /**
  * POST /api/email/invite — Send team or client invitation email
  */
-emailRouter.post('/invite', async (req, res) => {
+emailRouter.post('/invite', validateBody(inviteSchema), async (req, res) => {
   const { email, name, inviteUrl, teamName, type } = req.body
   const { email: senderEmail, authId, teamId } = (req as AuthenticatedRequest).user
-
-  if (!email || !inviteUrl) {
-    res.status(400).json({ error: 'Missing email or inviteUrl' })
-    return
-  }
 
   // Verify sender has admin/owner role in the team
   if (!teamId) {
@@ -61,14 +66,7 @@ emailRouter.post('/invite', async (req, res) => {
     return
   }
 
-  // Validate email format
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-  if (!emailRegex.test(email)) {
-    res.status(400).json({ error: 'Invalid email address format' })
-    return
-  }
-
-  // Validate inviteUrl is a valid HTTPS URL
+  // Validate inviteUrl is HTTPS (Zod already validated URL format)
   try {
     const parsed = new URL(inviteUrl)
     if (parsed.protocol !== 'https:' && !(process.env.NODE_ENV === 'development' && parsed.protocol === 'http:')) {

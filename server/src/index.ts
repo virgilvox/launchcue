@@ -43,17 +43,26 @@ app.use((_req: express.Request, res: express.Response, next: express.NextFunctio
 // Global rate limit
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100,
+  max: 60,
   standardHeaders: true,
   legacyHeaders: false,
 })
 app.use(limiter)
 
+// Stricter rate limit for email endpoints (invitation abuse prevention)
+const emailLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many email requests. Please try again later.' },
+})
+
 // ─── Routes ───
 
 app.use('/ai', aiRouter)
 app.use('/webhooks', webhookRouter)
-app.use('/email', emailRouter)
+app.use('/email', emailLimiter, emailRouter)
 
 // Health check with DB ping
 app.get('/health', async (_req, res) => {

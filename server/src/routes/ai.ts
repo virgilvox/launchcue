@@ -1,6 +1,8 @@
 import { Router, type Request } from 'express'
 import rateLimit from 'express-rate-limit'
+import { z } from 'zod'
 import { requireAuth, type AuthenticatedRequest } from '../middleware/auth.js'
+import { validateBody } from '../middleware/validate.js'
 
 export const aiRouter = Router()
 
@@ -17,11 +19,20 @@ const aiUserLimiter = rateLimit({
 })
 aiRouter.use(aiUserLimiter)
 
+const aiProcessSchema = z.object({
+  prompt: z.string().min(1, 'Prompt is required').max(50000, 'Prompt exceeds 50,000 character limit'),
+  processingDetails: z.object({
+    type: z.enum(['braindump', 'task', 'project', 'note', 'general']).default('general'),
+    context: z.string().max(5000).optional(),
+  }).optional(),
+  max_tokens: z.number().int().min(1).max(4096).default(1024),
+})
+
 /**
  * POST /api/ai/process — Brain dump AI processing
  * Delegates to Anthropic API (server-side key).
  */
-aiRouter.post('/process', async (req, res) => {
+aiRouter.post('/process', validateBody(aiProcessSchema), async (req, res) => {
   const apiKey = process.env.ANTHROPIC_API_KEY
   if (!apiKey) {
     res.status(500).json({ error: 'AI service not configured' })
@@ -29,31 +40,14 @@ aiRouter.post('/process', async (req, res) => {
   }
 
   const { prompt, processingDetails, max_tokens } = req.body
-
-  if (!prompt || typeof prompt !== 'string') {
-    res.status(400).json({ error: 'Missing or invalid prompt' })
-    return
-  }
-
-  // Input validation
-  if (prompt.length > 50000) {
-    res.status(400).json({ error: 'Prompt exceeds maximum length of 50,000 characters' })
-    return
-  }
-
-  // Validate processingDetails.type against allowlist
-  const allowedTypes = ['braindump', 'task', 'project', 'note', 'general']
-  const processType = allowedTypes.includes(processingDetails?.type) ? processingDetails.type : 'general'
-
-  const clampedMaxTokens = Math.min(Math.max(Number(max_tokens) || 1024, 1), 4096)
+  const processType = processingDetails?.type || 'general'
 
   // Build messages — user-provided context goes in a separate user message, not system prompt
   const messages: Array<{ role: string; content: string }> = []
   if (processingDetails?.context) {
-    const sanitizedContext = String(processingDetails.context).slice(0, 5000)
     messages.push({
       role: 'user',
-      content: `Context for processing (type: ${processType}):\n${sanitizedContext}`,
+      content: `Context for processing (type: ${processType}):\n${processingDetails.context}`,
     })
   }
   messages.push({
@@ -71,7 +65,7 @@ aiRouter.post('/process', async (req, res) => {
       },
       body: JSON.stringify({
         model: 'claude-sonnet-4-6',
-        max_tokens: clampedMaxTokens,
+        max_tokens,
         messages,
         system: 'You are a DevRel assistant helping organize brain dumps into actionable items.',
       }),
