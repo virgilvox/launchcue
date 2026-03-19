@@ -39,7 +39,7 @@ src/
     team/           # Team management (members, invites, roles)
   components/       # Shared UI components
     ui/             # Design system primitives (Modal, PageHeader, EmptyState, etc.)
-  composables/      # Vue composables (useModalState, useEntityLookup, useLoadingCounter, useUnsavedChanges, etc.)
+  composables/      # Vue composables (9: useModalState, useEntityLookup, useLoadingCounter, useUnsavedChanges, useConfirmDialog, useTooltips, useResponsive, useKeyboardShortcuts, usePermissions)
   constants/        # Static data (clientColors.ts)
   layouts/          # DefaultLayout.vue, ClientLayout.vue
   pages/            # Auth + portal pages (non-module routes)
@@ -115,7 +115,7 @@ server/tests/       # Express API route tests (vitest + supertest)
 
 ### UX Polish
 - **Unsaved changes warning**: `useUnsavedChanges` composable (dirty tracking + route guard + beforeunload) on InvoiceBuilder, ScopeBuilder, ProjectForm
-- **Loading states**: LoadingSpinner component on all pages (including portal pages)
+- **Loading states**: SkeletonLoader on list pages (Tasks, Projects, Clients, Notes); LoadingSpinner on detail/modal/auth pages
 - **Empty states**: EmptyState component with icons and action buttons on all list pages
 - **Error handling**: Toast notifications on mutation errors only; stores never toast on fetch failures (pages decide)
 - **Toast discipline**: All Promise.allSettled loops use `results.some()` for a single toast max, not forEach
@@ -188,8 +188,9 @@ server/tests/       # Express API route tests (vitest + supertest)
 - No dashboard widget customization/drag-and-drop
 - No recent items in search
 - No form validation library (field-level real-time feedback)
-- No skeleton loaders (only spinners)
-- No viewer role UI feedback (buttons not visually disabled for read-only users)
+- No dark mode persistence (toggle works in-session only, resets on page reload)
+- ~~Skeleton loaders~~: Built — Tasks, Projects, Clients, Notes use SkeletonLoader; other pages still use LoadingSpinner
+- ~~Viewer role UI feedback~~: Built — `usePermissions` composable disables action buttons for viewers with tooltip
 - ~~App.vue hex values~~: Fixed — now uses `var(--page-bg)` and `var(--page-text)`
 
 ---
@@ -200,7 +201,7 @@ server/tests/       # Express API route tests (vitest + supertest)
 |----------|-------|
 | Feature modules | 15 |
 | Vue files (total) | 107 (21 module pages + 2 standalone pages + 6 auth + 3 portal + 75 components) |
-| Composables | 8 |
+| Composables | 9 (+ usePermissions) |
 | Pinia stores | 18 (all TS, all using repository pattern) |
 | Supabase adapter files | 25 (20 repository + 1 auth + 1 search + 1 AI + base class + index + client) |
 | Express API endpoints | 3 (AI, webhooks, email) |
@@ -495,6 +496,11 @@ Full 7-stream audit (architecture, security, UI flows, data model, tests, compet
 - `014_client_scope_approval.sql` — revision_notes column + client RLS policy for scope approval
 - `015_views_security_invoker.sql` — security_invoker on all active_* views (requires PG 15+)
 - `016_validate_invoice_totals.sql` — trigger to validate invoice totals from line_items
+
+**UX Polish:**
+- Viewer role feedback: `usePermissions` composable with `disabledProps()` helper; action buttons on Tasks, Projects, Clients, Notes, Dashboard now disabled (not hidden) for viewers with tooltip
+- Skeleton loaders: `SkeletonLoader.vue` component with row/card/text types, custom shimmer animation; replaces LoadingSpinner on Tasks (row), Projects/Clients/Notes (card)
+- Dark mode: Fixed sidebar active state (`bg-white/10` → `--sidebar-active-bg` CSS variable); extracted hardcoded calendar event colors from 4 components into shared `calendarColors.ts` utility
 
 **Manual Action Required:**
 - Revoke Anthropic API key `sk-ant-api03-XAR84sW9...` from Anthropic dashboard
