@@ -44,23 +44,24 @@
   </div>
 </template>
 
-<script setup>
-defineProps({
-  title: {
-    type: String,
-    required: true
-  },
-  subtitle: {
-    type: String,
-    default: ''
-  },
-  backTo: {
-    type: [String, Object],
-    default: null
-  },
-  breadcrumbs: {
-    type: Array,
-    default: null
-  }
-});
+<script setup lang="ts">
+import type { RouteLocationRaw } from 'vue-router'
+
+interface Breadcrumb {
+  label: string
+  to?: RouteLocationRaw
+}
+
+interface Props {
+  title: string
+  subtitle?: string
+  backTo?: RouteLocationRaw | null
+  breadcrumbs?: Breadcrumb[] | null
+}
+
+withDefaults(defineProps<Props>(), {
+  subtitle: '',
+  backTo: null,
+  breadcrumbs: null,
+})
 </script>

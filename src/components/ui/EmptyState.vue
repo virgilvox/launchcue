@@ -18,27 +18,24 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
+import type { Component } from 'vue'
 import { PlusIcon } from '@heroicons/vue/24/outline'
 
-defineProps({
-  icon: {
-    type: [Object, Function],
-    default: null
-  },
-  title: {
-    type: String,
-    required: true
-  },
-  description: {
-    type: String,
-    default: ''
-  },
-  actionLabel: {
-    type: String,
-    default: ''
-  }
+interface Props {
+  icon?: Component | null
+  title: string
+  description?: string
+  actionLabel?: string
+}
+
+withDefaults(defineProps<Props>(), {
+  icon: null,
+  description: '',
+  actionLabel: '',
 })
 
-defineEmits(['action'])
+defineEmits<{
+  (e: 'action'): void
+}>()
 </script>

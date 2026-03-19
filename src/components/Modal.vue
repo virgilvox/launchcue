@@ -41,41 +41,39 @@
   </Teleport>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { computed, ref, watch, nextTick } from 'vue'
 import { XMarkIcon } from '@heroicons/vue/24/outline'
 
-const props = defineProps({
-  modelValue: {
-    type: Boolean,
-    default: false
-  },
-  title: {
-    type: String,
-    default: ''
-  },
-  closeOnBackdrop: {
-    type: Boolean,
-    default: true
-  },
-  size: {
-    type: String,
-    default: 'md',
-    validator: (value) => ['sm', 'md', 'lg', 'xl'].includes(value)
-  }
+type ModalSize = 'sm' | 'md' | 'lg' | 'xl'
+
+interface Props {
+  modelValue?: boolean
+  title?: string
+  closeOnBackdrop?: boolean
+  size?: ModalSize
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  modelValue: false,
+  title: '',
+  closeOnBackdrop: true,
+  size: 'md',
 })
 
-const emit = defineEmits(['update:modelValue'])
+const emit = defineEmits<{
+  (e: 'update:modelValue', value: boolean): void
+}>()
 
-const modalRef = ref(null)
-const previousActiveElement = ref(null)
+const modalRef = ref<HTMLElement | null>(null)
+const previousActiveElement = ref<HTMLElement | null>(null)
 
 const titleId = computed(() => `modal-title-${Math.random().toString(36).slice(2, 9)}`)
 
 // Save the triggering element before the transition starts (not after it ends)
 watch(() => props.modelValue, (newVal) => {
   if (newVal) {
-    previousActiveElement.value = document.activeElement
+    previousActiveElement.value = document.activeElement as HTMLElement | null
   }
 })
 
@@ -86,11 +84,11 @@ const sizeClass = computed(() => ({
   'sm:max-w-4xl': props.size === 'xl',
 }))
 
-const close = () => {
+const close = (): void => {
   emit('update:modelValue', false)
 }
 
-const onAfterEnter = () => {
+const onAfterEnter = (): void => {
   nextTick(() => {
     const firstFocusable = modalRef.value?.querySelector(
       'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
@@ -103,14 +101,14 @@ const onAfterEnter = () => {
   })
 }
 
-const onAfterLeave = () => {
+const onAfterLeave = (): void => {
   if (previousActiveElement.value && typeof previousActiveElement.value.focus === 'function') {
     previousActiveElement.value.focus()
   }
   previousActiveElement.value = null
 }
 
-const onKeydown = (e) => {
+const onKeydown = (e: KeyboardEvent): void => {
   if (e.key === 'Escape') {
     close()
     return
