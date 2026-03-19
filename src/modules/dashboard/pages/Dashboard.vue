@@ -8,21 +8,21 @@
 
     <!-- Quick Actions Bar -->
     <div class="flex flex-wrap gap-2 sm:gap-3 mb-6 sm:mb-8">
-      <router-link to="/tasks" class="btn btn-sm btn-outline">
+      <button v-bind="disabledProps(canEdit)" @click="$router.push('/tasks')" class="btn btn-sm btn-outline">
         <PlusIcon class="h-4 w-4 mr-1" /> TASK
-      </router-link>
-      <router-link to="/calendar" class="btn btn-sm btn-outline">
+      </button>
+      <button v-bind="disabledProps(canEdit)" @click="$router.push('/calendar')" class="btn btn-sm btn-outline">
         <CalendarIcon class="h-4 w-4 mr-1" /> EVENT
-      </router-link>
-      <router-link to="/notes" class="btn btn-sm btn-outline">
+      </button>
+      <button v-bind="disabledProps(canEdit)" @click="$router.push('/notes')" class="btn btn-sm btn-outline">
         <DocumentTextIcon class="h-4 w-4 mr-1" /> NOTE
-      </router-link>
-      <router-link to="/clients" class="btn btn-sm btn-outline">
+      </button>
+      <button v-bind="disabledProps(canEdit)" @click="$router.push('/clients')" class="btn btn-sm btn-outline">
         <UsersIcon class="h-4 w-4 mr-1" /> CLIENT
-      </router-link>
-      <router-link to="/brain-dump" class="btn btn-sm bg-[var(--accent-hot)] text-white border-[var(--accent-hot)]">
+      </button>
+      <button v-bind="disabledProps(canEdit)" @click="$router.push('/brain-dump')" class="btn btn-sm bg-[var(--accent-hot)] text-white border-[var(--accent-hot)]">
         <LightBulbIcon class="h-4 w-4 mr-1" /> BRAIN DUMP
-      </router-link>
+      </button>
     </div>
 
     <!-- Getting Started Checklist -->
@@ -232,6 +232,10 @@ const authStore = useAuthStore();
 const brainDumpStore = useBrainDumpStore();
 const toast = useToast();
 const { getProjectName } = useEntityLookup();
+
+// Permissions
+import { usePermissions } from '@/composables/usePermissions';
+const { canEdit, disabledProps } = usePermissions();
 
 // Invoice store loaded lazily in onMounted to avoid top-level await
 const invoiceStoreRef = ref(null);

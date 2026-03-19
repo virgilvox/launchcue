@@ -2,7 +2,7 @@
   <PageContainer>
     <PageHeader title="Projects">
       <template #actions>
-        <button v-if="authStore.canEdit" @click="openAddProjectModal" class="btn btn-primary">
+        <button v-bind="disabledProps(canEdit)" @click="openAddProjectModal" class="btn btn-primary">
           <PlusIcon class="h-4 w-4 mr-2" />
           ADD PROJECT
         </button>
@@ -10,8 +10,8 @@
     </PageHeader>
     
     <!-- Loading -->
-    <div v-if="loading" class="flex justify-center py-12">
-      <LoadingSpinner text="Loading projects..." />
+    <div v-if="loading" class="py-6">
+      <SkeletonLoader type="card" :count="6" />
     </div>
     
     <!-- Empty State -->
@@ -79,9 +79,9 @@
               
               <div v-if="activeMenu === project.id" class="absolute right-0 mt-1 w-48 bg-[var(--surface-elevated)] border-2 border-[var(--border)] shadow-brutal-sm z-10 py-1">
                 <button
-                  v-if="authStore.canEdit"
+                  v-bind="disabledProps(canEdit)"
                   @click="openEditProjectModal(project)"
-                  class="block w-full text-left px-4 py-2 text-sm text-[var(--text-primary)] hover:bg-[var(--surface)]"
+                  class="block w-full text-left px-4 py-2 text-sm text-[var(--text-primary)] hover:bg-[var(--surface)] disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Edit Project
                 </button>
@@ -92,9 +92,9 @@
                   View Details
                 </router-link>
                 <button
-                  v-if="authStore.canEdit"
+                  v-bind="disabledProps(canEdit)"
                   @click="confirmDeleteProject(project)"
-                  class="block w-full text-left px-4 py-2 text-sm text-[var(--danger)] hover:bg-[var(--accent-primary-wash)]"
+                  class="block w-full text-left px-4 py-2 text-sm text-[var(--danger)] hover:bg-[var(--accent-primary-wash)] disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Delete Project
                 </button>
@@ -271,15 +271,17 @@ import { PlusIcon, BriefcaseIcon, EllipsisVerticalIcon } from '@heroicons/vue/24
 import Modal from '@/components/Modal.vue';
 import PageContainer from '@/components/ui/PageContainer.vue';
 import PageHeader from '@/components/ui/PageHeader.vue';
-import LoadingSpinner from '@/components/LoadingSpinner.vue';
+import SkeletonLoader from '@/components/ui/SkeletonLoader.vue';
 import EmptyState from '@/components/ui/EmptyState.vue';
 import ClientColorDot from '@/components/ui/ClientColorDot.vue';
 
 import { useAuthStore } from '@/stores/auth';
+import { usePermissions } from '@/composables/usePermissions';
 const projectStore = useProjectStore();
 const clientStore = useClientStore();
 const toast = useToast();
 const authStore = useAuthStore();
+const { canEdit, disabledProps } = usePermissions();
 const { getClientName, getClientColorId } = useEntityLookup();
 
 const loading = ref(false);

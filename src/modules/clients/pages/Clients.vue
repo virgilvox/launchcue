@@ -10,7 +10,7 @@
         >
           {{ migratingContacts ? 'FIXING...' : 'FIX CONTACTS' }}
         </button>
-        <button v-if="authStore.canEdit" @click="openAddClientModal" class="btn btn-primary">
+        <button v-bind="disabledProps(canEdit)" @click="openAddClientModal" class="btn btn-primary">
           <PlusIcon class="h-4 w-4 mr-2" />
           ADD CLIENT
         </button>
@@ -26,8 +26,8 @@
     </div>
     
     <!-- Loading -->
-    <div v-if="loading" class="flex justify-center py-12">
-      <LoadingSpinner text="Loading clients..." />
+    <div v-if="loading" class="py-6">
+      <SkeletonLoader type="card" :count="6" />
     </div>
     
     <!-- Empty State -->
@@ -59,8 +59,8 @@
                 <EllipsisVerticalIcon class="h-5 w-5" />
               </button>
               <div v-if="activeMenu === client.id" class="absolute right-0 mt-1 w-48 bg-[var(--surface-elevated)] border-2 border-[var(--border)] shadow-brutal-sm z-20 py-1" @click.stop>
-                <button v-if="authStore.canEdit" @click.stop.prevent="editClient(client)" class="block w-full text-left px-4 py-2 text-sm text-[var(--text-primary)] hover:bg-[var(--surface)]">Edit Client</button>
-                <button v-if="authStore.canEdit" @click.stop.prevent="confirmDeleteClient(client)" class="block w-full text-left px-4 py-2 text-sm text-[var(--danger)] hover:bg-[var(--accent-primary-wash)]">Delete Client</button>
+                <button v-bind="disabledProps(canEdit)" @click.stop.prevent="editClient(client)" class="block w-full text-left px-4 py-2 text-sm text-[var(--text-primary)] hover:bg-[var(--surface)] disabled:opacity-50 disabled:cursor-not-allowed">Edit Client</button>
+                <button v-bind="disabledProps(canEdit)" @click.stop.prevent="confirmDeleteClient(client)" class="block w-full text-left px-4 py-2 text-sm text-[var(--danger)] hover:bg-[var(--accent-primary-wash)] disabled:opacity-50 disabled:cursor-not-allowed">Delete Client</button>
               </div>
             </div>
           </div>
@@ -175,16 +175,18 @@ import { PlusIcon, UsersIcon, EllipsisVerticalIcon, XMarkIcon } from '@heroicons
 import Modal from '@/components/Modal.vue';
 import PageContainer from '@/components/ui/PageContainer.vue';
 import PageHeader from '@/components/ui/PageHeader.vue';
-import LoadingSpinner from '@/components/LoadingSpinner.vue';
+import SkeletonLoader from '@/components/ui/SkeletonLoader.vue';
 import EmptyState from '@/components/ui/EmptyState.vue';
 import ClientColorPicker from '@/components/ui/ClientColorPicker.vue';
 import { getNextClientColor, getClientColor } from '@/constants/clientColors';
 
 import { useAuthStore } from '@/stores/auth';
+import { usePermissions } from '@/composables/usePermissions';
 const toast = useToast();
 const clientStore = useClientStore();
 const projectStore = useProjectStore();
 const authStore = useAuthStore();
+const { canEdit, disabledProps } = usePermissions();
 
 const loading = ref(false);
 const error = ref(null);

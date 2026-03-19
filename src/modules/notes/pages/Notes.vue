@@ -2,7 +2,7 @@
   <PageContainer>
     <PageHeader title="Notes">
       <template #actions>
-        <button v-if="authStore.canEdit" @click="openAddNoteModal" class="btn btn-primary">
+        <button v-bind="disabledProps(canEdit)" @click="openAddNoteModal" class="btn btn-primary">
           <PlusIcon class="h-4 w-4 mr-2" />
           ADD NOTE
         </button>
@@ -47,8 +47,8 @@
       </div>
     </div>
 
-    <div v-if="loading" class="text-center py-10">
-      <LoadingSpinner text="Loading notes..." />
+    <div v-if="loading" class="py-6">
+      <SkeletonLoader type="card" :count="6" />
     </div>
 
     <div v-else-if="error" class="text-center py-10">
@@ -83,8 +83,8 @@
                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M10 6a2 2 0 110-4 2 2 0 010 4zm0 6a2 2 0 110-4 2 2 0 010 4zm0 6a2 2 0 110-4 2 2 0 010 4z" /></svg>
             </button>
             <div v-if="activeMenu === note.id" @click.stop class="absolute right-0 mt-1 w-40 bg-[var(--surface-elevated)] border-2 border-[var(--border-light)] z-20 py-1">
-              <button v-if="authStore.canEdit" @click="editNote(note)" class="context-menu-item">Edit Note</button>
-              <button v-if="authStore.canEdit" @click="confirmDeleteNote(note)" class="context-menu-item text-[var(--danger)]">Delete Note</button>
+              <button v-bind="disabledProps(canEdit)" @click="editNote(note)" class="context-menu-item disabled:opacity-50 disabled:cursor-not-allowed">Edit Note</button>
+              <button v-bind="disabledProps(canEdit)" @click="confirmDeleteNote(note)" class="context-menu-item text-[var(--danger)] disabled:opacity-50 disabled:cursor-not-allowed">Delete Note</button>
             </div>
           </div>
         </div>
@@ -202,7 +202,7 @@ import { useToast } from 'vue-toastification';
 import { formatDate } from '@/utils/dateFormatter';
 import { useEntityLookup } from '@/composables/useEntityLookup';
 import Modal from '@/components/Modal.vue';
-import LoadingSpinner from '@/components/LoadingSpinner.vue';
+import SkeletonLoader from '@/components/ui/SkeletonLoader.vue';
 import RichTextEditor from '@/components/ui/RichTextEditor.vue';
 import PageContainer from '@/components/ui/PageContainer.vue';
 import PageHeader from '@/components/ui/PageHeader.vue';
@@ -211,6 +211,7 @@ import { PlusIcon, DocumentTextIcon } from '@heroicons/vue/24/outline';
 import PaginationControls from '@/components/ui/Pagination.vue';
 
 import { useAuthStore } from '@/stores/auth';
+import { usePermissions } from '@/composables/usePermissions';
 import { useUnsavedChanges } from '@/composables/useUnsavedChanges';
 const route = useRoute();
 const noteStore = useNoteStore();
@@ -218,6 +219,7 @@ const clientStore = useClientStore();
 const projectStore = useProjectStore();
 const toast = useToast();
 const authStore = useAuthStore();
+const { canEdit, disabledProps } = usePermissions();
 const { getClientName, getProjectName } = useEntityLookup();
 
 const loading = ref(false);

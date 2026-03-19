@@ -32,7 +32,7 @@
           </button>
         </div>
 
-        <button v-if="authStore.canEdit" @click="openNewTaskModal" class="btn btn-primary">
+        <button v-bind="disabledProps(canEdit)" @click="openNewTaskModal" class="btn btn-primary">
           <PlusIcon class="h-5 w-5 mr-1" />
           Add Task
         </button>
@@ -46,8 +46,8 @@
     <TaskFilters v-model="filters" />
 
     <!-- Loading State -->
-    <div v-if="isLoading && tasks.length === 0" class="flex justify-center my-12">
-      <LoadingSpinner text="Loading tasks..." />
+    <div v-if="isLoading && tasks.length === 0" class="my-6">
+      <SkeletonLoader type="row" :count="6" />
     </div>
 
     <!-- Task List View -->
@@ -151,7 +151,7 @@ import {
 import PageContainer from '@/components/ui/PageContainer.vue'
 import PageHeader from '@/components/ui/PageHeader.vue'
 import Modal from '@/components/Modal.vue'
-import LoadingSpinner from '@/components/LoadingSpinner.vue'
+import SkeletonLoader from '@/components/ui/SkeletonLoader.vue'
 import TaskFilters from '@/modules/tasks/components/TaskFilters.vue'
 import TaskList from '@/modules/tasks/components/TaskList.vue'
 import TaskForm from '@/modules/tasks/components/TaskForm.vue'
@@ -167,9 +167,11 @@ const clientStore = useClientStore()
 const teamStore = useTeamStore()
 const toast = useToast()
 
-// Auth
+// Auth & Permissions
 import { useAuthStore } from '@/stores/auth'
+import { usePermissions } from '@/composables/usePermissions'
 const authStore = useAuthStore()
+const { canEdit, disabledProps } = usePermissions()
 
 // State
 const viewMode = ref('list')
