@@ -190,6 +190,7 @@ import { useNotificationStore } from '../stores/notification'
 import { useToast } from 'vue-toastification';
 import { MagnifyingGlassIcon, XMarkIcon, PlusIcon } from '@heroicons/vue/24/outline'
 import { useKeyboardShortcuts } from '@/composables/useKeyboardShortcuts'
+import { hasUnsavedChanges } from '@/composables/useUnsavedChanges'
 
 const authStore = useAuthStore()
 const notificationStore = useNotificationStore()
@@ -250,6 +251,11 @@ onUnmounted(() => {
 
 const handleTeamSwitch = async (teamId) => {
     if (!teamId || teamId === authStore.currentTeam?.id) return;
+    // Warn if any form on the page has unsaved changes
+    if (hasUnsavedChanges()) {
+        const confirmed = window.confirm('You have unsaved changes. Switch team anyway?');
+        if (!confirmed) return;
+    }
     isSwitchingTeam.value = true;
     try {
         await authStore.switchTeam(teamId);
