@@ -115,6 +115,7 @@ export interface Project extends Timestamped, SoftDeletable {
   tags: string[]
   budget?: number | null
   goals?: string[]
+  assignedMembers?: string[]
   ownerId?: string
   teamId: string
   createdBy: string

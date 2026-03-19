@@ -95,6 +95,7 @@ export interface ProjectCreateRequest {
   tags?: string[]
   budget?: number | null
   goals?: string[]
+  assignedMembers?: string[]
 }
 
 export interface ProjectUpdateRequest extends Partial<ProjectCreateRequest> {

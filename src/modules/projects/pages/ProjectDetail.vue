@@ -71,7 +71,7 @@
         <!-- Sidebar -->
         <div class="space-y-6">
           <ProjectTeamSection
-            :members="project.teamMembers"
+            :members="assignedTeamMembers"
             @add-member="openAddTeamMemberModal"
             @remove-member="removeTeamMember"
           />
@@ -155,7 +155,7 @@
               class="input"
             >
               <option value="">Unassigned</option>
-              <option v-for="member in project.teamMembers" :key="member.id" :value="member.id">
+              <option v-for="member in assignedTeamMembers" :key="member.id" :value="member.id">
                 {{ member.name }}
               </option>
             </select>
@@ -188,38 +188,25 @@
 
         <form @submit.prevent="saveTeamMember">
           <div class="mb-4">
-            <label for="memberName" class="label">Name <span class="text-[var(--danger)]">*</span></label>
-            <input
-              id="memberName"
-              v-model="teamMemberModal.formData.value.name"
-              type="text"
+            <label for="memberSelect" class="label">Team Member <span class="text-[var(--danger)]">*</span></label>
+            <select
+              id="memberSelect"
+              v-model="teamMemberModal.formData.value.userId"
               class="input"
-              placeholder="Team member name"
               required
-            />
-          </div>
-
-          <div class="mb-4">
-            <label for="memberRole" class="label">Role <span class="text-[var(--danger)]">*</span></label>
-            <input
-              id="memberRole"
-              v-model="teamMemberModal.formData.value.role"
-              type="text"
-              class="input"
-              placeholder="e.g. Developer, Designer, Project Manager"
-              required
-            />
-          </div>
-
-          <div class="mb-4">
-            <label for="memberEmail" class="label">Email</label>
-            <input
-              id="memberEmail"
-              v-model="teamMemberModal.formData.value.email"
-              type="email"
-              class="input"
-              placeholder="email@example.com"
-            />
+            >
+              <option value="">Select a team member...</option>
+              <option
+                v-for="member in availableTeamMembers"
+                :key="member.userId"
+                :value="member.userId"
+              >
+                {{ member.name }} ({{ member.role }})
+              </option>
+            </select>
+            <p v-if="availableTeamMembers.length === 0" class="text-xs text-[var(--text-secondary)] mt-1">
+              All team members are already assigned to this project.
+            </p>
           </div>
 
           <div class="flex justify-end space-x-3">
@@ -233,7 +220,7 @@
             <button
               type="submit"
               class="btn btn-primary"
-              :disabled="teamMemberModal.isLoading.value"
+              :disabled="teamMemberModal.isLoading.value || !teamMemberModal.formData.value.userId"
             >
               {{ teamMemberModal.isLoading.value ? 'Saving...' : 'Add Member' }}
             </button>
@@ -278,6 +265,7 @@ import { useModalState } from '@/composables/useModalState'
 import { useConfirmDialog } from '@/composables/useConfirmDialog'
 import { useProjectStore } from '@/stores/project'
 import { useTaskStore } from '@/stores/task'
+import { useTeamStore } from '@/stores/team'
 import PageContainer from '@/components/ui/PageContainer.vue'
 import PageHeader from '@/components/ui/PageHeader.vue'
 import ProjectDetailsCard from '@/modules/projects/components/ProjectDetailsCard.vue'
@@ -291,6 +279,7 @@ const router = useRouter()
 const toast = useToast()
 const projectStore = useProjectStore()
 const taskStore = useTaskStore()
+const teamStore = useTeamStore()
 
 // State
 const loading = ref(true)
@@ -311,9 +300,7 @@ const taskModal = useModalState(() => ({
 }))
 
 const teamMemberModal = useModalState(() => ({
-  name: '',
-  role: '',
-  email: '',
+  userId: '',
 }))
 
 const deleteDialog = useConfirmDialog()
@@ -360,6 +347,25 @@ const breadcrumbItems = computed(() => [
   { label: projectTitle.value },
 ])
 
+// Resolve assigned member UUIDs to team member objects for display
+const assignedTeamMembers = computed(() => {
+  const ids = project.value?.assignedMembers || []
+  if (!ids.length) return []
+  return ids
+    .map(userId => {
+      const member = teamStore.teamMembers.find(m => m.userId === userId)
+      if (!member) return null
+      return { id: member.userId, name: member.name, role: member.role }
+    })
+    .filter(Boolean)
+})
+
+// Team members not yet assigned to this project
+const availableTeamMembers = computed(() => {
+  const assignedIds = project.value?.assignedMembers || []
+  return teamStore.validTeamMembers.filter(m => !assignedIds.includes(m.userId))
+})
+
 const currentTimelinePercentage = computed(() => {
   if (!project.value || !project.value.startDate || !project.value.endDate) return 0
 
@@ -396,7 +402,11 @@ async function loadProject() {
 
   try {
     const projectId = route.params.id
-    project.value = await projectStore.getProject(projectId)
+    const [projectData] = await Promise.all([
+      projectStore.getProject(projectId),
+      teamStore.fetchTeamMembers(),
+    ])
+    project.value = projectData
 
     await loadProjectTasks(projectId)
   } catch (err) {
@@ -537,24 +547,23 @@ function openAddTeamMemberModal() {
   teamMemberModal.open()
 }
 
-// Save team member
+// Save team member — persist to DB via assignedMembers array
 async function saveTeamMember() {
   teamMemberModal.setLoading(true)
 
   try {
-    const memberData = {
-      id: `member_${Date.now()}`,
-      name: teamMemberModal.formData.value.name,
-      role: teamMemberModal.formData.value.role,
-      email: teamMemberModal.formData.value.email,
+    const userId = teamMemberModal.formData.value.userId
+    if (!userId) return
+
+    const currentMembers = project.value.assignedMembers || []
+    if (currentMembers.includes(userId)) {
+      toast.warning('Member is already assigned to this project')
+      return
     }
 
-    if (!project.value.teamMembers) {
-      project.value.teamMembers = []
-    }
-
-    // Team members on projects are stored locally (no DB column exists for this)
-    project.value.teamMembers.push(memberData)
+    const updatedMembers = [...currentMembers, userId]
+    const result = await projectStore.updateProject(project.value.id, { assignedMembers: updatedMembers })
+    project.value = { ...project.value, ...result }
     toast.success('Team member added successfully')
 
     teamMemberModal.close()
@@ -565,11 +574,13 @@ async function saveTeamMember() {
   }
 }
 
-// Remove team member
+// Remove team member — persist to DB via assignedMembers array
 async function removeTeamMember(member) {
   try {
-    // Team members on projects are stored locally (no DB column exists for this)
-    project.value.teamMembers = project.value.teamMembers.filter(m => m.id !== member.id)
+    const currentMembers = project.value.assignedMembers || []
+    const updatedMembers = currentMembers.filter(id => id !== member.id)
+    const result = await projectStore.updateProject(project.value.id, { assignedMembers: updatedMembers })
+    project.value = { ...project.value, ...result }
     toast.success('Team member removed successfully')
   } catch (err) {
     toast.error('Failed to remove team member')
