@@ -52,6 +52,16 @@ export class SupabaseInvoiceRepository extends SupabaseBaseRepository<Invoice, I
   }
 
   async create(dto: InvoiceCreateRequest): Promise<Invoice> {
+    return this.createWithRetry(dto, false)
+  }
+
+  /**
+   * Insert an invoice, retrying once with a fresh number on unique-constraint
+   * violation (code 23505). This guards against the rare race where two
+   * requests slip past the advisory lock (e.g. different PostgREST pooled
+   * connections).
+   */
+  private async createWithRetry(dto: InvoiceCreateRequest, isRetry: boolean): Promise<Invoice> {
     const sb = getSupabase()
 
     // Resolve team_id from current user's metadata
@@ -72,6 +82,12 @@ export class SupabaseInvoiceRepository extends SupabaseBaseRepository<Invoice, I
       .insert(row)
       .select(this.getSelectColumns())
       .single()
+
+    // Retry once on unique constraint violation (PostgreSQL 23505)
+    if (error && !isRetry && error.message?.includes('duplicate key')) {
+      return this.createWithRetry(dto, true)
+    }
+
     if (error) throw new Error(error.message)
     return this.mapFromDb(data as unknown as Record<string, unknown>)
   }
