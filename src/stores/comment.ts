@@ -34,8 +34,8 @@ export const useCommentStore = defineStore('comment', () => {
     if (!useAuthStore().currentTeam) return []
     isLoading.value = true
     try {
-      // Fetch all comments for the team (RLS scoped) without resource filter
-      const response = await getRepo().getComments('all', 'all')
+      // Fetch recent comments for the team (RLS scoped) — pass empty strings to skip resource filter
+      const response = await getRepo().getComments('', '')
       comments.value = Array.isArray(response) ? response : []
       return comments.value
     } catch (error) {

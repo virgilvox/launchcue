@@ -46,11 +46,11 @@ describe('useCommentStore', () => {
   })
 
   describe('getRecentComments', () => {
-    it('fetches recent comments with all params', async () => {
+    it('fetches recent comments without resource filter', async () => {
       ;(mockRepo.getComments as ReturnType<typeof vi.fn>).mockResolvedValue([])
       const store = useCommentStore()
       await store.getRecentComments()
-      expect(mockRepo.getComments).toHaveBeenCalledWith('all', 'all')
+      expect(mockRepo.getComments).toHaveBeenCalledWith('', '')
     })
 
     it('returns empty when no team', async () => {

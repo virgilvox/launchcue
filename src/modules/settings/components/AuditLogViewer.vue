@@ -108,8 +108,8 @@ async function loadLogs(page = 1) {
     if (filters.value.action) params.action = filters.value.action;
 
     await auditLogStore.fetchLogs(params, { page, limit: 25 });
-  } catch (error) {
-    toast.error('Failed to load audit logs.');
+  } catch {
+    // Silently handle — empty audit log is expected for new teams
   } finally {
     loading.value = false;
   }

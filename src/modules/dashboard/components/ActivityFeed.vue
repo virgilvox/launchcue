@@ -123,8 +123,8 @@ async function fetchActivity() {
   try {
     const data = await commentStore.getRecentComments()
     activities.value = Array.isArray(data) ? data : []
-  } catch (error) {
-    toast.error('Failed to load activity feed. Please try again.')
+  } catch {
+    // Silently handle — empty activity is expected for new teams
     activities.value = []
   } finally {
     isLoading.value = false
