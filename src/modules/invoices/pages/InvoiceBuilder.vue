@@ -88,7 +88,7 @@
         <!-- Notes -->
         <div class="card p-5">
           <h3 class="heading-section mb-4">Notes</h3>
-          <textarea v-model="formData.notes" class="input" rows="3" placeholder="Payment terms, additional notes..." />
+          <textarea v-model="formData.notes" class="input" rows="3" maxlength="2000" placeholder="Payment terms, additional notes..." />
         </div>
       </div>
 

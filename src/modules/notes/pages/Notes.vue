@@ -125,7 +125,7 @@
         <form @submit.prevent="saveNote" class="space-y-4">
              <div class="form-group">
                 <label for="noteTitle" class="label">Title *</label>
-                <input id="noteTitle" v-model="noteForm.title" type="text" class="input" required />
+                <input id="noteTitle" v-model="noteForm.title" type="text" class="input" maxlength="200" required />
             </div>
 
             <!-- Note Templates -->

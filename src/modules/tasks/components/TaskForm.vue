@@ -7,6 +7,7 @@
         v-model="editableTask.title"
         type="text"
         class="form-input"
+        maxlength="200"
         required
       />
       <p v-if="submitted && validationErrors.title" class="text-xs mt-1" style="color: var(--danger);">{{ validationErrors.title }}</p>
@@ -16,9 +17,10 @@
       <label for="task-description" class="form-label">Description</label>
       <textarea 
         id="task-description" 
-        v-model="editableTask.description" 
-        class="form-textarea" 
+        v-model="editableTask.description"
+        class="form-textarea"
         rows="3"
+        maxlength="2000"
       ></textarea>
     </div>
     

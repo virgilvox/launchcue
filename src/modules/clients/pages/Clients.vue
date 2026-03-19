@@ -119,7 +119,7 @@
       <form @submit.prevent="saveClient" class="space-y-4">
         <div class="form-group">
           <label for="clientName" class="label">CLIENT NAME</label>
-          <input id="clientName" v-model="clientForm.name" type="text" class="input" placeholder="Client name" required />
+          <input id="clientName" v-model="clientForm.name" type="text" class="input" placeholder="Client name" maxlength="200" required />
           <p v-if="submitted && validationErrors.name" class="text-xs mt-1" style="color: var(--danger);">{{ validationErrors.name }}</p>
         </div>
         
@@ -135,7 +135,7 @@
         
         <div class="form-group">
           <label for="clientDescription" class="label">DESCRIPTION</label>
-          <textarea id="clientDescription" v-model="clientForm.description" class="form-textarea" placeholder="Client description" rows="3"></textarea>
+          <textarea id="clientDescription" v-model="clientForm.description" class="form-textarea" placeholder="Client description" rows="3" maxlength="2000"></textarea>
         </div>
 
         <ClientColorPicker v-model="clientForm.color" />
@@ -152,7 +152,12 @@
     <!-- Delete Client Modal -->
     <Modal v-model="showDeleteModal" title="Confirm Delete" size="sm">
       <div class="space-y-4">
-        <p>Are you sure you want to delete this client? This will also delete all associated projects and cannot be undone.</p>
+        <div v-if="clientToDeleteProjectCount > 0" class="p-3 border-2 border-[var(--warning,#f59e0b)] bg-[var(--warning-wash,#fef3c7)]">
+          <p class="text-sm font-medium" style="color: var(--warning-text, #92400e);">
+            This client has {{ clientToDeleteProjectCount }} active project{{ clientToDeleteProjectCount === 1 ? '' : 's' }}. Their projects will be orphaned.
+          </p>
+        </div>
+        <p>Are you sure you want to delete this client? This action cannot be undone.</p>
 
         <div class="flex justify-end gap-3 pt-4 border-t-2 border-[var(--border-light)]">
           <button @click.stop="closeDeleteModal" class="btn btn-secondary">CANCEL</button>
@@ -321,6 +326,12 @@ async function saveClient() {
     saving.value = false;
   }
 }
+
+const clientToDeleteProjectCount = computed(() => {
+  if (!clientToDelete.value) return 0;
+  const allProjects = Array.isArray(projectStore.projects) ? projectStore.projects : [];
+  return allProjects.filter(p => p.clientId === clientToDelete.value.id).length;
+});
 
 function confirmDeleteClient(client, event) {
   clientToDelete.value = client;

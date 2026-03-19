@@ -24,11 +24,11 @@
             <div class="space-y-4">
               <div>
                 <label class="label">Title *</label>
-                <input v-model="formData.title" type="text" class="input" placeholder="Scope title" />
+                <input v-model="formData.title" type="text" class="input" maxlength="200" placeholder="Scope title" />
               </div>
               <div>
                 <label class="label">Description</label>
-                <textarea v-model="formData.description" class="input" rows="3" placeholder="Brief description" />
+                <textarea v-model="formData.description" class="input" rows="3" maxlength="2000" placeholder="Brief description" />
               </div>
 
               <!-- Only for project scopes, not templates -->

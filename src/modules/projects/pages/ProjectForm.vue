@@ -33,6 +33,7 @@
                   type="text"
                   class="input"
                   placeholder="Project title"
+                  maxlength="200"
                   required
                 />
               </div>
@@ -60,6 +61,7 @@
                   class="input"
                   placeholder="Project description"
                   rows="3"
+                  maxlength="2000"
                 ></textarea>
               </div>
               

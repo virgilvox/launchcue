@@ -77,6 +77,7 @@
             type="text"
             class="input"
             placeholder="Client name"
+            maxlength="200"
             required
           />
         </div>
@@ -111,6 +112,7 @@
             class="input"
             placeholder="Client description"
             rows="3"
+            maxlength="2000"
           ></textarea>
         </div>
 

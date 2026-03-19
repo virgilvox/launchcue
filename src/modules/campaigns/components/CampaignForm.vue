@@ -9,6 +9,7 @@
           @input="emitTitle"
           class="w-full bg-transparent text-xl font-semibold text-[var(--text-primary)] border-none p-1"
           placeholder="Campaign Title"
+          maxlength="200"
           required
         />
         <!-- Client Selector -->
@@ -142,6 +143,7 @@
           @input="emitDescription"
           class="w-full bg-transparent text-[var(--text-primary)] border-none resize-none"
           rows="2"
+          maxlength="2000"
           placeholder="Enter campaign description..."
         ></textarea>
       </div>
