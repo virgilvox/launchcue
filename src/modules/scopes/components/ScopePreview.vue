@@ -109,7 +109,7 @@
       <h2 class="heading-section mb-3">Terms & Conditions</h2>
       <div
         class="prose prose-sm max-w-none"
-        v-html="scope.terms"
+        v-html="DOMPurify.sanitize(scope.terms)"
       ></div>
     </div>
   </div>
@@ -117,6 +117,7 @@
 
 <script setup>
 import { computed } from 'vue'
+import DOMPurify from 'dompurify'
 import { formatCurrency } from '@/utils/formatters'
 import { formatDate } from '@/utils/dateFormatter'
 import { getStatusColor } from '@/utils/statusColors'

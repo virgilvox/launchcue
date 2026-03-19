@@ -86,18 +86,13 @@ export const useAuthStore = defineStore('auth', () => {
       }
     }
 
-    // Fallback: recover from sessionStorage (tests, adapters without getSession)
+    // Fallback: recover from sessionStorage metadata (tests, adapters without getSession)
+    // Note: tokens are never stored in sessionStorage — only app metadata
     if (!token.value) {
-      const storedToken = sessionStorage.getItem('token')
-      if (storedToken) {
-        token.value = storedToken
-        user.value = JSON.parse(sessionStorage.getItem('user') || 'null')
-        userTeams.value = JSON.parse(sessionStorage.getItem('teams') || '[]')
-        currentTeam.value = JSON.parse(sessionStorage.getItem('currentTeam') || 'null')
-      } else {
-        clearState()
-        return false
-      }
+      // In test environments, token may be set directly on the ref
+      // In production, no SDK session means not authenticated
+      clearState()
+      return false
     }
 
     // Register 401 handler so adapter can trigger logout without circular imports
@@ -116,7 +111,6 @@ export const useAuthStore = defineStore('auth', () => {
     sessionStorage.removeItem('user')
     sessionStorage.removeItem('teams')
     sessionStorage.removeItem('currentTeam')
-    sessionStorage.removeItem('token')
   }
 
   // Register
@@ -225,8 +219,6 @@ export const useAuthStore = defineStore('auth', () => {
     token.value = accessToken
 
     sessionStorage.setItem('user', JSON.stringify(userData))
-    // Keep token in sessionStorage as fallback for legacy/test paths
-    sessionStorage.setItem('token', accessToken)
   }
 
   // Action to update user info in the store (e.g., after profile save)

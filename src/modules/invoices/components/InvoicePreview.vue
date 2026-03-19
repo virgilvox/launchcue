@@ -166,7 +166,7 @@
       <h3 class="text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)] mb-2">Notes</h3>
       <div
         class="prose prose-sm max-w-none text-[var(--text-secondary)]"
-        v-html="invoice.notes"
+        v-html="DOMPurify.sanitize(invoice.notes)"
       ></div>
     </div>
   </div>
@@ -174,6 +174,7 @@
 
 <script setup>
 import { computed } from 'vue'
+import DOMPurify from 'dompurify'
 import { formatCurrency } from '@/utils/formatters'
 import { formatDate } from '@/utils/dateFormatter'
 import InvoiceStatusBadge from './InvoiceStatusBadge.vue'

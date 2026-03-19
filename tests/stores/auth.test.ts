@@ -71,21 +71,18 @@ describe('useAuthStore', () => {
       expect(store.currentTeam?.id).toBe('team-1')
     })
 
-    it('falls back to sessionStorage token when getSession is not available', async () => {
-      // Legacy path: getSession throws (not available)
-      const futureExp = Math.floor(Date.now() / 1000) + 3600
-      const token = makeJwt(futureExp)
-      sessionStorage.setItem('token', token)
+    it('returns false when getSession is not available and no SDK session', async () => {
+      // No getSession, no SDK session — should not authenticate
       sessionStorage.setItem('user', JSON.stringify(makeUser()))
 
       const store = useAuthStore()
       const result = await store.initAuth()
 
-      expect(result).toBe(true)
-      expect(store.isAuthenticated).toBe(true)
+      expect(result).toBe(false)
+      expect(store.isAuthenticated).toBe(false)
     })
 
-    it('returns false when fallback token is also missing', async () => {
+    it('returns false when no session exists at all', async () => {
       const store = useAuthStore()
       const result = await store.initAuth()
 
@@ -130,8 +127,7 @@ describe('useAuthStore', () => {
 
   describe('logout', () => {
     it('clears state and sessionStorage', async () => {
-      seedAuth()
-      // Fallback path for initAuth
+      seedAuth({ mockAuth: mockAuth })
       const store = useAuthStore()
       await store.initAuth()
       expect(store.isAuthenticated).toBe(true)
@@ -186,6 +182,7 @@ describe('useAuthStore', () => {
     it('switches team and updates token', async () => {
       const futureExp = Math.floor(Date.now() / 1000) + 3600
       seedAuth({
+        mockAuth: mockAuth,
         teams: [
           { id: 'team-1', name: 'Team One', role: 'owner' },
           { id: 'team-2', name: 'Team Two', role: 'member' },
@@ -210,6 +207,7 @@ describe('useAuthStore', () => {
 
     it('rolls back on switch failure', async () => {
       const { token } = seedAuth({
+        mockAuth: mockAuth,
         teams: [
           { id: 'team-1', name: 'Team One', role: 'owner' },
           { id: 'team-2', name: 'Team Two', role: 'member' },
@@ -230,7 +228,7 @@ describe('useAuthStore', () => {
 
   describe('loadUserTeams', () => {
     it('loads teams and sets current team', async () => {
-      seedAuth()
+      seedAuth({ mockAuth: mockAuth })
 
       ;(mockAuth.getTeams as ReturnType<typeof vi.fn>).mockResolvedValue([
         { id: 'team-1', name: 'Team One', role: 'owner' },
@@ -248,7 +246,7 @@ describe('useAuthStore', () => {
 
   describe('createTeam', () => {
     it('creates team via TEAM_REPO and adds to userTeams', async () => {
-      seedAuth()
+      seedAuth({ mockAuth: mockAuth })
 
       const mockTeamRepo = {
         create: vi.fn().mockResolvedValue({ id: 'new-team', name: 'New Team' }),
@@ -274,7 +272,7 @@ describe('useAuthStore', () => {
 
   describe('role-based computed properties', () => {
     it('computes role correctly from user data', async () => {
-      seedAuth({ user: makeUser({ role: 'admin' }) })
+      seedAuth({ mockAuth: mockAuth, user: makeUser({ role: 'admin' }) })
 
       const store = useAuthStore()
       await store.initAuth()
@@ -288,7 +286,7 @@ describe('useAuthStore', () => {
     })
 
     it('owner has all permissions', async () => {
-      seedAuth({ user: makeUser({ role: 'owner' }) })
+      seedAuth({ mockAuth: mockAuth, user: makeUser({ role: 'owner' }) })
 
       const store = useAuthStore()
       await store.initAuth()
@@ -299,7 +297,7 @@ describe('useAuthStore', () => {
     })
 
     it('viewer cannot edit or manage', async () => {
-      seedAuth({ user: makeUser({ role: 'viewer' }) })
+      seedAuth({ mockAuth: mockAuth, user: makeUser({ role: 'viewer' }) })
 
       const store = useAuthStore()
       await store.initAuth()
@@ -317,7 +315,7 @@ describe('useAuthStore', () => {
     })
 
     it('is true when both user and token are set', async () => {
-      seedAuth()
+      seedAuth({ mockAuth: mockAuth })
 
       const store = useAuthStore()
       await store.initAuth()
@@ -327,7 +325,7 @@ describe('useAuthStore', () => {
 
   describe('updateUserState', () => {
     it('merges partial user data without overwriting id/email', async () => {
-      seedAuth()
+      seedAuth({ mockAuth: mockAuth })
 
       const store = useAuthStore()
       await store.initAuth()
