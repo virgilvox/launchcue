@@ -166,6 +166,7 @@ AS $$
 DECLARE
   v_invitation RECORD;
   v_app_user_id UUID;
+  v_team_name TEXT;
 BEGIN
   -- Verify caller is finalizing their own account (prevent auth_id spoofing)
   IF p_auth_id != auth.uid() THEN
@@ -208,9 +209,13 @@ BEGIN
   SET status = 'accepted', updated_at = NOW()
   WHERE id = v_invitation.id;
 
+  -- Look up team name for the frontend
+  SELECT name INTO v_team_name FROM teams WHERE id = v_invitation.team_id;
+
   RETURN jsonb_build_object(
     'userId', v_app_user_id,
     'teamId', v_invitation.team_id,
+    'teamName', COALESCE(v_team_name, ''),
     'clientId', v_invitation.client_id,
     'projectIds', v_invitation.project_ids,
     'name', v_invitation.name

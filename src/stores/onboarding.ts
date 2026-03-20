@@ -68,6 +68,7 @@ export const useOnboardingStore = defineStore('onboarding', () => {
   const acceptInvitation = async (token: string, password: string): Promise<{
     userId: string
     teamId: string
+    teamName: string
     clientId: string
     projectIds: string[]
     name: string
@@ -122,6 +123,7 @@ export const useOnboardingStore = defineStore('onboarding', () => {
     return {
       userId: finalizeResult.userId,
       teamId: finalizeResult.teamId,
+      teamName: finalizeResult.teamName || '',
       clientId: finalizeResult.clientId,
       projectIds: finalizeResult.projectIds || [],
       name: finalizeResult.name || name,

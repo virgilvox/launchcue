@@ -141,6 +141,19 @@ onMounted(async () => {
     return
   }
 
+  // If already authenticated, sign out to avoid session conflicts
+  // (e.g., a team admin clicking an invite link meant for a client)
+  try {
+    const { getSupabase: getSb } = await import('@/adapters/supabase/client')
+    const { data: sessionCheck } = await getSb().auth.getSession()
+    if (sessionCheck?.session) {
+      await getSb().auth.signOut()
+      sessionStorage.clear()
+    }
+  } catch {
+    // Non-critical — proceed with invitation flow
+  }
+
   // Validate token and check if user already exists
   try {
     const { getSupabase } = await import('@/adapters/supabase/client')
@@ -197,7 +210,7 @@ async function handleSubmit() {
       authStore.setSession(userData, accessToken)
 
       // Store team info
-      const teamSummary = { id: result.teamId, name: '', role: 'client' }
+      const teamSummary = { id: result.teamId, name: result.teamName || '', role: 'client' }
       sessionStorage.setItem('teams', JSON.stringify([teamSummary]))
       sessionStorage.setItem('currentTeam', JSON.stringify(teamSummary))
 
