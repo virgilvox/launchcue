@@ -133,7 +133,6 @@ const notificationStore = useNotificationStore()
 
 const isOpen = ref(false)
 const bellRef = ref(null)
-let pollInterval = null
 
 // Close dropdown when clicking outside
 onClickOutside(bellRef, () => {
@@ -211,17 +210,7 @@ const formatRelativeTime = (dateStr) => {
 }
 
 onMounted(() => {
+  // Initial fetch only — polling is handled by DefaultLayout via notificationStore.startPolling()
   notificationStore.fetchNotifications()
-
-  // Poll every 60 seconds
-  pollInterval = setInterval(() => {
-    notificationStore.fetchNotifications()
-  }, 60000)
-})
-
-onUnmounted(() => {
-  if (pollInterval) {
-    clearInterval(pollInterval)
-  }
 })
 </script>

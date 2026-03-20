@@ -84,7 +84,7 @@ export class SupabaseInvoiceRepository extends SupabaseBaseRepository<Invoice, I
       .single()
 
     // Retry once on unique constraint violation (PostgreSQL 23505)
-    if (error && !isRetry && error.message?.includes('duplicate key')) {
+    if (error && !isRetry && ((error as unknown as Record<string, unknown>).code === '23505' || error.message?.includes('duplicate key'))) {
       return this.createWithRetry(dto, true)
     }
 

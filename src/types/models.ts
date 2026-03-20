@@ -133,6 +133,8 @@ export interface Task extends Timestamped, SoftDeletable {
   assigneeId?: string | null
   parentTaskId?: string | null
   dueDate?: string | null
+  completed?: boolean
+  completedAt?: string | null
   checklist: ChecklistItem[]
   tags?: string[]
   timeEstimate?: number

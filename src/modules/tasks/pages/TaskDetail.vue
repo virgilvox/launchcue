@@ -365,7 +365,7 @@ async function saveEdit() {
       id: task.value.id,
       title: editModal.formData.value.title,
       description: editModal.formData.value.description || '',
-      dueDate: editModal.formData.value.dueDate ? new Date(editModal.formData.value.dueDate).toISOString() : null,
+      dueDate: editModal.formData.value.dueDate || null,
       priority: editModal.formData.value.priority || 'Medium',
       status: editModal.formData.value.status,
       completed: editModal.formData.value.status === 'Done',

@@ -548,4 +548,20 @@ Full 7-stream audit (architecture, security, UI flows, data model, tests, compet
 - Scrub `.env` from git history: `git filter-repo --path .env --invert-paths`
 - Confirm production JWT_SECRET differs from the exposed value
 
+### Full Codebase Audit (2026-03-19, 2nd pass)
+
+4-stream parallel audit (security, stores/adapters, components/routing, types/config/build) with manual verification of all findings. 8 confirmed bugs fixed:
+
+**Bug Fixes:**
+- **Clients pagination broken (NaN display)**: `Clients.vue` passed `:total-items` and `:page-size` but `PaginationControls` expects `:total` and `:limit`. Fixed prop names.
+- **Duplicate notification polling**: `NotificationBell.vue` had its own 60s `setInterval` on top of the store's leader-elected polling in `DefaultLayout.vue`. Removed the duplicate; NotificationBell now only fetches once on mount.
+- **Task `completed`/`completedAt` fields missing**: DB schema has both columns (`completed BOOLEAN`, `completed_at TIMESTAMPTZ`) but the TypeScript model, DTO (`TaskUpdateRequest`), and adapter (`task.repository.ts` `mapFromDb`) all silently dropped them. `TaskDetail.vue` was sending `completed` on update but it wasn't typed. Added to all three layers.
+- **TaskDetail dueDate timezone shift**: Was converting `YYYY-MM-DD` to full ISO timestamp via `new Date().toISOString()` before sending to a DATE column. Same bug was previously fixed in stores (2026-03-10) but missed in this component. Now passes the date string through directly.
+- **Invoice retry fragile string match**: Used `error.message.includes('duplicate key')` instead of PostgreSQL error code. Now checks `error.code === '23505'` first, falls back to string match.
+- **Calendar date filter missed multi-day events**: Only filtered `start_time >= startDate AND start_time <= endDate`, missing events that start before the visible range but end within it. Now uses overlap logic (`end_time >= startDate OR (end_time IS NULL AND start_time >= startDate)`).
+- **`env.d.ts` missing `ImportMetaEnv`**: No compile-time type checking for `VITE_*` environment variables. Added typed `ImportMetaEnv` and `ImportMeta` interfaces.
+- **ESLint broken**: `jiti` package too old for ESLint 9.39. Updated to latest.
+
+**Verification:** `vue-tsc --noEmit` clean, 474 tests pass (441 frontend + 33 server), `vite build` succeeds, ESLint working (0 new errors).
+
 *Last updated: 2026-03-19*

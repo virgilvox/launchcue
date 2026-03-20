@@ -25,9 +25,10 @@ export class SupabaseCalendarEventRepository extends SupabaseBaseRepository<Cale
 
     const { startDate, endDate, ...rest } = filter
 
-    // Date range filters use gte/lte on start_time, not eq
+    // Date range: include events that overlap the range (not just start within it)
+    // An event overlaps [startDate, endDate] when event.start_time <= endDate AND event.end_time >= startDate
     if (startDate !== undefined && startDate !== null) {
-      query = query.gte('start_time', startDate)
+      query = query.or(`end_time.gte.${startDate},and(end_time.is.null,start_time.gte.${startDate})`)
     }
     if (endDate !== undefined && endDate !== null) {
       query = query.lte('start_time', endDate)

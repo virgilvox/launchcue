@@ -103,8 +103,8 @@
       v-if="clientStore.totalPages > 1"
       :page="clientStore.currentPage"
       :total-pages="clientStore.totalPages"
-      :total-items="clientStore.totalItems"
-      :page-size="clientStore.pageSize"
+      :total="clientStore.totalItems"
+      :limit="clientStore.pageSize"
       @update:page="handlePageChange"
     />
 

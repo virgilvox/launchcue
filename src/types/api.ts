@@ -73,6 +73,7 @@ export interface TaskCreateRequest {
 
 export interface TaskUpdateRequest extends Partial<TaskCreateRequest> {
   id: string
+  completed?: boolean
   timeSpent?: number
 }
 
