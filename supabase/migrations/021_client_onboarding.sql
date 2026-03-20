@@ -57,6 +57,16 @@ BEGIN
     RAISE EXCEPTION 'Client not found in this team';
   END IF;
 
+  -- Warn if email belongs to an existing team member (prevent accidental role conflicts)
+  IF EXISTS (
+    SELECT 1 FROM users u
+    JOIN team_members tm ON tm.user_id = u.id
+    WHERE u.email = p_email
+      AND tm.team_id = v_team_id
+  ) THEN
+    RAISE EXCEPTION 'This email belongs to an existing team member';
+  END IF;
+
   -- Check for existing pending invitation with same email for this client
   IF EXISTS (
     SELECT 1 FROM client_invitations
@@ -193,16 +203,18 @@ BEGIN
     RAISE EXCEPTION 'Email mismatch — this invitation is for a different email address';
   END IF;
 
-  -- Create app user
+  -- Create or update app user
   INSERT INTO users (auth_id, name, email, client_id, email_verified)
   VALUES (p_auth_id, v_invitation.name, v_invitation.email, v_invitation.client_id, TRUE)
-  ON CONFLICT (auth_id) DO UPDATE SET client_id = v_invitation.client_id
+  ON CONFLICT (auth_id) DO UPDATE SET client_id = COALESCE(users.client_id, v_invitation.client_id)
   RETURNING id INTO v_app_user_id;
 
-  -- Create team membership with client role
+  -- Create team membership with client role (only if no existing membership).
+  -- If user is already a member with a higher-privilege role (owner/admin/member),
+  -- do NOT downgrade them to client — just skip the membership insert.
   INSERT INTO team_members (team_id, user_id, role)
   VALUES (v_invitation.team_id, v_app_user_id, 'client')
-  ON CONFLICT (team_id, user_id) DO UPDATE SET role = 'client';
+  ON CONFLICT (team_id, user_id) DO NOTHING;
 
   -- Mark invitation as accepted
   UPDATE client_invitations
