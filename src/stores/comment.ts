@@ -48,26 +48,18 @@ export const useCommentStore = defineStore('comment', () => {
 
   const createComment = async (resourceType: string, resourceId: string, data: { content: string }): Promise<Comment> => {
     if (!useAuthStore().currentTeam) throw new Error('No team context')
-    try {
-      const created = await getRepo().createComment(resourceType, resourceId, data)
-      comments.value.push(created)
-      getEventBus().emit('comment.created', { comment: created })
-      return created
-    } catch (error) {
-      throw error
-    }
+    const created = await getRepo().createComment(resourceType, resourceId, data)
+    comments.value.push(created)
+    getEventBus().emit('comment.created', { comment: created })
+    return created
   }
 
   const deleteComment = async (id: string): Promise<void> => {
     if (!id) throw new Error('Comment ID is required for deletion')
     if (!useAuthStore().currentTeam) throw new Error('No team context')
-    try {
-      await getRepo().deleteComment(id)
-      comments.value = comments.value.filter(c => c.id !== id)
-      getEventBus().emit('comment.deleted', { id })
-    } catch (error) {
-      throw error
-    }
+    await getRepo().deleteComment(id)
+    comments.value = comments.value.filter(c => c.id !== id)
+    getEventBus().emit('comment.deleted', { id })
   }
 
   return {

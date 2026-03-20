@@ -1,12 +1,12 @@
 import { ref, type Ref } from 'vue'
 
-export function useModalState<T extends Record<string, any>>(defaultForm?: () => T) {
+export function useModalState<T extends Record<string, unknown>>(defaultForm?: () => T) {
   const isOpen = ref(false)
   const isLoading = ref(false)
-  const editingItem: Ref<any> = ref(null)
+  const editingItem: Ref<T | null> = ref(null)
   const formData = ref(defaultForm ? defaultForm() : {}) as Ref<T>
 
-  function open(item?: any) {
+  function open(item?: T) {
     if (item) {
       editingItem.value = item
     } else {

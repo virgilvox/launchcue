@@ -53,88 +53,68 @@ export const useScopeStore = defineStore('scope', () => {
 
   const createTemplate = async (data: ScopeTemplateCreateRequest): Promise<ScopeTemplate> => {
     if (!useAuthStore().currentTeam) throw new Error('No team context')
-    try {
-      const created = await getTemplateRepo().create(data)
-      if (created && created.id) {
-        templates.value.push(created)
-        getEventBus().emit('scope-template.created', { template: created })
-      }
-      return created
-    } catch (error) {
-      throw error
+    const created = await getTemplateRepo().create(data)
+    if (created && created.id) {
+      templates.value.push(created)
+      getEventBus().emit('scope-template.created', { template: created })
     }
+    return created
   }
 
   const updateTemplate = async (id: string, data: Partial<ScopeTemplateCreateRequest>): Promise<ScopeTemplate> => {
     if (!id) throw new Error('Template ID is required for updates')
     if (!useAuthStore().currentTeam) throw new Error('No team context')
-    try {
-      const updated = await getTemplateRepo().update(id, data)
-      const index = templates.value.findIndex(t => t.id === id)
-      if (index !== -1) {
-        templates.value[index] = updated
-      }
-      getEventBus().emit('scope-template.updated', { template: updated })
-      return updated
-    } catch (error) {
-      throw error
+    const updated = await getTemplateRepo().update(id, data)
+    const index = templates.value.findIndex(t => t.id === id)
+    if (index !== -1) {
+      templates.value[index] = updated
     }
+    getEventBus().emit('scope-template.updated', { template: updated })
+    return updated
   }
 
   const deleteTemplate = async (id: string): Promise<void> => {
     if (!id) throw new Error('Template ID is required for deletion')
     if (!useAuthStore().currentTeam) throw new Error('No team context')
-    try {
-      await getTemplateRepo().delete(id)
-      templates.value = templates.value.filter(t => t.id !== id)
-      getEventBus().emit('scope-template.deleted', { id })
-    } catch (error) {
-      throw error
-    }
+    await getTemplateRepo().delete(id)
+    templates.value = templates.value.filter(t => t.id !== id)
+    getEventBus().emit('scope-template.deleted', { id })
   }
 
   const createScope = async (data: ScopeCreateRequest): Promise<Scope> => {
     if (!useAuthStore().currentTeam) throw new Error('No team context')
-    try {
-      const created = await getScopeRepo().create(data)
-      if (created && created.id) {
-        scopes.value.push(created)
-        getEventBus().emit('scope.created', { scope: created })
-      }
-      return created
-    } catch (error) {
-      throw error
+    const created = await getScopeRepo().create(data)
+    if (created && created.id) {
+      scopes.value.push(created)
+      getEventBus().emit('scope.created', { scope: created })
     }
+    return created
   }
 
   const createScopeFromTemplate = async (templateId: string, overrides?: Partial<ScopeCreateRequest>): Promise<Scope> => {
     if (!useAuthStore().currentTeam) throw new Error('No team context')
-    try {
-      const template = await getTemplateRepo().findById(templateId)
-      const merged: ScopeCreateRequest = {
-        title: template.title,
-        description: template.description,
-        deliverables: template.deliverables?.map(d => ({
-          title: d.title,
-          description: d.description,
-          quantity: d.quantity,
-          unit: d.unit,
-          rate: d.rate,
-          estimatedHours: d.estimatedHours,
-        })),
-        terms: template.terms,
-        templateId,
-        ...overrides,
-      }
-      const created = await getScopeRepo().create(merged)
-      if (created && created.id) {
-        scopes.value.push(created)
-        getEventBus().emit('scope.created', { scope: created })
-      }
-      return created
-    } catch (error) {
-      throw error
+    const template = await getTemplateRepo().findById(templateId)
+    const merged: ScopeCreateRequest = {
+      title: template.title,
+      description: template.description,
+      deliverables: template.deliverables?.map(d => ({
+        title: d.title,
+        description: d.description,
+        quantity: d.quantity,
+        unit: d.unit,
+        rate: d.rate,
+        estimatedHours: d.estimatedHours,
+      })),
+      terms: template.terms,
+      templateId,
+      ...overrides,
     }
+    const created = await getScopeRepo().create(merged)
+    if (created && created.id) {
+      scopes.value.push(created)
+      getEventBus().emit('scope.created', { scope: created })
+    }
+    return created
   }
 
   // Valid status transitions for scopes
@@ -163,29 +143,21 @@ export const useScopeStore = defineStore('scope', () => {
       }
     }
 
-    try {
-      const updated = await getScopeRepo().update(id, data)
-      const index = scopes.value.findIndex(s => s.id === id)
-      if (index !== -1) {
-        scopes.value[index] = updated
-      }
-      getEventBus().emit('scope.updated', { scope: updated })
-      return updated
-    } catch (error) {
-      throw error
+    const updated = await getScopeRepo().update(id, data)
+    const index = scopes.value.findIndex(s => s.id === id)
+    if (index !== -1) {
+      scopes.value[index] = updated
     }
+    getEventBus().emit('scope.updated', { scope: updated })
+    return updated
   }
 
   const deleteScope = async (id: string): Promise<void> => {
     if (!id) throw new Error('Scope ID is required for deletion')
     if (!useAuthStore().currentTeam) throw new Error('No team context')
-    try {
-      await getScopeRepo().delete(id)
-      scopes.value = scopes.value.filter(s => s.id !== id)
-      getEventBus().emit('scope.deleted', { id })
-    } catch (error) {
-      throw error
-    }
+    await getScopeRepo().delete(id)
+    scopes.value = scopes.value.filter(s => s.id !== id)
+    getEventBus().emit('scope.deleted', { id })
   }
 
   return {

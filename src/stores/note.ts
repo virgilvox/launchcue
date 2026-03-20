@@ -64,16 +64,12 @@ export const useNoteStore = defineStore('note', () => {
 
   const createNote = async (data: NoteCreateRequest): Promise<Note> => {
     if (!useAuthStore().currentTeam) throw new Error('No team context')
-    try {
-      const created = await getRepo().create(data)
-      if (created && created.id) {
-        notes.value.push(created)
-        getEventBus().emit('note.created', { note: created })
-      }
-      return created
-    } catch (error) {
-      throw error
+    const created = await getRepo().create(data)
+    if (created && created.id) {
+      notes.value.push(created)
+      getEventBus().emit('note.created', { note: created })
     }
+    return created
   }
 
   const updateNote = async (id: string, data: Partial<NoteCreateRequest>): Promise<Note> => {
@@ -88,8 +84,6 @@ export const useNoteStore = defineStore('note', () => {
       }
       getEventBus().emit('note.updated', { note: updated })
       return updated
-    } catch (error) {
-      throw error
     } finally {
       isLoading.value = false
     }
@@ -106,8 +100,6 @@ export const useNoteStore = defineStore('note', () => {
       totalPages.value = Math.max(1, Math.ceil(totalItems.value / pageSize.value))
       if (currentPage.value > totalPages.value) currentPage.value = totalPages.value
       getEventBus().emit('note.deleted', { id })
-    } catch (error) {
-      throw error
     } finally {
       isLoading.value = false
     }

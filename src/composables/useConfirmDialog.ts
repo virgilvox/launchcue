@@ -1,6 +1,6 @@
 import { ref, type Ref } from 'vue'
 
-export function useConfirmDialog<T = any>() {
+export function useConfirmDialog<T = unknown>() {
   const isOpen = ref(false)
   const item: Ref<T | null> = ref(null)
   const isProcessing = ref(false)

@@ -212,7 +212,7 @@ export const useTeamStore = defineStore('team', () => {
       error.value = null
       try {
         await getRepo().updateMemberRole(authStore.currentTeam!.id, memberId, newRole)
-        const member = teamMembers.value.find(m => m.userId === memberId || (m as any).id === memberId)
+        const member = teamMembers.value.find(m => m.userId === memberId)
         if (member) {
           member.role = newRole as TeamRole
         }

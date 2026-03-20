@@ -1,7 +1,7 @@
 import type { CalendarEvent } from '@/types/models'
 import type { CalendarEventCreateRequest } from '@/types/api'
 import type { QueryFilter } from '../types'
-import { SupabaseBaseRepository } from './base.repository'
+import { SupabaseBaseRepository, type SupabaseQueryBuilder } from './base.repository'
 import { getSupabase } from './client'
 
 export class SupabaseCalendarEventRepository extends SupabaseBaseRepository<CalendarEvent, CalendarEventCreateRequest, Partial<CalendarEvent>> {
@@ -20,8 +20,7 @@ export class SupabaseCalendarEventRepository extends SupabaseBaseRepository<Cale
 
   async findAll(filter: QueryFilter = {}): Promise<CalendarEvent[]> {
     const sb = getSupabase()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let query: any = sb.from(this.viewName).select(this.getSelectColumns())
+    let query = sb.from(this.viewName).select(this.getSelectColumns()) as unknown as SupabaseQueryBuilder
 
     const { startDate, endDate, ...rest } = filter
 
@@ -48,8 +47,7 @@ export class SupabaseCalendarEventRepository extends SupabaseBaseRepository<Cale
     return (data || []).map((row: Record<string, unknown>) => this.mapFromDb(row))
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  protected applyDefaultOrder(query: any): any {
+  protected applyDefaultOrder(query: SupabaseQueryBuilder): SupabaseQueryBuilder {
     return query.order('start_time', { ascending: true })
   }
 

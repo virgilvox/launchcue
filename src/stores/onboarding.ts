@@ -42,41 +42,29 @@ export const useOnboardingStore = defineStore('onboarding', () => {
 
   const createInvitation = async (data: ClientInvitationCreateRequest): Promise<ClientInvitation & { token: string }> => {
     if (!useAuthStore().currentTeam) throw new Error('No team context')
-    try {
-      const result = await getInvitationRepo().create(data) as ClientInvitation & { token: string }
-      if (result && result.id) {
-        invitations.value.push(result)
-        getEventBus().emit('invitation.created', { invitation: result })
-      }
-      return result
-    } catch (error) {
-      throw error
+    const result = await getInvitationRepo().create(data) as ClientInvitation & { token: string }
+    if (result && result.id) {
+      invitations.value.push(result)
+      getEventBus().emit('invitation.created', { invitation: result })
     }
+    return result
   }
 
-  const acceptInvitation = async (token: string, password: string): Promise<any> => {
-    try {
-      // Accept invitation is a special action on the invitation repo
-      const result = await getInvitationRepo().create({
-        action: 'accept',
-        token,
-        password,
-      } as unknown as ClientInvitationCreateRequest)
-      return result
-    } catch (error) {
-      throw error
-    }
+  const acceptInvitation = async (token: string, password: string): Promise<ClientInvitation> => {
+    // Accept invitation is a special action on the invitation repo
+    const result = await getInvitationRepo().create({
+      action: 'accept',
+      token,
+      password,
+    } as unknown as ClientInvitationCreateRequest)
+    return result
   }
 
   const deleteInvitation = async (id: string): Promise<void> => {
     if (!useAuthStore().currentTeam) throw new Error('No team context')
-    try {
-      await getInvitationRepo().delete(id)
-      invitations.value = invitations.value.filter(inv => inv.id !== id)
-      getEventBus().emit('invitation.deleted', { id })
-    } catch (error) {
-      throw error
-    }
+    await getInvitationRepo().delete(id)
+    invitations.value = invitations.value.filter(inv => inv.id !== id)
+    getEventBus().emit('invitation.deleted', { id })
   }
 
   // ─── Checklist Actions ───
@@ -98,16 +86,12 @@ export const useOnboardingStore = defineStore('onboarding', () => {
 
   const createChecklist = async (data: OnboardingCreateRequest): Promise<OnboardingChecklist> => {
     if (!useAuthStore().currentTeam) throw new Error('No team context')
-    try {
-      const result = await getChecklistRepo().create(data)
-      if (result && result.id) {
-        checklists.value.push(result)
-        getEventBus().emit('onboarding.created', { checklist: result })
-      }
-      return result
-    } catch (error) {
-      throw error
+    const result = await getChecklistRepo().create(data)
+    if (result && result.id) {
+      checklists.value.push(result)
+      getEventBus().emit('onboarding.created', { checklist: result })
     }
+    return result
   }
 
   const updateChecklist = async (id: string, data: Partial<OnboardingCreateRequest>): Promise<OnboardingChecklist> => {
@@ -121,8 +105,6 @@ export const useOnboardingStore = defineStore('onboarding', () => {
       }
       getEventBus().emit('onboarding.updated', { checklist: updated })
       return updated
-    } catch (error) {
-      throw error
     } finally {
       isLoading.value = false
     }
@@ -130,32 +112,24 @@ export const useOnboardingStore = defineStore('onboarding', () => {
 
   const completeStep = async (checklistId: string, stepId: string, response?: Record<string, unknown>): Promise<OnboardingChecklist> => {
     if (!useAuthStore().currentTeam) throw new Error('No team context')
-    try {
-      const updated = await getChecklistRepo().update(checklistId, {
-        stepId,
-        action: 'completeStep',
-        response,
-      } as unknown as Partial<OnboardingCreateRequest>)
-      const index = checklists.value.findIndex(c => c.id === checklistId)
-      if (index !== -1) {
-        checklists.value[index] = updated
-      }
-      getEventBus().emit('onboarding.step-completed', { checklistId, stepId })
-      return updated
-    } catch (error) {
-      throw error
+    const updated = await getChecklistRepo().update(checklistId, {
+      stepId,
+      action: 'completeStep',
+      response,
+    } as unknown as Partial<OnboardingCreateRequest>)
+    const index = checklists.value.findIndex(c => c.id === checklistId)
+    if (index !== -1) {
+      checklists.value[index] = updated
     }
+    getEventBus().emit('onboarding.step-completed', { checklistId, stepId })
+    return updated
   }
 
   const deleteChecklist = async (id: string): Promise<void> => {
     if (!useAuthStore().currentTeam) throw new Error('No team context')
-    try {
-      await getChecklistRepo().delete(id)
-      checklists.value = checklists.value.filter(c => c.id !== id)
-      getEventBus().emit('onboarding.deleted', { id })
-    } catch (error) {
-      throw error
-    }
+    await getChecklistRepo().delete(id)
+    checklists.value = checklists.value.filter(c => c.id !== id)
+    getEventBus().emit('onboarding.deleted', { id })
   }
 
   return {

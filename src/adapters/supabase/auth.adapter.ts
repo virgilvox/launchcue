@@ -20,7 +20,7 @@ export class SupabaseAuthAdapter implements AuthAdapter {
     const teams = await this.getUserTeams(user.id)
 
     // Read current_team_id from user metadata for team context
-    let currentTeamId = data.user.user_metadata?.current_team_id as string | undefined
+    const currentTeamId = data.user.user_metadata?.current_team_id as string | undefined
     const currentTeam = currentTeamId
       ? teams.find(t => t.id === currentTeamId)
       : teams[0]

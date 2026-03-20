@@ -41,16 +41,12 @@ export const useCampaignStore = defineStore('campaign', () => {
 
   const createCampaign = async (data: CampaignCreateRequest): Promise<Campaign> => {
     if (!useAuthStore().currentTeam) throw new Error('No team context')
-    try {
-      const created = await getRepo().create(data)
-      if (created && created.id) {
-        campaigns.value.push(created)
-        getEventBus().emit('campaign.created', { campaign: created })
-      }
-      return created
-    } catch (error) {
-      throw error
+    const created = await getRepo().create(data)
+    if (created && created.id) {
+      campaigns.value.push(created)
+      getEventBus().emit('campaign.created', { campaign: created })
     }
+    return created
   }
 
   const updateCampaign = async (id: string, data: Partial<CampaignCreateRequest>): Promise<Campaign> => {
@@ -65,8 +61,6 @@ export const useCampaignStore = defineStore('campaign', () => {
       }
       getEventBus().emit('campaign.updated', { campaign: updated })
       return updated
-    } catch (error) {
-      throw error
     } finally {
       isLoading.value = false
     }
@@ -80,8 +74,6 @@ export const useCampaignStore = defineStore('campaign', () => {
       await getRepo().delete(id)
       campaigns.value = campaigns.value.filter(c => c.id !== id)
       getEventBus().emit('campaign.deleted', { id })
-    } catch (error) {
-      throw error
     } finally {
       isLoading.value = false
     }

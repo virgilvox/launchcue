@@ -32,16 +32,12 @@ export const useWebhookStore = defineStore('webhook', () => {
 
   const createWebhook = async (data: Partial<Webhook>): Promise<Webhook> => {
     if (!useAuthStore().currentTeam) throw new Error('No team context')
-    try {
-      const created = await getRepo().create(data)
-      if (created && created.id) {
-        webhooks.value.push(created)
-        getEventBus().emit('webhook.created', { webhook: created })
-      }
-      return created
-    } catch (error) {
-      throw error
+    const created = await getRepo().create(data)
+    if (created && created.id) {
+      webhooks.value.push(created)
+      getEventBus().emit('webhook.created', { webhook: created })
     }
+    return created
   }
 
   const updateWebhook = async (id: string, data: Partial<Webhook>): Promise<Webhook> => {
@@ -56,8 +52,6 @@ export const useWebhookStore = defineStore('webhook', () => {
       }
       getEventBus().emit('webhook.updated', { webhook: updated })
       return updated
-    } catch (error) {
-      throw error
     } finally {
       isLoading.value = false
     }
@@ -66,13 +60,9 @@ export const useWebhookStore = defineStore('webhook', () => {
   const deleteWebhook = async (id: string): Promise<void> => {
     if (!id) throw new Error('Webhook ID is required for deletion')
     if (!useAuthStore().currentTeam) throw new Error('No team context')
-    try {
-      await getRepo().delete(id)
-      webhooks.value = webhooks.value.filter(w => w.id !== id)
-      getEventBus().emit('webhook.deleted', { id })
-    } catch (error) {
-      throw error
-    }
+    await getRepo().delete(id)
+    webhooks.value = webhooks.value.filter(w => w.id !== id)
+    getEventBus().emit('webhook.deleted', { id })
   }
 
   return {

@@ -72,7 +72,7 @@ interface CalendarEvent {
   title?: string;
   start?: string | Date;
   end?: string | Date;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 defineProps<{

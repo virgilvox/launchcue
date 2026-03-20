@@ -37,12 +37,8 @@ export const useProjectStore = defineStore('project', () => {
     }
     if (!useAuthStore().currentTeam) return []
     return wrap(async () => {
-      try {
-        const response = await getRepo().findAll({ clientId })
-        return Array.isArray(response) ? response : []
-      } catch (error) {
-        throw error
-      }
+      const response = await getRepo().findAll({ clientId })
+      return Array.isArray(response) ? response : []
     })
   }
 
@@ -54,16 +50,12 @@ export const useProjectStore = defineStore('project', () => {
 
   const createProject = async (projectData: ProjectCreateRequest): Promise<Project> => {
     if (!useAuthStore().currentTeam) throw new Error('No team context')
-    try {
-      const createdProject = await getRepo().create(projectData)
-      if (createdProject && createdProject.id) {
-        projects.value.push(createdProject)
-        getEventBus().emit('project.created', { project: createdProject })
-      }
-      return createdProject
-    } catch (error) {
-      throw error
+    const createdProject = await getRepo().create(projectData)
+    if (createdProject && createdProject.id) {
+      projects.value.push(createdProject)
+      getEventBus().emit('project.created', { project: createdProject })
     }
+    return createdProject
   }
 
   const updateProject = async (id: string, projectData: Partial<ProjectCreateRequest>): Promise<Project> => {
@@ -71,17 +63,13 @@ export const useProjectStore = defineStore('project', () => {
       throw new Error('Project ID is required for updates')
     }
     return wrap(async () => {
-      try {
-        const updatedProject = await getRepo().update(id, projectData)
-        const index = projects.value.findIndex(p => p.id === id)
-        if (index !== -1) {
-          projects.value[index] = updatedProject
-        }
-        getEventBus().emit('project.updated', { project: updatedProject })
-        return updatedProject
-      } catch (error) {
-        throw error
+      const updatedProject = await getRepo().update(id, projectData)
+      const index = projects.value.findIndex(p => p.id === id)
+      if (index !== -1) {
+        projects.value[index] = updatedProject
       }
+      getEventBus().emit('project.updated', { project: updatedProject })
+      return updatedProject
     })
   }
 
@@ -91,13 +79,9 @@ export const useProjectStore = defineStore('project', () => {
     }
     if (!useAuthStore().currentTeam) throw new Error('No team context')
     return wrap(async () => {
-      try {
-        await getRepo().delete(id)
-        projects.value = projects.value.filter(p => p.id !== id)
-        getEventBus().emit('project.deleted', { id })
-      } catch (error) {
-        throw error
-      }
+      await getRepo().delete(id)
+      projects.value = projects.value.filter(p => p.id !== id)
+      getEventBus().emit('project.deleted', { id })
     })
   }
 

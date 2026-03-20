@@ -2,6 +2,20 @@ import type { Repository, QueryFilter, PaginationOptions, PaginatedResult } from
 import { getSupabase } from './client'
 
 /**
+ * Minimal interface for Supabase query builder chains.
+ * Avoids coupling to deeply-generic PostgREST types.
+ */
+export interface SupabaseQueryBuilder {
+  eq(column: string, value: unknown): SupabaseQueryBuilder
+  or(filters: string): SupabaseQueryBuilder
+  lte(column: string, value: unknown): SupabaseQueryBuilder
+  gte(column: string, value: unknown): SupabaseQueryBuilder
+  order(column: string, options?: { ascending?: boolean }): SupabaseQueryBuilder
+  range(from: number, to: number): SupabaseQueryBuilder
+  then: Promise<{ data: Record<string, unknown>[] | null; count?: number | null; error: { message: string } | null }>['then']
+}
+
+/**
  * Field mapping from camelCase (frontend) to snake_case (PostgreSQL).
  * Each subclass provides its own mapping.
  */
@@ -22,8 +36,7 @@ export abstract class SupabaseBaseRepository<T, CreateDTO = Partial<T>, UpdateDT
 
   async findAll(filter: QueryFilter = {}): Promise<T[]> {
     const sb = getSupabase()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let query: any = sb.from(this.viewName).select(this.getSelectColumns())
+    let query = sb.from(this.viewName).select(this.getSelectColumns()) as unknown as SupabaseQueryBuilder
 
     // Apply filters (converting camelCase keys to snake_case)
     for (const [key, value] of Object.entries(filter)) {
@@ -108,8 +121,7 @@ export abstract class SupabaseBaseRepository<T, CreateDTO = Partial<T>, UpdateDT
 
   async findPaginated(filter: QueryFilter, options: PaginationOptions): Promise<PaginatedResult<T>> {
     const sb = getSupabase()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let query: any = sb.from(this.viewName).select(this.getSelectColumns(), { count: 'exact' })
+    let query = sb.from(this.viewName).select(this.getSelectColumns(), { count: 'exact' }) as unknown as SupabaseQueryBuilder
 
     for (const [key, value] of Object.entries(filter)) {
       if (value === undefined || value === null) continue
@@ -144,8 +156,7 @@ export abstract class SupabaseBaseRepository<T, CreateDTO = Partial<T>, UpdateDT
   }
 
   /** Default ordering. Override per entity. */
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  protected applyDefaultOrder(query: any): any {
+  protected applyDefaultOrder(query: SupabaseQueryBuilder): SupabaseQueryBuilder {
     return query.order('created_at', { ascending: false })
   }
 

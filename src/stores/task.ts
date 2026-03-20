@@ -61,23 +61,19 @@ export const useTaskStore = defineStore('task', () => {
 
   const createTask = async (taskData: TaskCreateRequest): Promise<Task> => {
     if (!useAuthStore().currentTeam) throw new Error('No team context')
-    try {
-      const formattedData: TaskCreateRequest = { ...taskData }
+    const formattedData: TaskCreateRequest = { ...taskData }
 
-      if (!formattedData.checklist) {
-        formattedData.checklist = []
-      }
-
-      const createdTask = await getRepo().create(formattedData)
-
-      if (createdTask && createdTask.id) {
-        tasks.value.push(createdTask)
-        getEventBus().emit('task.created', { task: createdTask })
-      }
-      return createdTask
-    } catch (err) {
-      throw err
+    if (!formattedData.checklist) {
+      formattedData.checklist = []
     }
+
+    const createdTask = await getRepo().create(formattedData)
+
+    if (createdTask && createdTask.id) {
+      tasks.value.push(createdTask)
+      getEventBus().emit('task.created', { task: createdTask })
+    }
+    return createdTask
   }
 
   const updateTask = async (taskData: TaskUpdateRequest): Promise<Task> => {
@@ -85,24 +81,20 @@ export const useTaskStore = defineStore('task', () => {
     if (!taskData.id) {
       throw new Error('Task ID is required for updates')
     }
-    try {
-      const formattedData: TaskUpdateRequest = { ...taskData }
+    const formattedData: TaskUpdateRequest = { ...taskData }
 
-      if (!formattedData.checklist) {
-        formattedData.checklist = []
-      }
-
-      const updatedTask = await getRepo().update(taskData.id, formattedData)
-
-      const index = tasks.value.findIndex(t => t.id === taskData.id)
-      if (index !== -1) {
-        tasks.value[index] = updatedTask
-      }
-      getEventBus().emit('task.updated', { task: updatedTask })
-      return updatedTask
-    } catch (err) {
-      throw err
+    if (!formattedData.checklist) {
+      formattedData.checklist = []
     }
+
+    const updatedTask = await getRepo().update(taskData.id, formattedData)
+
+    const index = tasks.value.findIndex(t => t.id === taskData.id)
+    if (index !== -1) {
+      tasks.value[index] = updatedTask
+    }
+    getEventBus().emit('task.updated', { task: updatedTask })
+    return updatedTask
   }
 
   const deleteTask = async (id: string): Promise<void> => {
@@ -110,19 +102,15 @@ export const useTaskStore = defineStore('task', () => {
       throw new Error('Task ID is required for deletion')
     }
     if (!useAuthStore().currentTeam) throw new Error('No team context')
-    try {
-      await getRepo().delete(id)
-      tasks.value = tasks.value.filter(t => t.id !== id)
-      totalItems.value = Math.max(0, totalItems.value - 1)
-      totalPages.value = Math.max(1, Math.ceil(totalItems.value / pageSize.value))
-      // If current page is now beyond total pages, go back one page
-      if (currentPage.value > totalPages.value) {
-        currentPage.value = totalPages.value
-      }
-      getEventBus().emit('task.deleted', { id })
-    } catch (err) {
-      throw err
+    await getRepo().delete(id)
+    tasks.value = tasks.value.filter(t => t.id !== id)
+    totalItems.value = Math.max(0, totalItems.value - 1)
+    totalPages.value = Math.max(1, Math.ceil(totalItems.value / pageSize.value))
+    // If current page is now beyond total pages, go back one page
+    if (currentPage.value > totalPages.value) {
+      currentPage.value = totalPages.value
     }
+    getEventBus().emit('task.deleted', { id })
   }
 
   const getTaskById = async (taskId: string): Promise<Task | null> => {

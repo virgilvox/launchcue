@@ -93,7 +93,7 @@ interface CalendarEvent {
   end?: string | Date;
   taskId?: string;
   campaignId?: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 interface Contact {

@@ -33,27 +33,19 @@ export const useApiKeyStore = defineStore('apiKey', () => {
 
   const generateKey = async (data: ApiKeyCreateRequest): Promise<ApiKeyCreateResponse> => {
     if (!useAuthStore().currentTeam) throw new Error('No team context')
-    try {
-      const created = await getRepo().create(data)
-      // The create response includes the full key (only shown once)
-      apiKeys.value.push(created as unknown as ApiKey)
-      getEventBus().emit('api-key.created', { apiKey: created })
-      return created as unknown as ApiKeyCreateResponse
-    } catch (error) {
-      throw error
-    }
+    const created = await getRepo().create(data)
+    // The create response includes the full key (only shown once)
+    apiKeys.value.push(created as unknown as ApiKey)
+    getEventBus().emit('api-key.created', { apiKey: created })
+    return created as unknown as ApiKeyCreateResponse
   }
 
   const deleteKey = async (prefix: string): Promise<void> => {
     if (!prefix) throw new Error('API key prefix is required for deletion')
     if (!useAuthStore().currentTeam) throw new Error('No team context')
-    try {
-      await getRepo().delete(prefix)
-      apiKeys.value = apiKeys.value.filter(k => k.prefix !== prefix)
-      getEventBus().emit('api-key.deleted', { prefix })
-    } catch (error) {
-      throw error
-    }
+    await getRepo().delete(prefix)
+    apiKeys.value = apiKeys.value.filter(k => k.prefix !== prefix)
+    getEventBus().emit('api-key.deleted', { prefix })
   }
 
   return {

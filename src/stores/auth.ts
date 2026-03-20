@@ -1,10 +1,10 @@
 import { ref, computed } from 'vue'
-import { defineStore, getActivePinia } from 'pinia'
+import { defineStore, getActivePinia, type StoreGeneric } from 'pinia'
 import router from '../router'
 import { getContainer } from '@/core/service-container'
 import { AUTH_ADAPTER, TEAM_REPO } from '@/adapters/repository-keys'
 import type { AuthAdapter, Repository, TeamSummary } from '@/adapters/types'
-import type { User } from '../types/models'
+import type { Team, User } from '../types/models'
 import type { TeamRole } from '../types/enums'
 
 // Extended user type that includes role from the current team context
@@ -185,18 +185,19 @@ export const useAuthStore = defineStore('auth', () => {
     try {
       const pinia = getActivePinia()
       if (pinia) {
-        const notifStore = (pinia as any)._s.get('notification')
+        const notifStore = (pinia as unknown as { _s: Map<string, StoreGeneric> })._s.get('notification')
         if (notifStore?.stopPolling) notifStore.stopPolling()
       }
     } catch { /* ignore */ }
 
     const pinia = getActivePinia()
     if (pinia) {
-      (pinia as any)._s.forEach((store: any, id: string) => {
+      const stores = (pinia as unknown as { _s: Map<string, StoreGeneric> })._s
+      stores.forEach((store: StoreGeneric, id: string) => {
         if (id !== 'auth') store.$dispose()
       })
-      ;(pinia as any)._s.forEach((_: any, id: string) => {
-        if (id !== 'auth') (pinia as any)._s.delete(id)
+      stores.forEach((_: StoreGeneric, id: string) => {
+        if (id !== 'auth') stores.delete(id)
       })
     }
   }
@@ -282,7 +283,7 @@ export const useAuthStore = defineStore('auth', () => {
   const createTeam = async (teamName: string): Promise<TeamSummary> => {
     if (!isAuthenticated.value) throw new Error('User not authenticated')
 
-    const repo = getContainer().resolve<Repository<any>>(TEAM_REPO)
+    const repo = getContainer().resolve<Repository<Team>>(TEAM_REPO)
     const createdTeam = await repo.create({ name: teamName })
 
     if (createdTeam && createdTeam.id) {

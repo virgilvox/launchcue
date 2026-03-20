@@ -43,36 +43,26 @@ export const useBrainDumpStore = defineStore('brainDump', () => {
 
   const createDump = async (data: BrainDumpCreateRequest): Promise<BrainDump> => {
     if (!useAuthStore().currentTeam) throw new Error('No team context')
-    try {
-      const created = await getRepo().create(data)
-      if (created && created.id) {
-        dumps.value.push(created)
-        getEventBus().emit('brain-dump.created', { dump: created })
-      }
-      return created
-    } catch (error) {
-      throw error
+    const created = await getRepo().create(data)
+    if (created && created.id) {
+      dumps.value.push(created)
+      getEventBus().emit('brain-dump.created', { dump: created })
     }
+    return created
   }
 
   const deleteDump = async (id: string): Promise<void> => {
     if (!id) throw new Error('Brain dump ID is required for deletion')
     if (!useAuthStore().currentTeam) throw new Error('No team context')
-    try {
-      await getRepo().delete(id)
-      dumps.value = dumps.value.filter(d => d.id !== id)
-      getEventBus().emit('brain-dump.deleted', { id })
-    } catch (error) {
-      throw error
-    }
+    await getRepo().delete(id)
+    dumps.value = dumps.value.filter(d => d.id !== id)
+    getEventBus().emit('brain-dump.deleted', { id })
   }
 
   const processText = async (options: { prompt: string; processingDetails: { type: string; context: string; enriched: boolean }; max_tokens: number }): Promise<unknown> => {
     isLoading.value = true
     try {
       return await getAi().process(options)
-    } catch (error) {
-      throw error
     } finally {
       isLoading.value = false
     }
@@ -87,8 +77,6 @@ export const useBrainDumpStore = defineStore('brainDump', () => {
         return await repo.getContextData(params)
       }
       throw new Error('getContextData not supported by current adapter')
-    } catch (error) {
-      throw error
     } finally {
       isLoading.value = false
     }
@@ -96,15 +84,11 @@ export const useBrainDumpStore = defineStore('brainDump', () => {
 
   const createItems = async (payload: Record<string, unknown>): Promise<unknown> => {
     if (!useAuthStore().currentTeam) throw new Error('No team context')
-    try {
-      const repo = getRepo()
-      if (repo.createItems) {
-        return await repo.createItems(payload)
-      }
-      throw new Error('createItems not supported by current adapter')
-    } catch (error) {
-      throw error
+    const repo = getRepo()
+    if (repo.createItems) {
+      return await repo.createItems(payload)
     }
+    throw new Error('createItems not supported by current adapter')
   }
 
   return {
