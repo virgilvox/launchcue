@@ -68,7 +68,6 @@ export const useScopeStore = defineStore('scope', () => {
   const updateTemplate = async (id: string, data: Partial<ScopeTemplateCreateRequest>): Promise<ScopeTemplate> => {
     if (!id) throw new Error('Template ID is required for updates')
     if (!useAuthStore().currentTeam) throw new Error('No team context')
-    isLoading.value = true
     try {
       const updated = await getTemplateRepo().update(id, data)
       const index = templates.value.findIndex(t => t.id === id)
@@ -79,23 +78,18 @@ export const useScopeStore = defineStore('scope', () => {
       return updated
     } catch (error) {
       throw error
-    } finally {
-      isLoading.value = false
     }
   }
 
   const deleteTemplate = async (id: string): Promise<void> => {
     if (!id) throw new Error('Template ID is required for deletion')
     if (!useAuthStore().currentTeam) throw new Error('No team context')
-    isLoading.value = true
     try {
       await getTemplateRepo().delete(id)
       templates.value = templates.value.filter(t => t.id !== id)
       getEventBus().emit('scope-template.deleted', { id })
     } catch (error) {
       throw error
-    } finally {
-      isLoading.value = false
     }
   }
 
@@ -169,7 +163,6 @@ export const useScopeStore = defineStore('scope', () => {
       }
     }
 
-    isLoading.value = true
     try {
       const updated = await getScopeRepo().update(id, data)
       const index = scopes.value.findIndex(s => s.id === id)
@@ -180,23 +173,18 @@ export const useScopeStore = defineStore('scope', () => {
       return updated
     } catch (error) {
       throw error
-    } finally {
-      isLoading.value = false
     }
   }
 
   const deleteScope = async (id: string): Promise<void> => {
     if (!id) throw new Error('Scope ID is required for deletion')
     if (!useAuthStore().currentTeam) throw new Error('No team context')
-    isLoading.value = true
     try {
       await getScopeRepo().delete(id)
       scopes.value = scopes.value.filter(s => s.id !== id)
       getEventBus().emit('scope.deleted', { id })
     } catch (error) {
       throw error
-    } finally {
-      isLoading.value = false
     }
   }
 

@@ -39,7 +39,7 @@ src/
     team/           # Team management (members, invites, roles)
   components/       # Shared UI components
     ui/             # Design system primitives (Modal, PageHeader, EmptyState, etc.)
-  composables/      # Vue composables (9: useModalState, useEntityLookup, useLoadingCounter, useUnsavedChanges, useConfirmDialog, useTooltips, useResponsive, useKeyboardShortcuts, usePermissions)
+  composables/      # Vue composables (10: useModalState, useEntityLookup, useLoadingCounter, useUnsavedChanges, useConfirmDialog, useTooltips, useResponsive, useKeyboardShortcuts, usePermissions, useDarkMode)
   constants/        # Static data (clientColors.ts)
   layouts/          # DefaultLayout.vue, ClientLayout.vue
   pages/            # Auth + portal pages (non-module routes)
@@ -50,7 +50,7 @@ src/
   utils/            # Utility functions + icon resolver
 server/             # Express API server (AI, webhooks, email)
 supabase/
-  migrations/       # PostgreSQL schema (12 migrations, 26 tables, RLS, triggers)
+  migrations/       # PostgreSQL schema (20 migrations, 26 tables, RLS, triggers)
 supabase/           # Kong config, migrations for Docker
 infra/              # Droplet setup script
 .do/                # DigitalOcean App Platform spec
@@ -58,7 +58,7 @@ tests/
   helpers/          # Mock factories, store setup, mock router/toast
   core/             # Service container, event bus, plugin registry tests
   stores/           # Store tests (auth, task, notification, team, project, client, calendar, campaign, invoice, comment, brain-dump, scope, resource, note, onboarding, webhook, api-key, audit-log)
-  composables/      # Composable tests (all 8: useLoadingCounter, useUnsavedChanges, useConfirmDialog, useModalState, useTooltips, useEntityLookup, useResponsive, useKeyboardShortcuts)
+  composables/      # Composable tests (all 10: useLoadingCounter, useUnsavedChanges, useConfirmDialog, useModalState, useTooltips, useEntityLookup, useResponsive, useKeyboardShortcuts, usePermissions, useDarkMode)
   router/           # Router guard tests
 server/tests/       # Express API route tests (vitest + supertest)
 ```
@@ -101,7 +101,7 @@ server/tests/       # Express API route tests (vitest + supertest)
 
 ### Architecture
 - **DI Container**: ServiceContainer with symbol keys, lazy singleton resolution
-- **Repository Pattern**: `Repository<T, CreateDTO, UpdateDTO>` interface, 20 Supabase repository implementations
+- **Repository Pattern**: `Repository<T, CreateDTO, UpdateDTO>` interface, 19 Supabase repository implementations
 - **Feature Modules**: 15 modules declaring routes, nav items, search providers, dependencies
 - **All 18 Pinia stores**: Fully migrated to repository pattern via DI container
 - **Zero legacy imports**: No `src/services/`, no axios, no Netlify code -all deleted
@@ -161,7 +161,7 @@ server/tests/       # Express API route tests (vitest + supertest)
 - ~~**Email endpoint missing protocol validation**~~: Fixed — HTTPS-only in production, allows HTTP in development
 - ~~**AI endpoint needs per-user rate limiting**~~: Fixed — per-user rate limit of 20 req/15min keyed by auth user ID
 - **Unsaved changes guard**: Invoice, Scope, Project, Campaign, Notes forms use `useUnsavedChanges` composable; Task, Client forms use modals (not page navigation)
-- **~100 Vue components missing `lang="ts"`**: Progressive migration needed, starting with `src/components/ui/`
+- **~94 Vue components missing `lang="ts"`**: Progressive migration needed, starting with `src/components/ui/`
 - **Home.vue**: Landing page has its own scoped button styles that diverge from the brutalist design system (intentional for marketing)
 - **Supabase Realtime**: Deployed in docker-compose but intentionally unused. Notifications use polling (60s `setInterval`) for simplicity and reliability. Realtime is available if needed for future features (live collaboration, presence). No plan to remove from docker-compose.
 
@@ -172,14 +172,14 @@ server/tests/       # Express API route tests (vitest + supertest)
 ### TypeScript Migration (Partial)
 - All stores (18) are TypeScript
 - Router and config are TypeScript
-- **~100 Vue components still use `<script setup>` without `lang="ts"`**
+- **~94 Vue components still use `<script setup>` without `lang="ts"`** (14 of 108 migrated)
 
 ### Testing
 - **474 tests** across 37 test files (441 frontend + 33 server)
 - Core: service-container (8), event-bus (8), plugin-registry (19)
 - Auth store: 20 tests (SDK session recovery, login/register/logout/switchTeam/createTeam, RBAC computeds)
 - Store tests: all 18 stores tested (task, notification, team, project, client, calendar, campaign, invoice, comment, brain-dump, scope, resource, note, onboarding, webhook, api-key, audit-log)
-- Composable tests: all 8 composables tested (useLoadingCounter, useUnsavedChanges, useConfirmDialog, useModalState, useTooltips, useEntityLookup, useResponsive, useKeyboardShortcuts)
+- Composable tests: all 10 composables tested (useLoadingCounter, useUnsavedChanges, useConfirmDialog, useModalState, useTooltips, useEntityLookup, useResponsive, useKeyboardShortcuts, usePermissions, useDarkMode)
 - Router tests: guards (auth, team context, client role, portal, RBAC)
 - **Server tests**: auth middleware, AI route, email route, webhooks route (vitest + supertest)
 - Test helpers: mock factories (7+ factories), store setup with SDK session mock, mock router/toast
@@ -199,10 +199,10 @@ server/tests/       # Express API route tests (vitest + supertest)
 | Category | Count |
 |----------|-------|
 | Feature modules | 15 |
-| Vue files (total) | 107 (21 module pages + 2 standalone pages + 6 auth + 3 portal + 75 components) |
+| Vue files (total) | 108 (21 module pages + 2 standalone pages + 6 auth + 3 portal + 75 components + App.vue) |
 | Composables | 10 (useModalState, useEntityLookup, useLoadingCounter, useUnsavedChanges, useConfirmDialog, useTooltips, useResponsive, useKeyboardShortcuts, usePermissions, useDarkMode) |
 | Pinia stores | 18 (all TS, all using repository pattern) |
-| Supabase adapter files | 25 (20 repository + 1 auth + 1 search + 1 AI + base class + index + client) |
+| Supabase adapter files | 25 (19 repository + 1 auth + 1 search + 1 AI + base class + index + client) |
 | Express API endpoints | 3 (AI, webhooks, email) |
 | SQL migrations | 20 (26 tables + RLS + triggers + functions + storage) |
 | Test files | 37 (474 tests: 33 frontend + 4 server) |
@@ -222,7 +222,7 @@ npm run dev:full         # Start all three above
 # Or run individual commands
 npm run build            # Production build (Vite)
 npm run type-check       # vue-tsc --noEmit
-npm test                 # Run vitest frontend tests (405 tests)
+npm test                 # Run vitest frontend tests (441 tests)
 cd server && npm test    # Run vitest server tests (33 tests)
 npm run lint             # ESLint check
 npm run format           # Prettier format

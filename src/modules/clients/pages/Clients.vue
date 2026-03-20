@@ -2,28 +2,12 @@
   <PageContainer>
     <PageHeader title="Clients">
       <template #actions>
-        <button 
-          v-if="showMigrationButton" 
-          @click="runContactMigration" 
-          class="btn btn-secondary"
-          :disabled="migratingContacts"
-        >
-          {{ migratingContacts ? 'FIXING...' : 'FIX CONTACTS' }}
-        </button>
         <button v-bind="disabledProps(canEdit)" @click="openAddClientModal" class="btn btn-primary">
           <PlusIcon class="h-4 w-4 mr-2" />
           ADD CLIENT
         </button>
       </template>
     </PageHeader>
-    
-    <!-- Migration Success Alert -->
-    <div v-if="migrationSuccess" class="mb-6 p-4 border-2 border-[var(--success)] bg-[var(--surface)] flex justify-between items-center">
-      <span>Contact migration completed successfully.</span>
-      <button @click="migrationSuccess = false" class="btn-icon">
-        <XMarkIcon class="h-5 w-5" />
-      </button>
-    </div>
     
     <!-- Loading -->
     <div v-if="loading" class="py-6">
@@ -186,7 +170,7 @@ import { useClientStore } from '@/stores/client';
 import { useProjectStore } from '@/stores/project';
 import { useToast } from 'vue-toastification';
 import { getStatusColor } from '@/utils/statusColors';
-import { PlusIcon, UsersIcon, EllipsisVerticalIcon, XMarkIcon } from '@heroicons/vue/24/outline';
+import { PlusIcon, UsersIcon, EllipsisVerticalIcon } from '@heroicons/vue/24/outline';
 import Modal from '@/components/Modal.vue';
 import PageContainer from '@/components/ui/PageContainer.vue';
 import PageHeader from '@/components/ui/PageHeader.vue';
@@ -214,9 +198,6 @@ const editingClient = ref(null);
 const clientToDelete = ref(null);
 const saving = ref(false);
 const deleting = ref(false);
-const showMigrationButton = ref(false);
-const migratingContacts = ref(false);
-const migrationSuccess = ref(false);
 const searchQuery = ref('');
 
 const clientForm = ref({
@@ -398,22 +379,6 @@ onMounted(async () => {
 onBeforeUnmount(() => {
   document.removeEventListener('click', handleOutsideClick);
 });
-
-async function runContactMigration() {
-  migratingContacts.value = true;
-  try {
-    const result = await clientStore.runContactMigration();
-    if (result.success) {
-      showMigrationButton.value = false;
-      migrationSuccess.value = true;
-      await loadClients();
-    }
-  } catch (err) {
-    toast.error('Failed to run contact migration');
-  } finally {
-    migratingContacts.value = false;
-  }
-}
 
 const filteredClients = computed(() => {
   if (!Array.isArray(clients.value)) return [];

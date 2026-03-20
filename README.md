@@ -217,7 +217,7 @@ launchcue/
 │   ├── layouts/                 # DefaultLayout, AuthLayout, ClientLayout
 │   ├── types/                   # TypeScript definitions
 │   └── main.ts                  # App bootstrap + plugin registration
-├── tests/                       # Vitest tests (52 across 4 files)
+├── tests/                       # Vitest tests (474 across 37 files)
 ├── docker-compose.dev.yml       # Local Supabase stack
 ├── tailwind.config.js           # Brutalist design tokens
 └── vite.config.ts               # Vite config + /api proxy

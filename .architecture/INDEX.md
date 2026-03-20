@@ -14,11 +14,11 @@
 
 ## Quick Stats
 
-- **Frontend**: 107 Vue files, 15 feature modules, 18 Pinia stores, 25 Supabase adapter files, 6 composables
+- **Frontend**: 108 Vue files, 15 feature modules, 18 Pinia stores, 25 Supabase adapter files, 10 composables
 - **Backend**: Supabase (PostgreSQL + GoTrue + PostgREST), Express API (3 route modules)
 - **Core**: ServiceContainer (symbol-keyed DI), EventBus, PluginRegistry (topological sort)
 - **Auth**: Supabase Auth (sessionStorage persistence) + RBAC (5 roles) + RLS policies
 - **Notifications**: Polling (60s interval), not Realtime
-- **Tests**: 52 tests across 4 files (core + stores)
+- **Tests**: 474 tests across 37 files (stores, composables, core, router, server)
 - **Design**: Brutalist (0 border-radius, 2px borders, hard shadows)
 - **Deploy**: DigitalOcean App Platform + self-hosted Supabase Droplet

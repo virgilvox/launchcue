@@ -7,7 +7,8 @@
 | Status | Count |
 |--------|-------|
 | RESOLVED | 13 |
-| OPEN | 8 |
+| MOSTLY RESOLVED | 1 |
+| OPEN | 7 |
 | CLARIFIED | 1 |
 | ACCEPTABLE | 2 |
 
@@ -58,8 +59,8 @@ Supabase Auth auto-refreshes sessions. No manual token management needed.
 
 ## Open
 
-### 3. No Tests Beyond Core (P0)
-52 tests across 4 files (service-container, event-bus, plugin-registry, auth store). No component tests, no integration tests, no E2E tests.
+### 3. Limited Test Coverage (P2) — MOSTLY RESOLVED
+474 tests across 37 files (441 frontend + 33 server). All 18 stores, all 10 composables, core infra, and router guards tested. Remaining gap: no component tests, integration tests, or E2E tests.
 
 ### 7. Recurring Events No UI (P1)
 Schema supports `recurrence: { frequency, interval, endDate }`. Calendar view expands occurrences for display. But no UI to create/edit recurrence rules.

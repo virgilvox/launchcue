@@ -1,6 +1,6 @@
 # LaunchCue Database Schema
 
-PostgreSQL database managed by Supabase (GoTrue auth, PostgREST API, Realtime subscriptions). 26 tables, 14 enum types, 17 views, 5 migration files.
+PostgreSQL database managed by Supabase (GoTrue auth, PostgREST API, Realtime subscriptions). 26 tables, 14 enum types, 17 views, 20 migration files.
 
 ---
 
@@ -42,6 +42,21 @@ Files live in `supabase/migrations/` and are applied in order:
 | `supabase/migrations/003_indexes.sql` | Performance indexes, partial indexes, GIN indexes, full-text search indexes |
 | `supabase/migrations/004_functions.sql` | `updated_at` trigger, soft delete, cascade delete, invoice numbering, task sync, global search, audit log trigger, webhook queue trigger, task assignment notification |
 | `supabase/migrations/005_views.sql` | 15 `active_*` views, `dashboard_stats` view, `upcoming_deadlines` view |
+| `supabase/migrations/006_rls_registration_fixes.sql` | RLS policy fixes for registration flow (users_select, teams_select) |
+| `supabase/migrations/007_null_safety_and_registration_rpc.sql` | NULL safety guards, `register_user` RPC for atomic registration |
+| `supabase/migrations/008_fix_trigger_modes.sql` | Fix `team_and_user` trigger mode for tables using `user_id` column |
+| `supabase/migrations/009_notification_rls_restrict.sql` | Restrict notification INSERT to `service_role` only |
+| `supabase/migrations/010_audit_delete_triggers.sql` | DELETE audit triggers on comments, notifications, team_invites |
+| `supabase/migrations/011_fix_audit_trigger_column_refs.sql` | Audit functions use `auth.app_user_id()` only (removes `NEW.created_by`/`NEW.user_id` refs) |
+| `supabase/migrations/012_rls_softdelete_guard.sql` | `deleted_at IS NULL` guards on UPDATE/DELETE policies for all soft-delete tables |
+| `supabase/migrations/013_secure_current_team_id.sql` | Cross-check `team_members` table in `auth.current_team_id()` |
+| `supabase/migrations/014_client_scope_approval.sql` | `revision_notes` column + client RLS policy for scope approval |
+| `supabase/migrations/015_views_security_invoker.sql` | `security_invoker = true` on all `active_*` views |
+| `supabase/migrations/016_validate_invoice_totals.sql` | Trigger to validate invoice totals from line_items |
+| `supabase/migrations/017_project_team_members.sql` | Project team members support |
+| `supabase/migrations/018_assigned_members_validation.sql` | UUID validation trigger for `assigned_members` + auto-cleanup on member removal |
+| `supabase/migrations/019_fix_invoice_number_race.sql` | Advisory lock per team for invoice number generation |
+| `supabase/migrations/020_user_avatar.sql` | Avatars storage bucket + policies for profile pictures |
 
 ---
 

@@ -47,7 +47,7 @@ The Vite dev server runs on `http://localhost:5173`, the Express API on `http://
 | `npm run dev:full` | `concurrently` | All three services concurrently |
 | `npm run build` | `vite build` | Production build |
 | `npm run type-check` | `vue-tsc --noEmit` | TypeScript checking |
-| `npm run test` | `vitest run` | Run tests (52 across 4 files) |
+| `npm run test` | `vitest run` | Run tests (441 frontend tests across 33 files) |
 | `npm run test:watch` | `vitest` | Watch mode |
 | `npm run lint` | `eslint src/ --ext .ts,.vue` | ESLint |
 | `npm run format` | `prettier --write src/` | Prettier |
@@ -146,7 +146,7 @@ The plugin registry performs topological dependency sorting so modules boot in t
 
 - **Vitest** with **happy-dom** as the DOM environment.
 - Tests live in `tests/` with subdirectories `core/` and `stores/`.
-- 52 tests across 4 files.
+- 474 tests across 37 files (441 frontend + 33 server).
 
 ---
 

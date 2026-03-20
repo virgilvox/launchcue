@@ -161,9 +161,14 @@ export function createAppRouter(registry: PluginRegistry) {
       const requiredRole = to.matched.find(record => record.meta.requiredRole)?.meta.requiredRole
       if (requiredRole) {
         const userRole = authStore.userRole
-        const allowed = requiredRole === 'admin'
-          ? ['owner', 'admin'].includes(userRole as string)
-          : userRole === 'owner'
+        const roleHierarchy: Record<string, string[]> = {
+          owner: ['owner'],
+          admin: ['owner', 'admin'],
+          member: ['owner', 'admin', 'member'],
+          viewer: ['owner', 'admin', 'member', 'viewer'],
+        }
+        const allowedRoles = roleHierarchy[requiredRole as string] || ['owner']
+        const allowed = allowedRoles.includes(userRole as string)
         if (!allowed) {
           next({ path: '/dashboard', query: { accessDenied: '1' } })
         } else {

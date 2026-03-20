@@ -149,7 +149,7 @@
 | `infra/droplet-setup.sh` | Self-hosted Supabase Droplet provisioning |
 | `docker-compose.dev.yml` | Local Supabase stack for development |
 
-## Tests (4 files, 52 tests)
+## Tests (37 files, 474 tests)
 
 | File | Tests | Purpose |
 |------|-------|---------|

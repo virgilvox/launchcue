@@ -50,7 +50,7 @@
 </template>
 
 <script setup>
-import { computed, toRefs } from 'vue';
+import { ref, computed, toRefs } from 'vue';
 import { useRouter } from 'vue-router';
 import { marked } from 'marked';
 import DOMPurify from 'dompurify';
@@ -109,14 +109,3 @@ function onNoteSaved() {
   router.push('/notes');
 }
 </script>
-
-<script>
-import { ref } from 'vue';
-export default {
-  setup() {
-    return {
-      ref
-    }
-  }
-}
-</script> 

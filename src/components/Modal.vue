@@ -90,7 +90,7 @@ const close = (): void => {
 
 const onAfterEnter = (): void => {
   nextTick(() => {
-    const firstFocusable = modalRef.value?.querySelector(
+    const firstFocusable = modalRef.value?.querySelector<HTMLElement>(
       'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
     )
     if (firstFocusable) {
@@ -115,7 +115,7 @@ const onKeydown = (e: KeyboardEvent): void => {
   }
 
   if (e.key === 'Tab' && modalRef.value) {
-    const focusable = modalRef.value.querySelectorAll(
+    const focusable = modalRef.value.querySelectorAll<HTMLElement>(
       'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])'
     )
     if (focusable.length === 0) return

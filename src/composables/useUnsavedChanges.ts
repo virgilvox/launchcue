@@ -51,7 +51,7 @@ export function useUnsavedChanges(source: WatchSource, message = 'You have unsav
   onUnmounted(() => {
     window.removeEventListener('beforeunload', beforeUnloadHandler)
     // Decrement global counter if component is destroyed while dirty
-    if (isDirty.value) _dirtyCount--
+    if (isDirty.value) _dirtyCount = Math.max(0, _dirtyCount - 1)
   })
 
   function markLoaded() {

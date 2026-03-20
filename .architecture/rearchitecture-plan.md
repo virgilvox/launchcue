@@ -59,7 +59,7 @@ All 10 data stores use `getContainer().resolve(KEY)` instead of direct service i
 
 ## Phase 2: Backend Migration (Supabase) ✅
 
-### 2.1 PostgreSQL Schema ✅ (~5 migration files in `supabase/migrations/`)
+### 2.1 PostgreSQL Schema ✅ (20 migration files in `supabase/migrations/`)
 - `001_create_tables.sql` — 26 tables (users, teams, team_members join table, clients, projects, tasks, etc.). UUIDs, foreign keys, JSONB for embedded arrays, 14 enum types.
 - `002_row_level_security.sql` — RLS policies for team isolation + role-based write control.
 - `003_indexes.sql` — Mirror existing MongoDB indexes.
@@ -116,7 +116,7 @@ For non-Supabase operations:
 | No email | Supabase Auth handles verification/reset; Express + nodemailer for invitations |
 | Dead notifications | NOTIFICATION_REPO polling (60s interval via setInterval) |
 | No pagination | `findPaginated()` on Repository interface; Supabase `.range()`; `Pagination.vue` |
-| No tests | 52 tests across 4 files (core infra + auth store). Component/E2E tests still TODO. |
+| No tests | 474 tests across 37 files (all stores, composables, core, router, server). Component/E2E tests still TODO. |
 
 ---
 

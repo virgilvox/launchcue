@@ -637,5 +637,5 @@ npm run dev:full      -- All three concurrently
 ```
 npm run build         -- Vite production build (outputs dist/)
 npm run type-check    -- vue-tsc type checking
-npm test              -- Vitest (52 tests across 4 files)
+npm test              -- Vitest (441 tests across 33 files)
 ```
