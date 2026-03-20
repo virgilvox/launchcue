@@ -91,7 +91,7 @@ server/tests/       # Express API route tests (vitest + supertest)
 ### Platform Features
 - **Auth**: Login, register, password reset, email verification, team switching (Supabase Auth)
 - **RBAC**: owner/admin/member/viewer/client roles with route guards and backend enforcement
-- **Client Portal**: Restricted layout (ClientLayout) with dashboard, project view, onboarding; client invitation flow (create → copy link/mailto → accept → signup/signin → finalize); client-scoped RLS filtering
+- **Client Portal**: Restricted layout (ClientLayout) with dashboard, project view, onboarding, scope approval, comments; client invitation flow (create → copy link/mailto → accept → signup/signin → finalize); client-scoped RLS (SELECT on 5 tables + UPDATE on onboarding/scopes + INSERT on comments)
 - **Teams**: Invite system, role management, team switching with data reload
 - **Settings**: Profile, dark mode toggle, webhook manager, API key manager, audit log viewer
 - **Global Search**: Command palette (Cmd+K) searching tasks/projects/clients/notes/campaigns, `>` prefix for commands
@@ -146,7 +146,7 @@ server/tests/       # Express API route tests (vitest + supertest)
 - **XSS protection**: All `v-html` usage sanitized with DOMPurify (InvoicePreview, ScopePreview, Notes, BrainDumpResults)
 - **View security**: All `active_*` views have `security_invoker = true` (prevents RLS bypass via superuser-owned views)
 - **Auth tokens**: Supabase SDK owns tokens exclusively (localStorage); sessionStorage stores only app metadata (user, teams, currentTeam)
-- **RLS hardening**: `auth.current_team_id()` cross-checks `team_members` table (prevents `user_metadata` tampering)
+- **RLS hardening**: `auth.current_team_id()` cross-checks `team_members` table (prevents `user_metadata` tampering); `auth.current_client_id()` scopes client-role users to their own data across 5 tables
 - **Audit logging**: Create/update/delete operations log to audit trail; DELETE triggers on comments/notifications; team_members/team_invites membership changes audited
 - **Cascade protection**: Client delete blocked if active projects exist
 
@@ -595,11 +595,12 @@ Complete client invitation acceptance pipeline — from admin creating invitatio
 
 **Migration 021 — `021_client_onboarding.sql`:**
 - `users.client_id` column — nullable FK linking app users to client records (with partial index)
-- `create_client_invitation()` RPC — admin-only, generates 256-bit random token, stores bcrypt hash only, returns plaintext for invite URL. Validates team ownership, admin role, no duplicate pending invites.
+- `create_client_invitation()` RPC — admin-only, generates 256-bit random token, stores bcrypt hash only, returns plaintext for invite URL. Validates team ownership, admin role, no duplicate pending invites, rejects emails belonging to existing team members.
 - `accept_client_invitation()` RPC — anon-callable, validates token against bcrypt hash, returns invitation details + `hasExistingAccount` flag. Read-only (no mutations).
-- `finalize_client_invitation()` RPC — authenticated-only, creates app user + team membership with client role, marks invitation accepted. Verifies `auth.uid()` matches `p_auth_id` and email matches invitation to prevent auth_id spoofing.
+- `finalize_client_invitation()` RPC — authenticated-only, creates app user + team membership with client role, marks invitation accepted. Verifies `auth.uid()` matches `p_auth_id` and email matches invitation to prevent auth_id spoofing. Returns team name. Uses `DO NOTHING` on team_members conflict (never downgrades existing roles). Uses `COALESCE` on client_id update (preserves existing client link).
 - `auth.current_client_id()` helper — returns user's client_id for RLS filtering
-- Client-scoped RLS — rewrites SELECT policies on projects, scopes, onboarding_checklists, client_invitations, clients so client-role users only see their own data (non-client users unaffected)
+- Client-scoped SELECT RLS — rewrites SELECT policies on projects, scopes, onboarding_checklists, client_invitations, clients so client-role users only see their own data (non-client users unaffected)
+- Client-scoped UPDATE/INSERT RLS — `onboarding_checklists_client_update` (clients can complete their own onboarding steps), `scopes_client_approve` rewritten with `client_id` check (fixes pre-existing cross-client approval bug from migration 014), `comments_client_insert` (clients can comment on their own projects)
 
 **Invitation UI (`ClientInvitationsSection.vue` on ClientDetail page):**
 - No email backend needed — admin creates invite, gets a copyable URL + "Open in Email" mailto link
@@ -607,6 +608,7 @@ Complete client invitation acceptance pipeline — from admin creating invitatio
 - Calls `create_client_invitation` RPC directly (server-side token generation)
 
 **Acceptance Flow (reworked `AcceptInvite.vue` + `onboarding.ts`):**
+- Signs out any existing session on mount (prevents admin accidentally accepting a client invite)
 - Token validated on mount via `accept_client_invitation` RPC
 - Existing users: shown "Sign In" form, authenticated via `signInWithPassword`
 - New users: shown "Create Password" form, signed up via `supabase.auth.signUp`
@@ -621,10 +623,17 @@ Complete client invitation acceptance pipeline — from admin creating invitatio
 **Store fix:**
 - `onboardingStore.createInvitation()` now uses `create_client_invitation` RPC instead of direct table insert (which would create invitations with null token/hash)
 
-**Security audit findings (fixed during implementation):**
+**Security audit findings (fixed across 4 audit passes):**
 - Duplicate RLS policy (`projects_client_select`) removed
 - `finalize_client_invitation` auth_id + email verification (prevents spoofing)
 - Eliminated exception-based control flow with delimiter parsing
+- Session conflict: AcceptInvite signs out existing user on mount
+- Missing team name in finalize RPC return (portal showed empty team name)
+- `scopes_client_approve` (migration 014) missing `client_id` check — client could approve any scope in team
+- `onboarding_checklists` UPDATE blocked for client role (`can_write()` excludes clients) — portal step completion silently failed
+- `comments` INSERT blocked for client role — portal comment thread non-functional for clients
+- Role demotion: existing team owner/admin accepting client invite had their role overwritten to `client`
+- `client_id` overwrite: accepting a second invitation would silently replace existing client link
 
 **Test:** Updated `onboarding.test.ts` to mock `getSupabase().rpc()` instead of repo. 441/441 tests pass, 0 TypeScript errors.
 
@@ -632,5 +641,6 @@ Complete client invitation acceptance pipeline — from admin creating invitatio
 - Single `client_id` per user (multi-client would need a join table)
 - Requires `GOTRUE_MAILER_AUTOCONFIRM=true` (production with email verification would need additional handling)
 - Bcrypt token lookup scans all pending invitations (fine at current scale)
+- `comments_select` has no client_id filtering (clients could query all team comments via API, but frontend only loads comments for accessible projects)
 
 *Last updated: 2026-03-19*
