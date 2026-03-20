@@ -282,6 +282,57 @@ CREATE POLICY client_invitations_select ON client_invitations FOR SELECT
     )
   );
 
+-- Fix: clients cannot UPDATE onboarding_checklists (can_write() excludes client role)
+-- but the portal has step-completion UI. Allow clients to UPDATE their own checklists.
+CREATE POLICY onboarding_checklists_client_update ON onboarding_checklists FOR UPDATE
+  USING (
+    team_id = auth.current_team_id()
+    AND auth.current_team_role() = 'client'
+    AND client_id = auth.current_client_id()
+    AND deleted_at IS NULL
+  )
+  WITH CHECK (
+    team_id = auth.current_team_id()
+    AND auth.current_team_role() = 'client'
+    AND client_id = auth.current_client_id()
+    AND deleted_at IS NULL
+  );
+
+-- Fix: scopes_client_approve (migration 014) is missing client_id check.
+-- A client could approve scopes belonging to other clients in the same team.
+DROP POLICY IF EXISTS scopes_client_approve ON scopes;
+CREATE POLICY scopes_client_approve ON scopes FOR UPDATE
+  USING (
+    team_id = auth.current_team_id()
+    AND auth.current_team_role() = 'client'
+    AND client_id = auth.current_client_id()
+    AND status = 'sent'
+    AND deleted_at IS NULL
+  )
+  WITH CHECK (
+    team_id = auth.current_team_id()
+    AND auth.current_team_role() = 'client'
+    AND client_id = auth.current_client_id()
+    AND status IN ('approved', 'revised')
+    AND deleted_at IS NULL
+  );
+
+-- Fix: clients cannot INSERT comments (can_write() excludes client role)
+-- but PortalProject has a CommentThread component. Allow clients to comment
+-- on projects that belong to their client_id.
+CREATE POLICY comments_client_insert ON comments FOR INSERT
+  WITH CHECK (
+    team_id = auth.current_team_id()
+    AND auth.current_team_role() = 'client'
+    AND resource_type = 'project'
+    AND resource_id IN (
+      SELECT id FROM projects
+      WHERE client_id = auth.current_client_id()
+        AND team_id = auth.current_team_id()
+        AND deleted_at IS NULL
+    )
+  );
+
 -- Clients table: client-role users can only see their own client record
 DROP POLICY IF EXISTS clients_select ON clients;
 CREATE POLICY clients_select ON clients FOR SELECT
