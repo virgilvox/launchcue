@@ -42,22 +42,91 @@ export const useOnboardingStore = defineStore('onboarding', () => {
 
   const createInvitation = async (data: ClientInvitationCreateRequest): Promise<ClientInvitation & { token: string }> => {
     if (!useAuthStore().currentTeam) throw new Error('No team context')
-    const result = await getInvitationRepo().create(data) as ClientInvitation & { token: string }
-    if (result && result.id) {
-      invitations.value.push(result)
-      getEventBus().emit('invitation.created', { invitation: result })
-    }
-    return result
+    const { getSupabase } = await import('@/adapters/supabase/client')
+    const sb = getSupabase()
+    const { data: result, error } = await sb.rpc('create_client_invitation', {
+      p_client_id: data.clientId,
+      p_email: data.email,
+      p_name: data.name,
+      p_project_ids: data.projectIds || [],
+    })
+    if (error) throw new Error(error.message)
+    const invitation = {
+      id: result.id,
+      email: result.email,
+      name: result.name,
+      token: result.token,
+      expiresAt: result.expiresAt,
+      role: 'client' as const,
+      status: 'pending' as const,
+    } as ClientInvitation & { token: string }
+    invitations.value.push(invitation)
+    getEventBus().emit('invitation.created', { invitation })
+    return invitation
   }
 
-  const acceptInvitation = async (token: string, password: string): Promise<ClientInvitation> => {
-    // Accept invitation is a special action on the invitation repo
-    const result = await getInvitationRepo().create({
-      action: 'accept',
-      token,
-      password,
-    } as unknown as ClientInvitationCreateRequest)
-    return result
+  const acceptInvitation = async (token: string, password: string): Promise<{
+    userId: string
+    teamId: string
+    clientId: string
+    projectIds: string[]
+    name: string
+    email: string
+  }> => {
+    const { getSupabase } = await import('@/adapters/supabase/client')
+    const sb = getSupabase()
+
+    // Step 1: Validate token and get invitation details
+    const { data: inviteData, error: inviteError } = await sb.rpc('accept_client_invitation', {
+      p_token: token,
+    })
+
+    if (inviteError) throw new Error(inviteError.message || 'Invalid or expired invitation')
+
+    const { email, name, teamId, clientId, projectIds, hasExistingAccount } = inviteData
+
+    // Step 2: Sign up or sign in
+    if (hasExistingAccount) {
+      // Existing user — sign in with the password they provided
+      const { data: signInData, error: signInError } = await sb.auth.signInWithPassword({
+        email,
+        password,
+      })
+      if (signInError) throw new Error('Account exists for this email. ' + signInError.message)
+      if (!signInData.user) throw new Error('Sign-in failed')
+    } else {
+      // New user — create auth account
+      const { data: signUpData, error: signUpError } = await sb.auth.signUp({
+        email,
+        password,
+        options: { data: { name } },
+      })
+      if (signUpError) throw new Error(signUpError.message)
+      if (!signUpData.user) throw new Error('Signup failed — no user returned')
+    }
+
+    // Step 3: Now authenticated — finalize the invitation (creates app user + team membership)
+    const { data: { user: authUser } } = await sb.auth.getUser()
+    if (!authUser) throw new Error('Authentication failed')
+
+    const { data: finalizeResult, error: finalizeError } = await sb.rpc('finalize_client_invitation', {
+      p_token: token,
+      p_auth_id: authUser.id,
+    })
+    if (finalizeError) throw new Error(finalizeError.message)
+
+    // Step 4: Set current team in JWT and refresh session
+    await sb.auth.updateUser({ data: { current_team_id: finalizeResult.teamId } })
+    await sb.auth.refreshSession()
+
+    return {
+      userId: finalizeResult.userId,
+      teamId: finalizeResult.teamId,
+      clientId: finalizeResult.clientId,
+      projectIds: finalizeResult.projectIds || [],
+      name: finalizeResult.name || name,
+      email,
+    }
   }
 
   const deleteInvitation = async (id: string): Promise<void> => {

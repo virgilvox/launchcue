@@ -91,7 +91,7 @@ server/tests/       # Express API route tests (vitest + supertest)
 ### Platform Features
 - **Auth**: Login, register, password reset, email verification, team switching (Supabase Auth)
 - **RBAC**: owner/admin/member/viewer/client roles with route guards and backend enforcement
-- **Client Portal**: Restricted layout (ClientLayout) with dashboard, project view, onboarding
+- **Client Portal**: Restricted layout (ClientLayout) with dashboard, project view, onboarding; client invitation flow (create → copy link/mailto → accept → signup/signin → finalize); client-scoped RLS filtering
 - **Teams**: Invite system, role management, team switching with data reload
 - **Settings**: Profile, dark mode toggle, webhook manager, API key manager, audit log viewer
 - **Global Search**: Command palette (Cmd+K) searching tasks/projects/clients/notes/campaigns, `>` prefix for commands
@@ -105,10 +105,10 @@ server/tests/       # Express API route tests (vitest + supertest)
 - **Feature Modules**: 15 modules declaring routes, nav items, search providers, dependencies
 - **All 18 Pinia stores**: Fully migrated to repository pattern via DI container
 - **Zero legacy imports**: No `src/services/`, no axios, no Netlify code -all deleted
-- **Supabase Backend**: 20 SQL migrations, 26 tables, RLS policies, active_* views (security_invoker), auto_inject triggers, validation triggers
+- **Supabase Backend**: 21 SQL migrations, 26 tables, RLS policies, active_* views (security_invoker), auto_inject triggers, validation triggers
 - **Express API Server**: AI processing (Anthropic), webhook delivery (HMAC + retry), email (nodemailer)
 - **Docker**: Full-stack compose (docker-compose.yml) + dev-only Supabase stack (docker-compose.dev.yml)
-- **CI/CD**: ESLint v9 flat config, Prettier, GitHub Actions, DO App Platform deploy-on-push
+- **CI/CD**: ESLint v9 flat config, Prettier, GitHub Actions (lint → type-check → build → test), DO App Platform deploy-on-push
 - **Health check**: `/health` endpoint with DB ping, integrated with DO App Platform health monitoring
 - **Docs**: All docs/ files (including plugin-guide.md), 6 .architecture/ files, README.md fully updated for Supabase stack
 - **Search→Notes**: Highlight query param + scroll-to on Notes page mount
@@ -204,7 +204,7 @@ server/tests/       # Express API route tests (vitest + supertest)
 | Pinia stores | 18 (all TS, all using repository pattern) |
 | Supabase adapter files | 25 (19 repository + 1 auth + 1 search + 1 AI + base class + index + client) |
 | Express API endpoints | 3 (AI, webhooks, email) |
-| SQL migrations | 20 (26 tables + RLS + triggers + functions + storage) |
+| SQL migrations | 21 (26 tables + RLS + triggers + functions + storage + client onboarding RPCs) |
 | Test files | 37 (474 tests: 33 frontend + 4 server) |
 | Type definition files | 4 (models, api, enums, index) + core/types.ts |
 
@@ -563,5 +563,74 @@ Full 7-stream audit (architecture, security, UI flows, data model, tests, compet
 - **ESLint broken**: `jiti` package too old for ESLint 9.39. Updated to latest.
 
 **Verification:** `vue-tsc --noEmit` clean, 474 tests pass (441 frontend + 33 server), `vite build` succeeds, ESLint working (0 new errors).
+
+### CI/CD Lint Fix (2026-03-19)
+
+GitHub Actions CI had been failing on every push since 2026-03-10 due to 61 ESLint errors. Fixed all errors across 22 files:
+
+**`no-useless-catch` (41 errors, 12 store files):**
+- Removed try/catch blocks that just rethrow (`catch (error) { throw error }`) from: api-key, brain-dump, campaign, comment, invoice, note, onboarding, project, scope, task, webhook stores
+- Two patterns: plain try/catch removed entirely; try/catch/finally preserved as try/finally (cleanup in `finally` kept)
+
+**`@typescript-eslint/no-explicit-any` (19 errors, 9 files):**
+- `base.repository.ts`: Introduced `SupabaseQueryBuilder` interface replacing `any` on query chains and `applyDefaultOrder()` signature. Removed 3 `eslint-disable-next-line` comments.
+- `calendar-event.repository.ts`: Updated to use `SupabaseQueryBuilder` (cascading from base class change)
+- `auth.ts`: Pinia internal `_s` map typed as `Map<string, StoreGeneric>` (from pinia); `Repository<any>` → `Repository<Team>`
+- `useConfirmDialog.ts`: `<T = any>` → `<T = unknown>`
+- `useModalState.ts`: `Record<string, any>` → `Record<string, unknown>`, `Ref<any>` → `Ref<T | null>`, `open(item?: any)` → `open(item?: T)`
+- `onboarding.ts`: `Promise<any>` → `Promise<ClientInvitation>`
+- 4 calendar view components: `[key: string]: any` → `[key: string]: unknown` on local interfaces
+
+**`prefer-const` (1 error):**
+- `auth.adapter.ts`: `let currentTeamId` → `const currentTeamId`
+
+**Other:**
+- `team.ts`: Removed dead `(m as any).id === memberId` fallback (TeamMember has no `id` field, only `userId`)
+
+**Net result:** -142 lines, 0 lint errors, type check clean, 441 tests pass. CI now green.
+
+### Client Onboarding & Invitation Flow (2026-03-19)
+
+Complete client invitation acceptance pipeline — from admin creating invitations to clients signing up and landing in the portal. Previously the client portal UI existed but the backend was half-built (no acceptance RPC, no user↔client link, no client-scoped data filtering).
+
+**Migration 021 — `021_client_onboarding.sql`:**
+- `users.client_id` column — nullable FK linking app users to client records (with partial index)
+- `create_client_invitation()` RPC — admin-only, generates 256-bit random token, stores bcrypt hash only, returns plaintext for invite URL. Validates team ownership, admin role, no duplicate pending invites.
+- `accept_client_invitation()` RPC — anon-callable, validates token against bcrypt hash, returns invitation details + `hasExistingAccount` flag. Read-only (no mutations).
+- `finalize_client_invitation()` RPC — authenticated-only, creates app user + team membership with client role, marks invitation accepted. Verifies `auth.uid()` matches `p_auth_id` and email matches invitation to prevent auth_id spoofing.
+- `auth.current_client_id()` helper — returns user's client_id for RLS filtering
+- Client-scoped RLS — rewrites SELECT policies on projects, scopes, onboarding_checklists, client_invitations, clients so client-role users only see their own data (non-client users unaffected)
+
+**Invitation UI (`ClientInvitationsSection.vue` on ClientDetail page):**
+- No email backend needed — admin creates invite, gets a copyable URL + "Open in Email" mailto link
+- Shows pending/accepted/expired invitations with revoke button
+- Calls `create_client_invitation` RPC directly (server-side token generation)
+
+**Acceptance Flow (reworked `AcceptInvite.vue` + `onboarding.ts`):**
+- Token validated on mount via `accept_client_invitation` RPC
+- Existing users: shown "Sign In" form, authenticated via `signInWithPassword`
+- New users: shown "Create Password" form, signed up via `supabase.auth.signUp`
+- Both paths: `finalize_client_invitation` creates app user + team membership, sets JWT team context
+- Replaced broken `repo.create({action:'accept'})` hack with proper 3-step RPC flow
+
+**Portal Data Filtering:**
+- `User` model now includes `clientId`, populated from DB by auth adapter's `mapUser()`
+- `PortalDashboard` filters projects, checklists, and scopes by `authStore.user?.clientId`
+- RLS enforces filtering at DB level as safety net
+
+**Store fix:**
+- `onboardingStore.createInvitation()` now uses `create_client_invitation` RPC instead of direct table insert (which would create invitations with null token/hash)
+
+**Security audit findings (fixed during implementation):**
+- Duplicate RLS policy (`projects_client_select`) removed
+- `finalize_client_invitation` auth_id + email verification (prevents spoofing)
+- Eliminated exception-based control flow with delimiter parsing
+
+**Test:** Updated `onboarding.test.ts` to mock `getSupabase().rpc()` instead of repo. 441/441 tests pass, 0 TypeScript errors.
+
+**Known limitations:**
+- Single `client_id` per user (multi-client would need a join table)
+- Requires `GOTRUE_MAILER_AUTOCONFIRM=true` (production with email verification would need additional handling)
+- Bcrypt token lookup scans all pending invitations (fine at current scale)
 
 *Last updated: 2026-03-19*

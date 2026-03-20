@@ -287,6 +287,7 @@ export class SupabaseAuthAdapter implements AuthAdapter {
       emailVerified: row.email_verified as boolean | undefined,
       timezone: row.timezone as string | undefined,
       preferences: row.preferences as User['preferences'],
+      clientId: (row.client_id as string) || null,
       createdAt: row.created_at as string,
       updatedAt: row.updated_at as string,
     }

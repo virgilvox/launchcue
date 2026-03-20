@@ -54,13 +54,22 @@
         </div>
 
         <!-- Sidebar -->
-        <div>
+        <div class="space-y-6">
           <ClientContactsSection
             :contacts="filteredContacts"
             :loading="contactsLoading"
             @add="openAddContactModal"
             @edit="editContact"
             @delete="confirmDeleteContact"
+          />
+
+          <ClientInvitationsSection
+            :client-id="client.id"
+            :client-name="client.name"
+            :invitations="clientInvitations"
+            :loading="invitationsLoading"
+            @invitation-created="loadInvitations"
+            @delete-invitation="revokeInvitation"
           />
         </div>
       </div>
@@ -237,6 +246,7 @@ import ClientContactsSection from '@/modules/clients/components/ClientContactsSe
 import ClientProjectsTable from '@/modules/clients/components/ClientProjectsTable.vue'
 import ClientColorDot from '@/components/ui/ClientColorDot.vue'
 import ClientColorPicker from '@/components/ui/ClientColorPicker.vue'
+import ClientInvitationsSection from '@/modules/clients/components/ClientInvitationsSection.vue'
 import LoadingSpinner from '@/components/LoadingSpinner.vue'
 
 const route = useRoute()
@@ -265,6 +275,8 @@ const savingContact = ref(false)
 const deletingContact = ref(false)
 const projectSearch = ref('')
 const statusFilter = ref('')
+const clientInvitations = ref([])
+const invitationsLoading = ref(false)
 
 const clientForm = ref({
   name: '',
@@ -340,8 +352,11 @@ async function loadClient() {
       }
     }
 
-    // Load projects for this client
-    await loadClientProjects(clientId)
+    // Load projects and invitations for this client
+    await Promise.all([
+      loadClientProjects(clientId),
+      loadInvitations(),
+    ])
 
     // If contacts array doesn't exist yet, initialize it
     if (!client.value.contacts) {
@@ -393,6 +408,52 @@ async function loadClientContacts(clientId) {
     toast.error('Failed to load client contacts')
   } finally {
     contactsLoading.value = false
+  }
+}
+
+// ── Invitations ─────────────────────────────────────────────────────────
+
+async function loadInvitations() {
+  const clientId = route.params.id
+  invitationsLoading.value = true
+  try {
+    const { getSupabase } = await import('@/adapters/supabase/client')
+    const sb = getSupabase()
+    const { data, error: err } = await sb
+      .from('active_client_invitations')
+      .select('id, email, name, status, expires_at, created_at')
+      .eq('client_id', clientId)
+      .order('created_at', { ascending: false })
+    if (err) throw err
+    clientInvitations.value = (data || []).map(inv => ({
+      id: inv.id,
+      email: inv.email,
+      name: inv.name,
+      status: new Date(inv.expires_at) < new Date() && inv.status === 'pending' ? 'expired' : inv.status,
+      expiresAt: inv.expires_at,
+      createdAt: inv.created_at,
+    }))
+  } catch {
+    // Non-critical — don't block the page
+    clientInvitations.value = []
+  } finally {
+    invitationsLoading.value = false
+  }
+}
+
+async function revokeInvitation(invitationId) {
+  try {
+    const { getSupabase } = await import('@/adapters/supabase/client')
+    const sb = getSupabase()
+    const { error: err } = await sb
+      .from('client_invitations')
+      .update({ deleted_at: new Date().toISOString() })
+      .eq('id', invitationId)
+    if (err) throw err
+    toast.success('Invitation revoked')
+    await loadInvitations()
+  } catch {
+    toast.error('Failed to revoke invitation')
   }
 }
 

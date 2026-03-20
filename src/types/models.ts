@@ -37,6 +37,7 @@ export interface User extends Timestamped {
   emailVerified?: boolean
   timezone?: string
   preferences?: UserPreferences
+  clientId?: string | null
 }
 
 export interface UserPreferences {

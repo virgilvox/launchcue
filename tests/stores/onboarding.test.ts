@@ -8,6 +8,13 @@ vi.mock('@/router', () => ({
   default: { push: vi.fn() },
 }))
 
+const mockRpc = vi.fn()
+vi.mock('@/adapters/supabase/client', () => ({
+  getSupabase: () => ({
+    rpc: mockRpc,
+  }),
+}))
+
 describe('useOnboardingStore', () => {
   let mockChecklistRepo: ReturnType<typeof createMockRepository>
   let mockInvitationRepo: ReturnType<typeof createMockRepository>
@@ -53,16 +60,22 @@ describe('useOnboardingStore', () => {
       await expect(store.createInvitation({ clientId: 'c1', email: 'a@test.com' } as any)).rejects.toThrow('No team context')
     })
 
-    it('creates invitation and pushes to array', async () => {
-      const newInv = { id: 'inv-3', clientId: 'c1', email: 'c@test.com', token: 'tok-123' }
-      ;(mockInvitationRepo.create as ReturnType<typeof vi.fn>).mockResolvedValue(newInv)
+    it('creates invitation via RPC and pushes to array', async () => {
+      const rpcResult = { id: 'inv-3', email: 'c@test.com', name: 'Test', token: 'tok-123', expiresAt: '2026-04-01' }
+      mockRpc.mockResolvedValue({ data: rpcResult, error: null })
 
       const store = useOnboardingStore()
-      const result = await store.createInvitation({ clientId: 'c1', email: 'c@test.com' } as any)
+      const result = await store.createInvitation({ clientId: 'c1', email: 'c@test.com', name: 'Test', projectIds: [] } as any)
 
-      expect(result).toEqual(newInv)
-      expect(store.invitations).toContainEqual(newInv)
-      expect(mockInvitationRepo.create).toHaveBeenCalled()
+      expect(result.id).toBe('inv-3')
+      expect(result.token).toBe('tok-123')
+      expect(store.invitations).toHaveLength(1)
+      expect(mockRpc).toHaveBeenCalledWith('create_client_invitation', {
+        p_client_id: 'c1',
+        p_email: 'c@test.com',
+        p_name: 'Test',
+        p_project_ids: [],
+      })
     })
   })
 

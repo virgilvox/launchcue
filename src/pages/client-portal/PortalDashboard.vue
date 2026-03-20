@@ -243,7 +243,7 @@ async function loadDashboard() {
     const [projectsData, checklistsData, scopesData] = await Promise.allSettled([
       projectRepo.findAll(clientId ? { clientId } : {}),
       onboardingRepo.findAll(clientId ? { clientId } : {}),
-      scopeRepo.findAll({ status: 'sent' }),
+      scopeRepo.findAll(clientId ? { status: 'sent', clientId } : { status: 'sent' }),
     ])
 
     projects.value = projectsData.status === 'fulfilled' && Array.isArray(projectsData.value)
